@@ -1,9 +1,8 @@
 import numpy as np
 from scipy.linalg import lu
 from typing import Union, Optional
+from src.utils.physical_constant import EPS
 import math
-
-EPS = 1e-6
 
 def Compute1DIntegral(A_origin : Union[np.array, np.ndarray], x_min : float, x_max : float):
     N = A_origin.shape[0]

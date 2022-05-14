@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import special
 from numpy import clip
+from typing import Optional
 import math
 
 pi = math.pi
@@ -35,32 +36,40 @@ def GreenFunctionScaled(R0, Z0, R, Z):
 
     return g
 
-def GreenBz(R0, Z0, R,Z, mu, Ic, dr : float = 0.001, scaled : bool = True):
+def GreenBz(R0, Z0, R,Z, mu : Optional[float] = None, Ic : Optional[float] = None, dr : float = 0.001, scaled : bool = True):
 
     Gi = GreenFunctionScaled(R0,Z0,R - 0.5 * dr,Z)
     Gf = GreenFunctionScaled(R0,Z0,R + 0.5 * dr,Z)
     dGdr = (Gf - Gi) / dr
     Bz = 1 / R * dGdr
-    scaled_factor = Ic * mu
 
-    if scaled:
+    if mu is not None and Ic is not None:
+        scaled_factor = Ic * mu
+    else:
+        scaled_factor = None
+
+    if scaled or scaled_factor is not None:
         return Bz * scaled_factor
     else:
-        return Bz, scaled_factor
+        return Bz
 
-def GreenBr(R0, Z0, R, Z, mu, Ic, dz : float = 0.001, scaled : bool = True):
+def GreenBr(R0, Z0, R, Z, mu : Optional[float] = None, Ic : Optional[float] = None, dz : float = 0.001, scaled : bool = True):
 
     Gi = GreenFunction(R0, Z0, R, Z - 0.5 * dz, mu)
     Gf = GreenFunction(R0, Z0, R, Z + 0.5 * dz, mu)
     dGdz = (Gf - Gi) / dz
 
-    scaled_factor = Ic * mu
+    if mu is not None and Ic is not None:
+        scaled_factor = Ic * mu
+    else:
+        scaled_factor = None
+
     Br = (-1) * dGdz / R
 
-    if scaled:
+    if scaled or scaled_factor is not None:
         return Br * scaled_factor
     else:
-        return Br, scaled_factor
+        return Br
 
 def GreenFunctionMatrix(R, Z, R_min, Z_min, R_max, Z_max, Nr, Nz, mu = MU):
     dR = (R_max - R_min) / (Nr - 1)

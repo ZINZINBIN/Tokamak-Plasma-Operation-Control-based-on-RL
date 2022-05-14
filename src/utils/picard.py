@@ -1,7 +1,6 @@
 import numpy as np
 import math
-
-EPS = 1e-6
+from src.utils.physical_constant import EPS
 
 def SORper1Epoch(A, x, b, w = 1.0, eps = EPS):
     '''
