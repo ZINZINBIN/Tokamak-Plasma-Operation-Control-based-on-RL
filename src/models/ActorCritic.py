@@ -6,7 +6,7 @@ from torch.distributions import Categorical
 from typing import Optional
 
 class Actor(nn.Module):
-    def __init__(self, env, mode : Optional[str] = "continous", hidden_dim : int = 256):
+    def __init__(self, env, mode : Optional[str] = "continuous", hidden_dim : int = 256):
         super(Actor, self).__init__()
         self.env = env
 
@@ -47,8 +47,9 @@ class Actor(nn.Module):
         action_low = torch.from_numpy(self.env.action_space.low)[None, ...].to(device)
         action_high = torch.from_numpy(self.env.action_space.high)[None, ...].to(device)
 
-        x = F.relu(self.bn1(self.lin1(state)))
-        x = F.relu(self.bn2(self.lin2(x)))
+        
+        x = F.relu(self.lin1(state))
+        x = F.relu(self.lin2(x))
 
         mean = torch.sigmoid(self.mean_layer(x)) 
         mean = action_low + (action_high - action_low) * mean
@@ -64,8 +65,8 @@ class Actor(nn.Module):
 
     def get_discrete_output(self, state : torch.Tensor):
         B = state.size(0)
-        h = F.relu(self.bn1(self.lin1(state)))
-        h = F.relu(self.bn2(self.lin2(h)))
+        h = F.relu(self.lin1(state))
+        h = F.relu(self.lin2(h))
         h = self.out(h)
         return torch.softmax(h, dim=-1)
 
@@ -97,18 +98,18 @@ class Actor(nn.Module):
 
 # Critic : MLP model
 class Critic(nn.Module):
-    def __init__(self, env, mode : Optional[str] = "continous", hidden_dim : int = 256):
+    def __init__(self, env, mode : Optional[str] = "continuous", hidden_dim : int = 256):
         super(Critic, self).__init__()
         self.env = env
 
         if mode is None:
-            self.mode = "continous"
-        elif mode is not None and mode != "continous":
+            self.mode = "continuous"
+        elif mode is not None and mode != "continuous":
             self.mode = "discrete"
         else:
             self.mode = mode
 
-        if self.mode == "continous":
+        if self.mode == "continuous":
             self.ds = env.observation_space.shape[0]
             self.da = env.action_space.shape[0]
         else:
@@ -123,8 +124,8 @@ class Critic(nn.Module):
     
     def forward(self, state : torch.Tensor, action : torch.Tensor)->torch.Tensor:
         h = torch.cat([state, action], dim = 1)
-        h = F.relu(self.bn1(self.lin1(h)))
-        h = F.relu(self.bn2(self.lin2(h)))
+        h = F.relu(self.lin1(h))
+        h = F.relu(self.lin2(h))
         q = self.lin3(h)
 
         return q
