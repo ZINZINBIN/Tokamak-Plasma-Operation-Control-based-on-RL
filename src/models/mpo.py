@@ -246,6 +246,9 @@ class MPO(object):
             
         return np.mean(total_rewards)
 
+    def evaluate(self):
+        return self.__evaluate()
+        
     def __update_critic_td(
         self, 
         state_batch : torch.Tensor,

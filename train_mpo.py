@@ -52,6 +52,10 @@ if __name__ == "__main__":
         device = "cpu" 
 
     # training process
+    print("\n")
+    print("# training process : MPO algorithm")
+    print("\n")
+    
     agent = MPO(
         env = env,
         device = device,
@@ -78,7 +82,6 @@ if __name__ == "__main__":
         lr = args.lr
         )
 
-    
     agent.train(
         iteration_num = args.iteration_num,
         model_save_period=args.model_save_period,
@@ -86,6 +89,10 @@ if __name__ == "__main__":
         save_dir = args.save_dir
     )
     
-
     print("training MPO done .... !")
+    print("\n")
+    print("# evaluation process: MPO algorithm")
+    evaluate_score = agent.evaluate()
+    print("evaluate score(avg) : ", evaluate_score)
+
     env.close()
