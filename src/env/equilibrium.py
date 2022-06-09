@@ -1,9 +1,15 @@
 from sklearn import multiclass
 import numpy as np
+import logging
+from scipy import interpolate
+from scipy.integrate import romb
 from src.env.GSsolve.GSeqBuilder import GSsparse, GSsparse4thOrder
 from src.env.environment import Device
 from src.env.boundary import FreeBoundary, FixedBoundary
 from src.env.utils.multigrid import createVcycle
+from src.env.utils.physical_constant import pi, MU, K
+
+logger = logging.getLogger()
 
 class Equilibrium:
     def __init__(
@@ -21,7 +27,11 @@ class Equilibrium:
         ny : int = 64,
         order : int = 4
     ):
-        '''Equilibrium class
+        '''
+        Equilibrium
+        member variables : equilibrium state including plasma and coil currents
+
+        Argument
         - Rmin, Rmax, Zmin, Zmax : Range of major radius and height
         - nx, ny : Resolution in R and Z, must me 2n + 1
         - boundary : the boundary condition, FreeBoundary or FixedBoundary
@@ -43,7 +53,7 @@ class Equilibrium:
 
         self.dR = (Rmax - Rmin) / nx
         self.dZ = (Zmax - Zmin) / ny
-
+        
         self.R, self.Z = np.meshgrid(self.R_1D, self.Z_1D, indexing = "ij")
 
         if psi is None:
@@ -54,8 +64,11 @@ class Equilibrium:
             psi[:, 0] = 0.0
             psi[-1, :] = 0.0
             psi[:, -1] = 0.0
+
+        self._pgreen = device.createPsiGreens(self.R, self.Z)
         
         self.current = current
+        self.plasma_psi = None
 
         # update psi with init value
         self.updatePlasmaPsi(psi)
@@ -109,24 +122,69 @@ class Equilibrium:
 
         if self.mask is not None:
             pressure *= self.mask
+
+        # Integrate pressure in 2D 
+        return (
+            ((8.0 * pi) / MU)
+            * romb(romb(pressure))
+            * dR
+            * dZ
+            / (self.plasmaCurrent() ** 2)
+        )
         
-    def plasmaVolume():
+    # calculate the volume of the plasma
+    def plasmaVolume(self):
+        dR = self.dR
+        dZ = self.dZ
 
-    def plasmaBr():
-    
-    def plasmaBz():
+        dV = 2.0 * pi * self.R * dR * dZ
 
-    def Br():
+        if self.mask is not None:
+            dV *= self.mask
+        
+        return romb(romb(dV))
+
+    def plasmaBr(self, R, Z):
+        return -self.psi_func(R, Z, dy = 1, grid = False) / R
     
-    def Bz():
+    def plasmaBz(self, R, Z):
+        return self.psi_func(R,Z, dx = 1, grid = False) / R
+
+    def Br(self, R, Z):
+        return self.plasmaBr(R,Z) + self.device.Br(R,Z)
     
-    def Btor():
+    def Bz(self, R, Z):
+        return self.plasmaBz(R,Z) + self.device.Bz(R,Z)
+    
+    def Btor(self, R, Z):
+        return None
+
+    def psi(self):
+        return self.plasma_psi + self.device.calcPsiFromGreens(self._pgreen)
+
+    def psiRZ(self, R, Z):
+        return self.psi_func(R,Z,grid = False) + self.device.psi(R,Z)
+
+    def fpol(self, psi_norm):
+        return self.profiles.fpol(psi_norm)
+    
+    def fvac(self):
+        return self.profiles.fvac()
 
     def pressure(self, psi_norm):
         return self.profiles.pprime(psi_norm)
 
-    def updatePlasmaPsi(self, psi : np.ndarray):
-        self.psi = psi
+    def updatePlasmaPsi(self, plasma_psi : np.ndarray):
+
+        self.plasma_psi = plasma_psi
+
+        # update spline interpolation
+        self.psi_func = interpolate.RectBivariateSpline(
+            self.R[:,0], self.Z[0,:], plasma_psi
+        )
+
+        psi = self.psi()
+
 
         return None
     

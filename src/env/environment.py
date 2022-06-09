@@ -1,3 +1,4 @@
+from cv2 import multiply
 import numpy as np
 import numbers
 from typing import List, Optional, Tuple, Union
@@ -53,14 +54,14 @@ class Coil:
     def _controlPsi(self, R, Z):
         ''' return G(R,Z) without scaled factor(dimensionless)
         '''
-        return GreenFunctionScaled(self.R, self.Z, R, Z)
+        return GreenFunctionScaled(self.R, self.Z, R, Z) * self.turns
 
     def _controlBr(self, R, Z):
-        Br = GreenBr(self.R, self.Z, R, Z, False)
+        Br = GreenBr(self.R, self.Z, R, Z, False) * self.turns
         return Br
     
     def _controlBz(self, R, Z):
-        Bz = GreenBz(self.R, self.Z, R, Z, False)
+        Bz = GreenBz(self.R, self.Z, R, Z, False) * self.turns
         return Bz
     
     def Br(self, R, Z):
@@ -70,12 +71,12 @@ class Coil:
         return self._controlBz(R,Z) * self.current * self.mu
 
     def psi(self, R, Z):
-        return self._controlPsi(R,Z) * self.current * self.mu
+        return self._controlPsi(R,Z) * self.current * self.mu 
     
     def createPsiGreens(self, R, Z):
-        return None
+        return self._controlPsi(R,Z) * self.mu
     
-    def caclPsiFromGreens(self, pgreen):
+    def calcPsiFromGreens(self, pgreen):
         return self.current * pgreen * self.mu
 
     def calcForces(self, equilibrium):
@@ -139,6 +140,12 @@ class Solenoid(object):
             result += GreenFunctionScaled(self.Rs,Zs,R,Z)
 
         return result
+
+    def createPsiGreens(self, R, Z):
+        return self._controlPsi(R,Z) * self.mu
+    
+    def calcPsiFromGreens(self, pgreen):
+        return self.current * pgreen * self.mu
     
     def _controlBr(self, R, Z):
         result = 0
@@ -217,6 +224,26 @@ class Circuit(object):
             result += multiplier * coil._controlPsi(R,Z)
 
         return result
+
+    def psi(self, R, Z):
+        psi_val = 0
+        for label, coil, multiplier in self.coils:
+            coil.current = self.current * multiplier
+            psi_val += coil.psi(R,Z)
+        return psi_val
+    
+    def createPsiGreens(self, R, Z):
+        pgreen = {}
+        for label, coil, multiplier in self.coils:
+            pgreen[label] = coil.createPsiGreens(R,Z)
+        return pgreen
+    
+    def calcPsiFromGreens(self, pgreen):
+        psi_val = 0
+        for label, coil, multiplier in self.coils:
+            coil.current = self.current * multiplier
+            psi_val += coil.calcPsiFromGreens(pgreen[label])
+        return psi_val
     
     def _controlBr(self, R, Z):
         result = 0
@@ -295,6 +322,18 @@ class Device(object):
         psi_coils = 0
         for label, coil in self.coils:
             psi_coils += coil.psi(R,Z)
+        return psi_coils
+
+    def createPsiGreens(self, R, Z):
+        pgreen = {}
+        for label, coil in self.coils:
+            pgreen[label] = coil.createPsiGreens(R,Z)
+        return pgreen
+
+    def calcPsiFromGreens(self, pgreen):
+        psi_coils = 0
+        for label, coil in self.coils:
+            psi_coils += coil.calcPsiFromGreens(pgreen[label])
         return psi_coils
     
     def Br(self, R, Z):
