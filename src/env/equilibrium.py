@@ -1,13 +1,17 @@
+from matplotlib.pyplot import plasma
 from sklearn import multiclass
 import numpy as np
 import logging
 from scipy import interpolate
 from scipy.integrate import romb
 from src.env.GSsolve.GSeqBuilder import GSsparse, GSsparse4thOrder
+from src.env.critical import find_critical, core_mask
 from src.env.environment import Device
 from src.env.boundary import FreeBoundary, FixedBoundary
 from src.env.utils.multigrid import createVcycle
 from src.env.utils.physical_constant import pi, MU, K
+from src.env.visualize import plotEquilibrium
+from src.env.profiles import Profile, ConstraintBetapIp
 
 logger = logging.getLogger()
 
@@ -40,7 +44,7 @@ class Equilibrium:
         - order : GS matrix order
         '''
         self.device = device
-        self.boundary = boundary
+        self._apply_boundary = boundary
         self.mask = mask
 
         self.Rmin = Rmin
@@ -84,7 +88,7 @@ class Equilibrium:
         
         self.order = order
 
-        self.solver = createVcycle(
+        self._solver = createVcycle(
             nx, ny, gs_matrix, n_levels = 1, n_cycle = 1, n_iter = 2, direct = True
         )
 
@@ -116,7 +120,7 @@ class Equilibrium:
         dR = self.dR
         dZ = self.dZ
 
-        psi_norm = (self.psi() - self.psi_axis) / (self.psi_boundary - self.psi_axis)
+        psi_norm = (self.psi() - self.psi_axis) / (self.psi_bndry - self.psi_axis)
 
         pressure = self.pressure(psi_norm)
 
@@ -174,7 +178,7 @@ class Equilibrium:
     def pressure(self, psi_norm):
         return self.profiles.pprime(psi_norm)
 
-    def updatePlasmaPsi(self, plasma_psi : np.ndarray):
+    def _updatePlasmaPsi(self, plasma_psi : np.ndarray):
 
         self.plasma_psi = plasma_psi
 
@@ -185,13 +189,63 @@ class Equilibrium:
 
         psi = self.psi()
 
+        opt, xpt = find_critical(self.R, self.Z, plasma_psi)
 
-        return None
-    
+        if opt:
+            self.psi_axis = opt[0][2]
 
+            if xpt:
+                self.psi_bndry = xpt[0][2]
+                self.mask = core_mask(self.R, self.Z, psi, opt, xpt, self.psi_bndry)
+                self.mask_func = interpolate.RectBivariateSpline(
+                    self.R[:,0],
+                    self.Z[0,:],
+                    self.mask
+                )
+            elif self._apply_boundary == FixedBoundary:
+                # No x-point but fixed boundary
+                self.psi_bndry = psi[0,0]
+                self.mask = None
+            else:
+                self.psi_bndry = None
+                self.mask = None
 
+    def plot(self, axis = None, show : bool= True, oxpoints : bool = True, wall : bool = True):
+        return plotEquilibrium(self, axis = axis, show = show, oxpoints=oxpoints, wall = wall)
 
+    def solve(self, profiles : Profile, Jtor = None, psi = None, psi_bndry = None):
+        
+        # update profiles
+        self._profiles = profiles
 
+        # calculate Jtor 
+        if Jtor is None:
+            if psi is None:
+                psi = self.psi()
+            
+            Jtor = profiles.Jtor(self.R,self.Z,psi, psi_bndry=psi_bndry)
 
+        # pply boundary condition
+        self._apply_boundary(self,Jtor,self.plasma_psi)
 
+        # obtain RHS of GS equation
+        rhs = -MU*self.R*Jtor
+
+        # Copy boundary conditions
+        rhs[0, :] = self.plasma_psi[0, :]
+        rhs[:, 0] = self.plasma_psi[:, 0]
+        rhs[-1, :] = self.plasma_psi[-1, :]
+        rhs[:, -1] = self.plasma_psi[:, -1]
+
+        # solve GS equation
+        plasma_psi = self._solver(self.plasma_psi, rhs)
+        
+        # update plasma psi
+        self._updatePlasmaPsi(plasma_psi)
+
+        # update plasma current 
+        dR = self.R[1,0] - self.R[0,0]
+        dZ = self.Z[0,1] - self.Z[0,0]
+
+        self.current = romb(romb(Jtor)) * dR * dZ
 

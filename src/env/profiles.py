@@ -2,7 +2,7 @@ import numpy as np
 import abc
 from abc import ABCMeta, abstractmethod
 from scipy.integrate import romb, quad
-from src.env.utils.physical_constant import MU
+from src.env.utils.physical_constant import MU, pi
 from src.env.critical import find_critical, core_mask
 
 
@@ -88,7 +88,7 @@ class ConstraintBetapIp(Profile):
         
         self.betap = betap
         self.Ip = Ip
-        self.fvac = fvac
+        self._fvac = fvac
         self.alpha_m = alpha_m
         self.alpha_n = alpha_n
         self.Raxis = Raxis
@@ -115,3 +115,67 @@ class ConstraintBetapIp(Profile):
         else:
             psi_bndry = psi[0,0]
             mask = None
+
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
+
+        psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
+
+        jtor_shape = (1.0 - np.clip(psi_norm, 0, 1.0) ** self.alpha_m) ** self.alpha_n
+
+        if mask is not None:
+            jtor_shape *= mask
+
+        # pshape : integral of jtor_shape        
+        def pshape(psi_n):
+            shape_integral, _ = quad(
+                lambda x : (1.0 - x ** self.alpha_m) ** self.alpha_n, psi_n, 1.0
+            )
+            shape_integral *= (psi_bndry - psi_axis)
+            return shape_integral
+
+        # P(psi) = -(L * beta0 / Raxis) * pshape(psi_norm)
+
+        nx, ny = psi_norm.shape
+        pfunc = np.zeros((nx,ny))
+        
+        for i in range(1,nx -1):
+            for j in range(1,ny-1):
+                if((psi_norm[i,j]>=0) and (psi_norm[i,j] < 1.0)):
+                    pfunc[i,j] = pshape(psi_norm)
+
+        if mask is not None:
+            pfunc *= mask
+
+        # Integrate over plasma
+        # betap = (8pi/mu0) * int(p)dRdZ / Ip^2
+        #       = - (8pi/mu0) * (L*Beta0/Raxis) * intp / Ip^2
+        intp = romb(romb(pfunc)) * dR * dZ
+
+        LBeta0 = -self.betap * (MU / (8.0 * pi)) * self.Raxis * self.Ip ** 2 / intp
+
+        IR = romb(romb(jtor_shape * R / self.Raxis)) * dR * dZ
+        I_R = romb(romb(jtor_shape * self.Raxis / R)) * dR * dZ
+
+        L = self.Ip / I_R - LBeta0 * (IR / I_R - 1)
+        Beta0 = LBeta0 / L
+
+        Jtor = L * (Beta0 * R / self.Raxis + (1 - Beta0) * self.Raxis / R) * jtor_shape
+
+        self.L = L
+        self.Beta0 = Beta0
+        self.psi_bndry = psi_bndry
+        self.psi_axis = psi_axis
+
+        return Jtor
+
+    def pprime(self, pn):
+        shape = (1.0 - np.clip(pn, 0, 1) ** self.alpha_m) ** self.alpha_n
+        return self.L * self.Beta0 / self.Raxis * shape
+    
+    def ffprime(self, pn):
+        shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
+        return MU * self.L * (1 - self.Beta0) * self.Raxis * shape
+
+    def fvac(self):
+        return self._fvac
