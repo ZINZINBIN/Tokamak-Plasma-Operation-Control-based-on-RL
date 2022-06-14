@@ -2,13 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from src.env.critical import find_critical, core_mask
 from src.env.environment import Coil
-from src.env.equilibrium import Equilibrium
 
 def plotCoils(coils, axis = None):
     if axis is None:
         fig = plt.figure()
         axis = fig.add_subplot(111)
-    
     return axis
 
 def plotConstraints(control, axis = None, show = True):
@@ -36,7 +34,7 @@ def plotConstraints(control, axis = None, show = True):
 
     return 
 
-def plotEquilibrium(eq : Equilibrium, axis = None, show : bool= True, oxpoints : bool= True, wall : bool= True):
+def plotEquilibrium(eq, axis = None, show : bool= True, oxpoints : bool= True, wall : bool= True):
     R = eq.R
     Z = eq.Z
 

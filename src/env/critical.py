@@ -1,9 +1,8 @@
-from logging import critical
-from re import T
 import numpy as np
 from numpy.linalg import inv
 from scipy import interpolate
-from src.env.utils.physical_constant import MU
+from src.env.utils.physical_constant import MU, pi
+from typing import Optional, Tuple, List, Union
 from warnings import warn
 
 CRITERIA = 1e-6
@@ -98,7 +97,7 @@ def find_critical(R : np.ndarray, Z : np.ndarray, psi : np.ndarray, discard_xpoi
 
                     count += 1
 
-                    if((R1-R0) ** 2 + (Z1-Z0)**2 > radius_sq) or (count > MAX_COUNT)):
+                    if((R1-R0) ** 2 + (Z1-Z0)**2 > radius_sq) or (count > MAX_COUNT):
                         # discard this point
                         break
 
@@ -245,3 +244,187 @@ def core_mask(R,Z,psi,opoint, xpoint = [], psi_bndry = None):
                     mask[i, j] = 0
 
     return mask
+
+def find_psisurface(eq, psifunc, r0 : float, z0 : float, r1 : float, z1 : float, psival = 1.0, n = 128, axis = None):
+    # r0,z0 : start location inside separatrix
+    # r1, z1 : location outside separatrix
+    
+    # clip (r1,z1) to be insdie domain
+    # shorten the line so that the direction is unchanged
+    if abs(r1 - r0) > 1e-6:
+        rclip = np.clip(r1,eq.Rmin, eq.Rmax)
+        z1 = z0 + (z1 - z0) * abs((rclip - r0) / (r1 - r0))
+        r1 = rclip
+    
+    if abs(z1 - r0) > 1e-6:
+        zclip = np.clip(z1,eq.Zmin, eq.Zmax)
+        r1 = r0 + (r1 - r0) * abs((zclip - z0) / (z1 - z0))
+        z1 = zclip
+    
+    r = np.linspace(r0,r1,n)
+    z = np.linspace(z0,z1,n)
+
+    if axis is not None:
+        axis.plot(r,z)
+    
+    pnorm = psifunc(r,z,grid = False)
+
+    if hasattr(psival, "__len__"):
+        pass
+
+    else:
+        idx = np.argmax(pnorm > psival)
+
+        # changed 1.0 to psival in f
+        # f gradient to psival surface
+        f = (pnorm[idx] - psival) / (pnorm[idx] - pnorm[idx - 1])
+
+        r = (1.0 - f) * r[idx] + f * r[idx - 1]
+        z = (1.0 - f) * z[idx] + f * z[idx - 1]
+
+    if axis is not None:
+        axis.plot(r,z,"bo")
+    
+    return r,z
+
+def find_separatrix(eq, opoint = None, xpoint = None, n_theta : int = 128, psi = None, axis = None, psival = 1.0):
+    # opoint : (R,Z,psi)
+    # xpoint : (R,Z,psi)
+    # axis : object from plt.figure
+
+    if psi is None:
+        psi = eq.psi()
+    
+    if (opoint is None) or (xpoint is None):
+        opoint, xpoint = find_critical(eq.R, eq.Z, psi)
+    
+    psinorm = (psi - opoint[0][2]) / (xpoint[0][2] - opoint[0][2])
+    psifunc = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], psinorm)
+
+    r0, z0 = opoint[0][0:2]
+
+    theta_grid = np.linspace(0, 2 * pi, n_theta, endpoint = False)
+    dtheta = theta_grid[1] - theta_grid[0]
+
+    xpoint_theta = np.arctan2(xpoint[0][0] - r0, xpoint[0][1] - z0)
+    xpoint_theta = xpoint_theta * (xpoint_theta > 0) + (xpoint_theta + 2 * pi) * (
+        xpoint_theta < 0
+    )
+
+    TOLERANCE = 1e-3
+
+    if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
+        warn("Theta grid too close to x-point, shifting by two-step")
+        theta_grid += dtheta / 2
+    
+    isoflux = []
+
+    for theta in theta_grid:
+        r,z = find_psisurface(
+            eq,
+            psifunc,
+            r0,
+            z0,
+            r0 + 10.0 * np.sin(theta),
+            z0 + 10.0 * np.cos(theta),
+            psival = psival,
+            axis = axis
+        )
+
+        isoflux.append((r,z,xpoint[0][0], xpoint[0][1]))
+
+    return isoflux
+
+
+def find_safety(eq, psi_norm : Union[None, np.ndarray, np.array] = None, n_psi : int = 1, n_theta : int = 128, psi = None, opoint = None, xpoint = None, axis = None):
+    ''' Get safety factor for each psi (q = rB_t(psi) / RB_p(psi))
+    [arg]
+    eq : Equilibrium object
+    psi_norm : flux surface value 
+    n_psi : number of flux surface values 
+    n_theta : number of poloidal points
+    '''
+    
+    if psi is None:
+        psi = eq.psi()
+    
+    if (opoint is None) or (xpoint is None):
+        opoint, xpoint = find_critical(eq.R, eq.Z, psi)
+    
+    # x-point가 없을 경우, separatrix를 형성한 것이 아니다 
+    # 따라서, value error를 출력하는 것이 맞다
+    
+    if (xpoint is None) or (len(xpoint) == 0):
+        return ValueError("No x-point from q-saftey: no separatrix")
+    else:
+        psi_norm = (psi - opoint[0][2]) / (xpoint[0][2] - opoint[0][2])
+    
+    psi_func = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], psi_norm)
+
+    r0, z0 = opoint[0][2]
+
+    theta_grid = np.linspace(0, 2 * pi, n_theta, endpoint = False)
+    dtheta = theta_grid[1] - theta_grid[0]
+
+    xpoint_theta = np.arctan2(xpoint[0][0] - r0, xpoint[0][1] - z0)
+    xpoint_theta = xpoint_theta * (xpoint_theta >= 0) + (xpoint_theta + 2 * pi) * (
+        xpoint_theta < 0
+    )
+
+    TOLERANCE = 1.0e-3
+
+    if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
+        warn("Theta grid too close to X-point, shifting by half-step")
+        theta_grid += dtheta / 2
+
+    if psi_norm is None:
+        n_psi = 128
+        psi_range = np.linspace(1.0 / (n_psi + 1), 1.0, n_psi, endpoint = False)
+    else:
+        try:
+            psi_range = psi_norm
+            n_psi = len(psi_norm)
+        except TypeError:
+            n_psi = 1
+            psi_range = [psi_norm]
+    
+    #psi_surf : 3D matrix with n_psi, n_theta, 2(r,z totally 2 dimension)
+    psi_surf = np.zeros([n_psi, n_theta, 2])
+
+    # calculate flux surface positions
+    for i in range(n_psi):
+        psi_n = psi_range[i]
+        for j in range(n_theta):
+            theta = theta_grid[j]
+
+            r,z = find_psisurface(
+                eq,
+                psi_func,
+                r0,
+                z0,
+                r0 + 8.0 * np.sin(theta),
+                z0 + 8.0 + np.cos(theta),
+                psival = psi_n,
+                axis = axis
+            )
+
+            psi_surf[i,j,:] = [r,z]
+
+    r = psi_surf[:,:,0] # n_psi, n_theta
+    z = psi_surf[:,:,1] # n_psi, n_theta
+
+    fpol = eq.fpol(psi_range[:]).reshape(n_psi,1)
+    Br = eq.Br(r,z)
+    Bz = eq.Bz(r,z)
+    Bthe = np.sqrt(Br ** 2 + Bz ** 2)
+
+    dr_di = (np.roll(r,1,axis = 1) - np.roll(r,-1,axis = 1))
+    dz_di = (np.roll(z,1,axis = 1) - np.roll(z,-1,axis = 1))
+
+    dl = np.sqrt(dr_di ** 2 + dz_di ** 2)
+
+    qint = fpol / (r**2 * Bthe)
+
+    q = np.sum(qint * dl, axis = 1) / 2 / pi
+
+    return q

@@ -91,4 +91,3 @@ def SORsolver(A : np.ndarray,b : np.array, w :Optional[float] = 1.0, eps : float
         print("steps : {} / {}, loss : {:.3f}, diverged".format(iter+1, iters, loss))
 
     return x_new, loss_list
-

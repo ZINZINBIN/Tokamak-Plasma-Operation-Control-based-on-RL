@@ -1,14 +1,13 @@
 from scipy.integrate import romb
 import numpy as np
-from src.env.equilibrium import Equilibrium
 
-def FixedBoundary(psi : np.ndarray):
+def FixedBoundary(eq, Jtor : np.ndarray, psi : np.ndarray):
     psi[0,:] = 0
     psi[:,0] = 0
     psi[-1, :] = 0
     psi[:, -1] = 0
 
-def FreeBoundary(eq : Equilibrium, Jtor : np.ndarray, psi : np.ndarray):
+def FreeBoundary(eq, Jtor : np.ndarray, psi : np.ndarray):
     '''Apply a free boundary using von Hagenow's method
     Inputs : eq(object), Jtor(2D_array), psi(2D_array)
     returns : None

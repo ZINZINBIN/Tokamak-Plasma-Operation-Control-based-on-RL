@@ -5,22 +5,22 @@ import logging
 from scipy import interpolate
 from scipy.integrate import romb
 from src.env.GSsolve.GSeqBuilder import GSsparse, GSsparse4thOrder
-from src.env.critical import find_critical, core_mask
-from src.env.environment import Device
+from src.env.critical import find_critical, core_mask, find_safety, find_separatrix, find_psisurface
+from src.env.environment import Device, EmptyTokamak
 from src.env.boundary import FreeBoundary, FixedBoundary
 from src.env.utils.multigrid import createVcycle
 from src.env.utils.physical_constant import pi, MU, K
 from src.env.visualize import plotEquilibrium
-from src.env.profiles import Profile, ConstraintBetapIp
+from src.env.profiles import Profile, ConstraintBetapIp, ConstraintPaxisIp
 
 logger = logging.getLogger()
 
 class Equilibrium:
     def __init__(
         self,
-        device : Device,
-        boundary,
-        psi,
+        device : Device = EmptyTokamak(),
+        boundary = FreeBoundary,
+        psi = None,
         mask = None, # x-point or limiter
         current = 0,
         Rmin:float = 0.1,
@@ -75,7 +75,7 @@ class Equilibrium:
         self.plasma_psi = None
 
         # update psi with init value
-        self.updatePlasmaPsi(psi)
+        self._updatePlasmaPsi(psi)
         
         # setting for generator : GS matrix class
         if order == 2:
@@ -161,8 +161,16 @@ class Equilibrium:
         return self.plasmaBz(R,Z) + self.device.Bz(R,Z)
     
     def Btor(self, R, Z):
-        return None
+        psi_norm = (self.psiRZ(R,Z) - self.psi_axis) / (self.psi_bndry - self.psi_axis)
 
+        fpol = self.fpol(psi_norm)
+
+        if self.mask is not None:
+            mask = self.mask_func(R,Z,grid = False)
+            fpol = fpol * mask + (1.0 - mask) * self.fvac()
+
+        return fpol / R
+    
     def psi(self):
         return self.plasma_psi + self.device.calcPsiFromGreens(self._pgreen)
 
@@ -170,13 +178,29 @@ class Equilibrium:
         return self.psi_func(R,Z,grid = False) + self.device.psi(R,Z)
 
     def fpol(self, psi_norm):
-        return self.profiles.fpol(psi_norm)
+        return self._profiles.fpol(psi_norm)
     
     def fvac(self):
-        return self.profiles.fvac()
+        return self._profiles.fvac()
+    
+    def q(self, psi_norm = None, n_psi = 128):
+        if psi_norm is None:
+            psi_norm = np.linspace(1.0 / (n_psi + 1), 1.0, n_psi, endpoint = False)
+            return psi_norm, find_safety(self, psi_norm = psi_norm)
+        
+        result = find_safety(self, psi_norm = psi_norm)
+
+        if len(result) == 1:
+            return np.asscalar(result)
+        
+        return result
 
     def pressure(self, psi_norm):
-        return self.profiles.pprime(psi_norm)
+        return self._profiles.pprime(psi_norm)
+
+    def separatrix(self, n_theta : int = 128):
+        sep = find_separatrix(self, psi = self.psi(), n_theta = n_theta)
+        return np.array(sep[:,0:2])
 
     def _updatePlasmaPsi(self, plasma_psi : np.ndarray):
 
@@ -225,7 +249,7 @@ class Equilibrium:
             
             Jtor = profiles.Jtor(self.R,self.Z,psi, psi_bndry=psi_bndry)
 
-        # pply boundary condition
+        # apply boundary condition
         self._apply_boundary(self,Jtor,self.plasma_psi)
 
         # obtain RHS of GS equation
@@ -249,3 +273,165 @@ class Equilibrium:
 
         self.current = romb(romb(Jtor)) * dR * dZ
 
+    # force calculation
+    def getForces(self):
+        return self.device.calcForces(self)
+    
+    def printForces(self):
+
+        print("Forces on coils")
+
+        def print_forces(forces:dict, prefix=""):
+            for label, force in forces.items():
+                if isinstance(force, dict):
+                    print(prefix + label + " (circuit)")
+                    print_forces(force, prefix=prefix + "  ")
+                else:
+                    print(
+                        prefix
+                        + label
+                        + " : R = {0:.2f} kN , Z = {1:.2f} kN".format(
+                            force[0] * 1e-3, force[1] * 1e-3
+                        )
+                    )
+
+        print_forces(self.getForces())
+        
+def solve(
+    eq : Equilibrium, 
+    profiles : Profile, 
+    constrain = None,
+    rtol : float = 1e-3,
+    atol : float = 1e-10,
+    blend : float = 0.0,
+    show : bool = False,
+    axis = None,
+    pause : float = 0.0001,
+    psi_bndry = None,
+    maxits : int = 64,
+    convergenceInfo : bool = False
+    ):
+
+    if constrain is not None:
+        constrain(eq)
+    
+    psi = eq.psi()
+
+    if show:
+        import matplotlib.pyplot as plt
+        if pause > 0 and axis is None:
+            fig = plt.figure()
+            axis = fig.add_subplot(111)
+    
+    psi_maxchange_iterations, psi_relchange_iterations = [], []
+
+    is_converged = False
+
+    for iter in range(maxits):
+        if show:
+            if pause < 0:
+                fig = plt.figure()
+                axis = fig.add_subplot(111)
+            else:
+                axis.clear()
+            
+            plotEquilibrium(eq, axis, show = False)
+
+            if pause < 0:
+                plt.show()
+            else:
+                axis.figure.canvas.draw()
+                plt.pause(pause)
+
+        psi_last = psi.copy()
+
+        eq.solve(profiles, psi = psi, psi_bndry=psi_bndry)
+
+        psi = eq.psi()
+
+        psi_change = psi_last - psi
+        psi_maxchange = np.amax(abs(psi_change))
+        psi_relchange = psi_maxchange / (np.amax(psi) - np.amin(psi))
+
+        psi_maxchange_iterations.append(psi_maxchange)
+        psi_relchange_iterations.append(psi_relchange)
+
+        # Check if the relative change in psi is small enough
+        if (psi_maxchange < atol) or (psi_relchange < rtol):
+            is_converged = True
+            break
+
+        # Adjust the coil currents
+        if constrain is not None:
+            constrain(eq)
+
+        psi = (1.0 - blend) * eq.psi() + blend * psi_last
+    
+    if is_converged:
+        print("Picard iterations converge...!")
+    else:
+        print("Picard iterations failed to converge(iteration over)")
+    
+    if convergenceInfo:
+        return np.array(psi_maxchange_iterations), np.array(psi_relchange_iterations)
+
+# test for equilibrium
+def test_fixed_boundary_psi():
+
+    profiles = ConstraintPaxisIp(
+        1e3, 1e5, 1.0  # Plasma pressure on axis [Pascals]  # Plasma current [Amps]
+    )  # fvac = R*Bt
+
+    eq = Equilibrium(
+        Rmin=0.1,
+        Rmax=2.0,
+        Zmin=-1.0,
+        Zmax=1.0,
+        nx=65,
+        ny=65,
+        boundary=FixedBoundary
+    )
+
+    # Nonlinear solve
+    solve(eq, profiles)
+
+    psi = eq.psi()
+    assert psi[0, 0] == 0.0  # Boundary is fixed
+    assert psi[32, 32] != 0.0  # Solution is not all zero
+
+    assert eq.psi_bndry == 0.0
+    assert eq.poloidalBeta() > 0.0
+
+
+def test_fixed_boundary_psi():
+    # This is adapted from example 5
+
+    profiles = ConstraintPaxisIp(
+        1e3, 1e5, 1.0  # Plasma pressure on axis [Pascals]  # Plasma current [Amps]
+    )  # fvac = R*Bt
+
+    eq = Equilibrium(
+        Rmin=0.1,
+        Rmax=2.0,
+        Zmin=-1.0,
+        Zmax=1.0,
+        nx=65,
+        ny=65,
+        boundary=FixedBoundary,
+    )
+
+    # Nonlinear solve
+    solve(eq, profiles, maxits = 64)
+
+    psi = eq.psi()
+    assert psi[0, 0] == 0.0  # Boundary is fixed
+    assert psi[32, 32] != 0.0  # Solution is not all zero
+
+    assert eq.psi_bndry == 0.0
+    assert eq.poloidalBeta() > 0.0
+
+def test_setSolverVcycle():
+    eq = Equilibrium(Rmin=0.1, Rmax=2.0, Zmin=-1.0, Zmax=1.0, nx=65, ny=65)
+    oldsolver = eq._solver
+    eq.setSolverVcycle(n_levels = 2, n_cycle = 1, n_iter = 5)
+    assert eq._solver != oldsolver

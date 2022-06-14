@@ -298,7 +298,7 @@ class Circuit(object):
 
 
 class Device(object):
-    def __init__(self, coils : List[Tuple[str, Union[Coil, Circuit, Solenoid]]], wall : Wall):
+    def __init__(self, coils : List[Tuple[str, Union[Coil, Circuit, Solenoid]]], wall : Optional[Wall]):
         super(Device, self).__init__()
         self.coils = coils
         self.wall = wall
@@ -400,3 +400,8 @@ class Device(object):
             import matplotlib.pyplot as plt
             plt.show()
         return axis
+
+
+# specific example of device
+def EmptyTokamak():
+    return Device(coils = [], wall = None)
