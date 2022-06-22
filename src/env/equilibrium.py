@@ -45,6 +45,7 @@ class Equilibrium:
         '''
         self.device = device
         self._apply_boundary = boundary
+        self._constraints = None
         self.mask = mask
 
         self.Rmin = Rmin
@@ -97,16 +98,16 @@ class Equilibrium:
         generator = GSsparse(self.Rmin, self.Rmax, self.Zmin, self.Zmax)
         nx, ny = self.R.shape
 
-        self.solver = createVcycle(
+        self._solver = createVcycle(
             nx,ny,generator,n_levels,n_cycle,n_iter,direct
         )
 
     def setSolver(self, solver):
-        self.solver = solver
+        self._solver = solver
     
     # call solver so that returns the solution psi with A*psi = rhs
     def callSolver(self, psi, rhs):
-        return self.solver(psi, rhs)
+        return self._solver(psi, rhs)
 
     # get device
     def getDevice(self):
@@ -231,7 +232,7 @@ class Equilibrium:
                 self.psi_bndry = psi[0,0]
                 self.mask = None
             else:
-                self.psi_bndry = None
+                self.psi_bndry = psi[0,0] # None
                 self.mask = None
 
     def plot(self, axis = None, show : bool= True, oxpoints : bool = True, wall : bool = True):

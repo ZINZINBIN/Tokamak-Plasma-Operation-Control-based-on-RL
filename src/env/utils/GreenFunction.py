@@ -14,8 +14,10 @@ def GreenFunction(R0, Z0, R, Z, mu = MU):
     Calculate polidal magnetic flux at (R,Z) from a unit current at (R0,Z0)
     '''
 
-    k = np.sqrt(4 * R0 * R / ((R + R0) ** 2 + (Z - Z0) ** 2))
-    k = clip(k, 1e-10, 1.0, -1e-10)
+    # k = np.sqrt(4 * R0 * R / ((R + R0) ** 2 + (Z - Z0) ** 2))
+    k = 4 * R0 * R / ((R + R0) ** 2 + (Z - Z0) ** 2)
+    k = clip(k, 1e-10, 1.0 -1e-10)
+    k = np.sqrt(k)
 
     ellipK = special.ellipk(k)
     ellipE = special.ellipe(k)
@@ -28,7 +30,7 @@ def GreenFunctionScaled(R0, Z0, R, Z):
     '''
 
     k = np.sqrt(4 * R0 * R / ((R + R0) ** 2 + (Z - Z0) ** 2))
-    k = clip(k, 1e-10, 1.0, -1e-10)
+    k = clip(k, 1e-10, 1.0 -1e-10)
 
     ellipK = special.ellipk(k)
     ellipE = special.ellipe(k)
@@ -45,6 +47,8 @@ def GreenBz(R0, Z0, R,Z, mu : Optional[float] = None, Ic : Optional[float] = Non
 
     if mu is not None and Ic is not None:
         scaled_factor = Ic * mu
+    elif mu is not None and Ic is None:
+        scaled_factor = mu
     else:
         scaled_factor = None
 
@@ -55,12 +59,14 @@ def GreenBz(R0, Z0, R,Z, mu : Optional[float] = None, Ic : Optional[float] = Non
 
 def GreenBr(R0, Z0, R, Z, mu : Optional[float] = None, Ic : Optional[float] = None, dz : float = 0.001, scaled : bool = True):
 
-    Gi = GreenFunction(R0, Z0, R, Z - 0.5 * dz, mu)
-    Gf = GreenFunction(R0, Z0, R, Z + 0.5 * dz, mu)
+    Gi = GreenFunctionScaled(R0, Z0, R, Z - 0.5 * dz)
+    Gf = GreenFunctionScaled(R0, Z0, R, Z + 0.5 * dz)
     dGdz = (Gf - Gi) / dz
 
     if mu is not None and Ic is not None:
         scaled_factor = Ic * mu
+    elif mu is not None and Ic is None:
+        scaled_factor = mu
     else:
         scaled_factor = None
 

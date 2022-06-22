@@ -6,7 +6,7 @@ from typing import Optional, Tuple, List, Union
 from warnings import warn
 
 CRITERIA = 1e-6
-MAX_COUNT = 1024
+MAX_COUNT = 128
 
 
 def find_critical(R : np.ndarray, Z : np.ndarray, psi : np.ndarray, discard_xpoints : bool = True):
@@ -66,6 +66,10 @@ def find_critical(R : np.ndarray, Z : np.ndarray, psi : np.ndarray, discard_xpoi
                     Bz = f(R1,Z1, dx = 1, grid = False) / R1
 
                     if Br ** 2 + Bz ** 2 < CRITERIA:
+
+                        dR = R[1,0] - R[0,0]
+                        dZ = Z[0,1] - Z[0,0]
+
                         d2dr2 = (psi[i+2, j] - 2.0 * psi[i,j] + psi[i-2, j]) / (2.0 * dR) ** 2
                         d2dz2 = (psi[i, j+2] - 2.0 * psi[i,j] + psi[i, j-2]) / (2.0 * dZ) ** 2
 
@@ -108,7 +112,7 @@ def find_critical(R : np.ndarray, Z : np.ndarray, psi : np.ndarray, discard_xpoi
         for n,p in enumerate(points):
             dup = False
             for p2 in result:
-                if(p[0] - p2[0]) ** 2 + (p[1] - p2[1]) ** 2 < CRITERIA * 1e1:
+                if(p[0] - p2[0]) ** 2 + (p[1] - p2[1]) ** 2 < 1e-5:
                     dup = True
                     break
                     
@@ -137,8 +141,8 @@ def find_critical(R : np.ndarray, Z : np.ndarray, psi : np.ndarray, discard_xpoi
         for xpt in xpoint:
             Rx,Zx,Px = xpt
 
-            rline = np.linspace(Ro,Rx,num=50)
-            zline = np.linspace(Zo,Zx,num=50)
+            rline = np.linspace(Ro,Rx,num=64)
+            zline = np.linspace(Zo,Zx,num=64)
 
             pline = f(rline, zline, grid = False)
 
@@ -158,7 +162,9 @@ def find_critical(R : np.ndarray, Z : np.ndarray, psi : np.ndarray, discard_xpoi
                 continue
         
             xpt_keep.append(xpt)
-        xpoint = xpt_keep
+
+        if len(xpt_keep) >= 1:
+            xpoint = xpt_keep
 
     # Sort x-points by distance to primary o-point in psi space
     psi_axis = opoint[0][2]
