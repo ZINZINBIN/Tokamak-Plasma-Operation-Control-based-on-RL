@@ -4,7 +4,7 @@ import numpy as np
 from typing import Optional, List
 import matplotlib.pyplot as plt
 
-# without feed-forward : use only the value that the model predict itself
+# feed-forward : use data given from experiment prior to prediction
 def real_time_predict(
     model : torch.nn.Module,
     df_shot : pd.DataFrame,
@@ -27,7 +27,7 @@ def real_time_predict(
     
     time_x = df_shot['time'].values
     data = df_shot[cols].values
-    target = df_shot[pred_cols].values
+    target = df_shot_copy[pred_cols].values
     predictions = []
     
     idx = 0
@@ -55,6 +55,93 @@ def real_time_predict(
     plt.suptitle(title)
     
     for i, (ax, col) in enumerate(zip(axes, pred_cols)):
+        ax.plot(time_x, actual[:,i], 'k', label = "{}-real".format(col))
+        ax.plot(time_x, predictions[:,i], 'b-', label = "{}-predict".format(col))
+        ax.set_ylabel(col)
+        ax.legend(loc = "upper right")
+   
+    ax.set_xlabel('time (unit:s)')
+    fig.tight_layout()
+    plt.savefig(save_dir)
+    
+# use multi-step prediction to generate the similar shot data
+def generate_shot_data(
+    model : torch.nn.Module,
+    df_shot : pd.DataFrame,
+    seq_len : int, 
+    pred_len : int, 
+    dist : int, 
+    state_cols : List,
+    control_cols : Optional[List],
+    interval : int, 
+    device : str = 'cpu',
+    title : str = "",
+    save_dir : str = "./result/nn_env_performance.png"
+    ):
+    
+    df_shot_copy = df_shot.copy(deep = True)
+    time_x = df_shot['time'].values
+    
+    if control_cols is not None:
+        control_data = df_shot[control_cols].values
+        initial_state = df_shot[control_cols + state_cols].values
+    else:
+        control_data = None
+        initial_state = df_shot[state_cols].values
+    
+    target = df_shot_copy[state_cols].values
+    
+    predictions = []
+    
+    idx = 0
+    time_length = seq_len + dist
+    idx_max = len(time_x) - pred_len - seq_len - dist
+    
+    model.to(device)
+    model.eval()
+    
+    previous_state = None
+    next_state = None
+    state_list = None
+    
+    while(idx < idx_max):
+        with torch.no_grad():
+            # Input : (1,T_in,C_in + C_control)
+            # previous_state : (1,T_in,C_in)
+            # next_state : (1,T_out,C_out)
+            # check whether initial input or not
+            if idx == 0:
+                previous_state = torch.from_numpy(initial_state[idx:idx+seq_len,:]).unsqueeze(0).to(device)
+                state_list = torch.from_numpy(initial_state[idx:idx+time_length,:]).unsqueeze(0).to(device)
+
+            # input data
+            if control_data is None:
+                inputs = previous_state
+            else:
+                control_value = torch.from_numpy(control_data[idx:idx+seq_len,:]).unsqueeze(0).to(device)
+                inputs = torch.concat([control_value, previous_state], axis = 2)
+
+            next_state = model(inputs)
+            
+            time_length += pred_len
+            idx = time_length - dist - seq_len
+            
+            # update previous state
+            state_list = torch.concat([state_list, next_state], axis = 1)
+            previous_state = state_list[:,idx:idx+seq_len,:]
+            
+            # prediction value update
+            prediction = next_state.detach().squeeze(0).cpu().numpy()
+            predictions.append(prediction)
+            
+    predictions = np.concatenate(predictions, axis = 0)
+    time_x = time_x[seq_len+dist:seq_len+dist + len(predictions)]
+    actual = target[seq_len+dist:seq_len+dist + len(predictions)]
+    
+    fig,axes = plt.subplots(len(state_cols), figsize = (6,12), sharex=True, facecolor = 'white')
+    plt.suptitle(title)
+    
+    for i, (ax, col) in enumerate(zip(axes, state_cols)):
         ax.plot(time_x, actual[:,i], 'k', label = "{}-real".format(col))
         ax.plot(time_x, predictions[:,i], 'b-', label = "{}-predict".format(col))
         ax.set_ylabel(col)

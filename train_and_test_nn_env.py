@@ -3,11 +3,11 @@ import argparse
 import numpy as np
 import pandas as pd
 from src.CustomDataset import DatasetFor0D
-from src.nn_env import ConvLSTM
+from src.nn_env import ConvLSTM, CnnLSTM
 from src.train_env import train
 from src.loss import CustomLoss
 from src.evaluate_env import evaluate
-from src.predict_env import real_time_predict
+from src.predict_env import real_time_predict, generate_shot_data
 from sklearn.preprocessing import RobustScaler
 from torch.utils.data import DataLoader
 
@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(description="training NN based environment")
 parser.add_argument("--batch_size", type = int, default = 128)
 parser.add_argument("--lr", type = float, default = 1e-3)
 parser.add_argument("--gpu_num", type = int, default = 0)
-parser.add_argument("--num_epoch", type = int, default = 16)
+parser.add_argument("--num_epoch", type = int, default = 12)
 parser.add_argument("--gamma", type = float, default = 0.95)
 parser.add_argument("--verbose", type = int, default = 4)
 parser.add_argument("--max_norm_grad", type = float, default = 1.0)
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 8, shuffle = True)
     test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 8, shuffle = True)
 
-    model = ConvLSTM(
+    model = CnnLSTM(
         seq_len = seq_len,
         pred_len = pred_len,
         col_dim = len(cols),
@@ -174,5 +174,19 @@ if __name__ == "__main__":
         None,
         device,
         "shot number : {}".format(shot_num),
-        save_dir = "./result/nn_env_performance.png"
+        save_dir = "./result/nn_env_feedforward.png"
+    )
+    
+    generate_shot_data(
+        model,
+        df_shot,
+        seq_len,
+        pred_len,
+        dist,
+        cols,
+        None,
+        interval,
+        device,
+        "shot number : {}".format(shot_num),
+        save_dir = "./result/nn_env_without_feedforward.png"
     )
