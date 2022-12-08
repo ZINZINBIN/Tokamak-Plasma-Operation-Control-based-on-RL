@@ -46,7 +46,21 @@ class DatasetFor0D(Dataset):
 
     def _generate_index(self):
         shot_list = np.unique(self.ts_data.shot.values).tolist()
+        
+        # ignore shot which have too many nan values
+        shot_ignore = []
+        for shot in tqdm(shot_list, desc = 'extract the null data'):
+            df_shot = self.ts_data[self.ts_data.shot == shot]
+            null_check = df_shot[self.cols].isna().sum()
+            
+            for c in null_check:
+                if c > 0.5 * len(df_shot):
+                    shot_ignore.append(shot)
+                    break
+          
+        shot_list = [shot_num for shot_num in shot_list if shot_num not in shot_ignore]
 
+        # preprocessing
         for shot in tqdm(shot_list, desc = "Dataset preprocessing..."):
             
             df_shot = self.ts_data[self.ts_data.shot == shot]

@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
+from src.nn_env.metric import compute_metrics
 
 def train_per_epoch(
     train_loader : DataLoader, 

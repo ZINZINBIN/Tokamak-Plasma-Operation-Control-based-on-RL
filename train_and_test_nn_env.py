@@ -2,12 +2,12 @@ import torch
 import argparse
 import numpy as np
 import pandas as pd
-from src.CustomDataset import DatasetFor0D
-from src.nn_env import ConvLSTM, CnnLSTM
-from src.train_env import train
-from src.loss import CustomLoss
-from src.evaluate_env import evaluate
-from src.predict_env import real_time_predict, generate_shot_data
+from src.nn_env.dataset import DatasetFor0D
+from src.nn_env.model import CnnLSTM, TStransformer
+from src.nn_env.train import train
+from src.nn_env.loss import CustomLoss
+from src.nn_env.evaluate import evaluate
+from src.nn_env.predict import real_time_predict, generate_shot_data
 from sklearn.preprocessing import RobustScaler
 from torch.utils.data import DataLoader
 
@@ -108,16 +108,31 @@ if __name__ == "__main__":
     valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 8, shuffle = True)
     test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 8, shuffle = True)
 
-    model = CnnLSTM(
-        seq_len = seq_len,
-        pred_len = pred_len,
-        col_dim = len(cols),
-        conv_dim=64,
-        conv_kernel = 3,
-        conv_stride=1,
-        conv_padding = 1,
-        output_dim = len(pred_cols)
-    )
+    if args['tag'] == 'TStransformer':
+        
+        model = TStransformer(
+            n_features = len(cols), 
+            feature_dims = 128, 
+            max_len = seq_len, 
+            n_layers = 4, 
+            n_heads = 8, 
+            dim_feedforward = 512, 
+            dropout = 0.25, 
+            mlp_dim = 64, 
+            output_dim = len(pred_cols)
+        )
+        
+    else:
+        model = CnnLSTM(
+            seq_len = seq_len,
+            pred_len = pred_len,
+            col_dim = len(cols),
+            conv_dim=64,
+            conv_kernel = 3,
+            conv_stride=1,
+            conv_padding = 1,
+            output_dim = len(pred_cols)
+        )
 
     model.summary()
     

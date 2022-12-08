@@ -9,6 +9,7 @@ from torch.autograd import Variable
 from torch.nn import functional as F
 from typing import List, Optional, Union, Tuple
 from pytorch_model_summary import summary
+from typing import Optional, List, Tuple
 
 class TSAConvLSTM(nn.Module):
     def __init__(
@@ -244,8 +245,6 @@ class DADecoder(nn.Module):
         
         return x_encoded
 
-
-
 class DACnnLSTM(nn.Module):
     def __init__(
         self, 
@@ -327,3 +326,123 @@ class DACnnLSTM(nn.Module):
     def summary(self, device : str = 'cpu', show_input : bool = True, show_hierarchical : bool = False, print_summary : bool = True, show_parent_layers : bool = False):
         sample = torch.zeros((1, self.seq_len, self.col_dim), device = device)
         return summary(self, sample, show_input = show_input, show_hierarchical=show_hierarchical, print_summary = print_summary, show_parent_layers=show_parent_layers)
+    
+# Transformer model
+class NoiseLayer(nn.Module):
+    def __init__(self, mean : float = 0, std : float = 1e-2):
+        super().__init__()
+        self.mean = mean
+        self.std = std
+        
+    def forward(self, x : torch.Tensor):
+        if self.training:
+            noise = Variable(torch.ones_like(x).to(x.device) * self.mean + torch.randn(x.size()).to(x.device) * self.std)
+            return x + noise
+        else:
+            return x
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model : int, max_len : int = 128):
+        super(PositionalEncoding, self).__init__()
+        self.d_model = d_model
+        self.max_len = max_len
+
+        pe = torch.zeros(max_len, d_model).float()
+        position = torch.arange(0, max_len).float().unsqueeze(1) # (max_len, 1)
+        div_term = (torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp() # (d_model // 2, )
+
+        pe[:,0::2] = torch.sin(position * div_term)
+
+        if d_model % 2 != 0:
+            pe[:,1::2] = torch.cos(position * div_term)[:,0:-1]
+        else:
+            pe[:,1::2] = torch.cos(position * div_term)
+
+        pe = pe.unsqueeze(0).transpose(0,1) # shape : (max_len, 1, d_model)
+
+        self.register_buffer('pe', pe)
+
+    def forward(self, x:torch.Tensor):
+        # x : (seq_len, batch_size, n_features)
+        return x + self.pe[:x.size(0), :, :]
+
+class GELU(nn.Module):
+    def forward(self, x):
+        return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+
+class TStransformer(nn.Module):
+    def __init__(
+        self, 
+        n_features : int = 11, 
+        feature_dims : int = 256, 
+        max_len : int = 128, 
+        n_layers : int = 1, 
+        n_heads : int = 8, 
+        dim_feedforward : int = 1024, 
+        dropout : float = 0.1, 
+        mlp_dim : int = 64,
+        pred_len : int = 7, 
+        output_dim : int = 1
+        ):
+        super(TStransformer, self).__init__()
+        
+        self.src_mask = None
+        self.n_features = n_features
+        self.max_len = max_len
+        self.pred_len = pred_len
+        self.output_dim = output_dim
+        self.feature_dims = feature_dims
+        
+        self.noise = NoiseLayer(mean = 0, std = 1e-2)
+        self.encoder_input_layer = nn.Linear(in_features = n_features, out_features = feature_dims)
+        self.pos_enc = PositionalEncoding(d_model = feature_dims, max_len = max_len)
+        self.encoder = nn.TransformerEncoderLayer(
+            d_model = feature_dims, 
+            nhead = n_heads, 
+            dropout = dropout,
+            dim_feedforward = dim_feedforward,
+            activation = GELU()
+        )
+        
+        self.transformer_encoder = nn.TransformerEncoder(self.encoder, num_layers=n_layers)
+        
+        self.bottle_neck = nn.Linear(feature_dims * max_len, feature_dims * pred_len)
+        
+        self.regressor = nn.Sequential(
+            nn.Linear(feature_dims, mlp_dim),
+            nn.LayerNorm(mlp_dim),
+            nn.ReLU(),
+            nn.Linear(mlp_dim, mlp_dim),
+            nn.LayerNorm(mlp_dim),
+            nn.ReLU(),
+            nn.Linear(mlp_dim, output_dim)
+        )
+        
+    def forward(self, x : torch.Tensor):
+        b = x.size()[0]
+        x = self.noise(x)
+        x = self.encoder_input_layer(x)
+        x = x.permute(1,0,2)
+        
+        if self.src_mask is None or self.src_mask.size(0) != len(x):
+            device = x.device
+            mask = self._generate_square_subsequent_mask(len(x)).to(device)
+            self.src_mask = mask
+        
+        x = self.pos_enc(x)
+        x = self.transformer_encoder(x, self.src_mask.to(x.device)) # (seq_len, batch, feature_dims)
+        # print(x.size())
+        x = x.permute(1,0,2).reshape(b, -1) # (batch, seq_len * feature_dims)
+        x = self.bottle_neck(x).reshape(b, self.pred_len, -1)
+        x = self.regressor(x)
+        
+        return x
+
+    def _generate_square_subsequent_mask(self, size : int):
+        mask = (torch.triu(torch.ones(size,size))==1).transpose(0,1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask
+
+    def summary(self):
+        sample_x = torch.zeros((1, self.max_len, self.n_features))
+        summary(self, sample_x, batch_size = 1, show_input = True, print_summary=True)

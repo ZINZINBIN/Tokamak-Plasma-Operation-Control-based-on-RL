@@ -1,2 +1,5 @@
 # csv file ignore
 *.csv
+
+# weight parameter
+*.pt
