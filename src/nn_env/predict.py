@@ -40,7 +40,6 @@ def real_time_predict(
         with torch.no_grad():
             inputs = torch.from_numpy(data[idx:idx+seq_len,:]).unsqueeze(0).to(device)
             outputs = model(inputs).squeeze(0).cpu().numpy()
-            
             predictions.append(outputs)
             
         time_length += pred_len
@@ -50,18 +49,19 @@ def real_time_predict(
     time_x = time_x[seq_len+dist:seq_len+dist + len(predictions)]
     actual = target[seq_len+dist:seq_len+dist + len(predictions)]
     
-    fig,axes = plt.subplots(len(cols), figsize = (6,12), sharex=True, facecolor = 'white')
+    fig,axes = plt.subplots(len(pred_cols), figsize = (6,12), sharex=True, facecolor = 'white')
     plt.suptitle(title)
     
     for i, (ax, col) in enumerate(zip(axes, pred_cols)):
         ax.plot(time_x, actual[:,i], 'k', label = "{}-real".format(col))
-        ax.plot(time_x, predictions[:,i], 'b-', label = "{}-predict".format(col))
+        ax.plot(time_x, predictions[:,i], 'b', label = "{}-predict".format(col))
         ax.set_ylabel(col)
         ax.legend(loc = "upper right")
    
     ax.set_xlabel('time (unit:s)')
     fig.tight_layout()
     plt.savefig(save_dir)
+
     
 # use multi-step prediction to generate the similar shot data
 def generate_shot_data(
@@ -82,7 +82,7 @@ def generate_shot_data(
     
     if control_cols is not None:
         control_data = df_shot[control_cols].values
-        initial_state = df_shot[control_cols + state_cols].values
+        initial_state = df_shot[state_cols].values
     else:
         control_data = None
         initial_state = df_shot[state_cols].values
@@ -117,8 +117,8 @@ def generate_shot_data(
                 inputs = previous_state
             else:
                 control_value = torch.from_numpy(control_data[idx:idx+seq_len,:]).unsqueeze(0).to(device)
-                inputs = torch.concat([control_value, previous_state], axis = 2)
-
+                inputs = torch.concat([previous_state, control_value], axis = 2)
+                
             next_state = model(inputs)
             
             time_length += pred_len
@@ -141,7 +141,7 @@ def generate_shot_data(
     
     for i, (ax, col) in enumerate(zip(axes, state_cols)):
         ax.plot(time_x, actual[:,i], 'k', label = "{}-real".format(col))
-        ax.plot(time_x, predictions[:,i], 'b-', label = "{}-predict".format(col))
+        ax.plot(time_x, predictions[:,i], 'b', label = "{}-predict".format(col))
         ax.set_ylabel(col)
         ax.legend(loc = "upper right")
    

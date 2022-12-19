@@ -31,6 +31,7 @@ class DatasetFor0D(Dataset):
     def __init__(
         self, 
         ts_data : pd.DataFrame, 
+        disrupt_data : pd.DataFrame,
         seq_len : int = 21, 
         pred_len : int = 1, 
         dist:int = 3, 
@@ -43,6 +44,8 @@ class DatasetFor0D(Dataset):
         self.ts_data = ts_data
         self.seq_len = seq_len
         self.pred_len = pred_len
+        
+        self.disrupt_data = disrupt_data
         
         self.cols = state_cols + control_cols
         self.state_cols = state_cols
@@ -66,10 +69,10 @@ class DatasetFor0D(Dataset):
     def preprocessing(self):
     
         # control value : NAN -> 0
-        self.ts_data[self.control_cols].fillna(0)
+        self.ts_data[self.control_cols] = self.ts_data[self.control_cols].fillna(0)
         
         # 0D parameter : NAN -> forward fill
-        self.ts_data[self.state_cols].fillna(method='ffill')
+        self.ts_data[self.state_cols] = self.ts_data[self.state_cols].fillna(method='ffill')
 
     def _generate_index(self):
         shot_list = np.unique(self.ts_data.shot.values).tolist()
@@ -86,9 +89,16 @@ class DatasetFor0D(Dataset):
                     break
           
         shot_list = [shot_num for shot_num in shot_list if shot_num not in shot_ignore]
+        
+        df_disruption = self.disrupt_data
 
         # preprocessing
         for shot in tqdm(shot_list, desc = "Dataset preprocessing..."):
+            
+            if shot not in df_disruption.shot:
+                tftsrt = 1.5
+            else:
+                tftsrt = df_disruption[df_disruption.shot == shot].tftsrt.values[0]
             
             df_shot = self.ts_data[self.ts_data.shot == shot]
             input_indices = []
@@ -100,6 +110,10 @@ class DatasetFor0D(Dataset):
             while(idx < idx_last):
                 row = df_shot.iloc[idx]
                 t = row['time']
+                
+                if t < tftsrt:
+                    idx += self.interval
+                    continue
                 
                 input_indx = df_shot.index.values[idx]
                 target_indx = df_shot.index.values[idx + self.seq_len + self.dist]

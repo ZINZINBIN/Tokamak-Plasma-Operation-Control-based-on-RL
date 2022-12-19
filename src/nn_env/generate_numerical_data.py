@@ -30,7 +30,11 @@ def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
             data = df_shot[col].values.reshape(-1,)
             interp = interp1d(t, data, kind = 'cubic', fill_value = 'extrapolate')
             data_extend = interp(t_extend).reshape(-1,)
-            dict_extend[col] = data_extend
+            
+            if col == "\\ipmhd":
+                dict_extend[col] = data_extend * (-1)
+            else:
+                dict_extend[col] = data_extend
 
         df_shot_extend = pd.DataFrame(data = dict_extend)
         df_interpolate = pd.concat([df_interpolate, df_shot_extend], axis = 0).reset_index(drop = True)

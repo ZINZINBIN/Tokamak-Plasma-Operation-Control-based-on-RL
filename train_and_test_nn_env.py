@@ -46,6 +46,7 @@ else:
 if __name__ == "__main__":
 
     df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index()
+    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index()
 
     # nan interpolation
     df.interpolate(method = 'linear', limit_direction = 'forward')
@@ -73,7 +74,7 @@ if __name__ == "__main__":
         '\\LV01'
     ]
     
-    ts_cols = cols_0D + cols_diag + cols_control
+    ts_cols = cols_0D + cols_control
 
     # float type
     for col in ts_cols:
@@ -116,11 +117,16 @@ if __name__ == "__main__":
     
     pred_cols = cols_0D
     
-    train_data = DatasetFor0D(ts_train, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
-    valid_data = DatasetFor0D(ts_valid, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
-    test_data = DatasetFor0D(ts_test, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
+    train_data = DatasetFor0D(ts_train, df_disruption, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
+    valid_data = DatasetFor0D(ts_valid, df_disruption, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
+    test_data = DatasetFor0D(ts_test, df_disruption, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
+    
+    
+    print("train data : ", train_data.__len__())
+    print("valid data : ", valid_data.__len__())
+    print("test data : ", test_data.__len__())
 
-    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers =8, shuffle = True)
+    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = 8, shuffle = True)
     valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 8, shuffle = True)
     test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 8, shuffle = True)
 
@@ -189,8 +195,8 @@ if __name__ == "__main__":
         device,
     )
     
-    shot_num = ts_test.shot.iloc[0]
-    df_shot = ts_test[ts_test.shot == shot_num].reset_index(drop = True)
+    shot_num = test_data.ts_data.shot.iloc[0]
+    df_shot = test_data.ts_data[test_data.ts_data.shot == shot_num].reset_index(drop = True)
     
     # real-time prediction
     real_time_predict(
