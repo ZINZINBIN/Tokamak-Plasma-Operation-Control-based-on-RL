@@ -13,7 +13,6 @@ def real_time_predict(
     dist : int, 
     cols : List, 
     pred_cols : List, 
-    interval : int, 
     scaler = None,
     device : str = 'cpu',
     title : str = "",
@@ -72,8 +71,7 @@ def generate_shot_data(
     pred_len : int, 
     dist : int, 
     state_cols : List,
-    control_cols : Optional[List],
-    interval : int, 
+    control_cols : Optional[List], 
     device : str = 'cpu',
     title : str = "",
     save_dir : str = "./result/nn_env_performance.png"

@@ -2,8 +2,6 @@ import torchvision.transforms as T
 from PIL import Image
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
-from pytorch_model_summary import summary
 
 resize = T.Compose([
     T.ToPILImage(),
@@ -25,3 +23,8 @@ def get_screen(env):
     screen = torch.from_numpy(screen)
 
     return resize(screen).unsqueeze(0)
+
+# rendering from environment
+# output : (1, seq_len, col_dim)
+def get_state(env):
+    pass

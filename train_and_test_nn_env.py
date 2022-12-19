@@ -15,12 +15,12 @@ parser = argparse.ArgumentParser(description="training NN based environment")
 parser.add_argument("--batch_size", type = int, default = 128)
 parser.add_argument("--lr", type = float, default = 1e-3)
 parser.add_argument("--gpu_num", type = int, default = 0)
-parser.add_argument("--num_epoch", type = int, default = 12)
+parser.add_argument("--num_epoch", type = int, default = 32)
 parser.add_argument("--gamma", type = float, default = 0.95)
 parser.add_argument("--verbose", type = int, default = 4)
 parser.add_argument("--max_norm_grad", type = float, default = 1.0)
 parser.add_argument("--root_dir", type = str, default = "./weights/")
-parser.add_argument("--tag", type = str, default = "CNN_LSTM")
+parser.add_argument("--tag", type = str, default = "TStransformer")
 parser.add_argument("--seq_len", type = int, default = 21)
 parser.add_argument("--pred_len", type = int, default = 7)
 parser.add_argument("--interval", type = int, default = 7)
@@ -51,11 +51,29 @@ if __name__ == "__main__":
     df.interpolate(method = 'linear', limit_direction = 'forward')
 
     # columns for use
-    ts_cols = [
-        '\\q95', '\\ipmhd', '\\kappa', 
+    # 0D parameter
+    cols_0D = [
+        '\\q0', '\\q95', '\\ipmhd', '\\kappa', 
         '\\tritop', '\\tribot','\\betap','\\betan',
         '\\li', '\\WTOT_DLM03'
     ]
+    
+    # else diagnostics
+    cols_diag = [
+        '\\ne_inter01', '\\ne_tci01', '\\ne_tci02', '\\ne_tci03', '\\ne_tci04', '\\ne_tci05',
+    ]
+    
+    # control value / parameter
+    cols_control = [
+        '\\nb11_pnb','\\nb12_pnb','\\nb13_pnb',
+        '\\RC01', '\\RC02', '\\RC03',
+        '\\VCM01', '\\VCM02', '\\VCM03',
+        '\\EC2_PWR', '\\EC3_PWR', 
+        '\\ECSEC2TZRTN', '\\ECSEC3TZRTN',
+        '\\LV01'
+    ]
+    
+    ts_cols = cols_0D + cols_diag + cols_control
 
     # float type
     for col in ts_cols:
@@ -94,15 +112,13 @@ if __name__ == "__main__":
     pred_len = args['pred_len']
     interval = args['interval']
     dist = args['dist']
-    
-    cols = ts_cols
-    pred_cols = ts_cols
-    
     batch_size = args['batch_size']
     
-    train_data = DatasetFor0D(ts_train, seq_len, pred_len, dist, cols, pred_cols, interval, scaler = None)
-    valid_data = DatasetFor0D(ts_valid, seq_len, pred_len, dist, cols, pred_cols, interval, scaler = None)
-    test_data = DatasetFor0D(ts_test, seq_len, pred_len, dist, cols, pred_cols, interval, scaler = None)
+    pred_cols = cols_0D
+    
+    train_data = DatasetFor0D(ts_train, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
+    valid_data = DatasetFor0D(ts_valid, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
+    test_data = DatasetFor0D(ts_test, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
 
     train_loader = DataLoader(train_data, batch_size = batch_size, num_workers =8, shuffle = True)
     valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 8, shuffle = True)
@@ -111,7 +127,7 @@ if __name__ == "__main__":
     if args['tag'] == 'TStransformer':
         
         model = TStransformer(
-            n_features = len(cols), 
+            n_features = len(cols_0D + cols_control), 
             feature_dims = 128, 
             max_len = seq_len, 
             n_layers = 4, 
@@ -126,7 +142,7 @@ if __name__ == "__main__":
         model = CnnLSTM(
             seq_len = seq_len,
             pred_len = pred_len,
-            col_dim = len(cols),
+            col_dim = len(cols_0D + cols_control),
             conv_dim=64,
             conv_kernel = 3,
             conv_stride=1,
@@ -183,9 +199,8 @@ if __name__ == "__main__":
         seq_len,
         pred_len,
         dist,
-        cols,
+        cols_0D + cols_control,
         pred_cols,
-        interval,
         None,
         device,
         "shot number : {}".format(shot_num),
@@ -198,9 +213,8 @@ if __name__ == "__main__":
         seq_len,
         pred_len,
         dist,
-        cols,
-        None,
-        interval,
+        cols_0D,
+        cols_control,
         device,
         "shot number : {}".format(shot_num),
         save_dir = "./result/nn_env_without_feedforward.png"

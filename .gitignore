@@ -3,3 +3,6 @@
 
 # weight parameter
 *.pt
+
+# ignore dataset
+dataset/*

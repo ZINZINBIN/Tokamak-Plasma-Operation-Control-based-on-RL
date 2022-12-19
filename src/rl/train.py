@@ -3,8 +3,12 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gc
+from tqdm.auto import tqdm
 from typing import Optional, List, Literal
 from src.rl.buffer import Transition, ReplayBuffer
+from src.rl.ddpg import OUNoise
+from src.rl.utility import get_state
+from itertools import count
 
 # update policy
 def update_policy(
@@ -137,7 +141,7 @@ def train_ddpg(
     for i_episode in tqdm(range(num_episode)):
         env.reset()
         ou_noise.reset()
-        state = get_screen(env)
+        state = get_state(env)
         mean_reward = []
 
         for t in count():
@@ -151,7 +155,7 @@ def train_ddpg(
             reward = torch.tensor([reward], device = device)
 
             if not done:
-                next_state = get_screen(env)
+                next_state = get_state(env)
 
             else:
                 next_state = None

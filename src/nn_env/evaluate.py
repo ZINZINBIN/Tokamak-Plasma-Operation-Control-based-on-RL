@@ -38,6 +38,6 @@ def evaluate(
     pts = np.concatenate(pts, axis = 0)
     gts = np.concatenate(gts, axis = 0)
     
-    mse, rmse, mae = compute_metrics(gt,pt,None,True)
+    mse, rmse, mae = compute_metrics(gts,pts,None,True)
 
     return test_loss
