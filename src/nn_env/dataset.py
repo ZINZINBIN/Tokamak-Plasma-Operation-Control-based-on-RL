@@ -134,8 +134,8 @@ class DatasetFor0D(Dataset):
         input_idx = self.input_indices[idx]
         target_idx = self.target_indices[idx]
         
-        data = self.ts_data[self.state_cols + self.control_cols].loc[input_idx:input_idx + self.seq_len -1].values
-        target = self.ts_data[self.pred_cols].loc[target_idx : target_idx + self.pred_len -1].values
+        data = self.ts_data[self.state_cols + self.control_cols].loc[input_idx+1:input_idx + self.seq_len].values
+        target = self.ts_data[self.pred_cols].loc[target_idx+1: target_idx + self.pred_len].values
         
         data = torch.from_numpy(data).float()
         target = torch.from_numpy(target).float()

@@ -7,9 +7,11 @@
     - https://github.com/openai/gym-soccer/blob/master/gym_soccer/envs/soccer_env.py
     - https://medium.com/cloudcraftz/build-a-custom-environment-using-openai-gym-for-reinforcement-learning-56d7a5aa827b
     - https://github.com/notadamking/Stock-Trading-Environment
+    - https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py
 '''
 import gym
 import os, subprocess, time, signal
+import torch
 import torch.nn as nn
 from gym import error, spaces
 from gym import utils
@@ -31,19 +33,51 @@ class NeuralEnv(gym.Env):
         # reward engineering
         self.reward_sender = reward_sender
         
+        # initalize state, action, done
+        self.done = False
+        self.init_state = None
+        self.init_action = None
+        
+        self.state = None
+        self.action = None
+    
+    # update initial condition for plasma operation
+    def update_init_state(self, init_state : torch.Tensor, init_action : torch.Tensor):
+        self.init_state = init_state.to(self.device)
+        self.init_action = init_action.to(self.device)
+        
+        self.state = init_state.to(self.device)
+    
     def reset(self):
         self.done = False
-        self.state = self.start
+        self.state = self.init_state
+        self.action = self.init_action
+        
         return self.state
 
-    def step(self, action):
-        assert self.action_space.contains(action)
-        pass
-    def render(self):
-        pass
-    def close(self):
-        pass
-    
-    def get_reward(self, new_state):
-        return self.reward_decision(new_state)
+    def step(self, action : torch.Tensor):
+        state = self.state
         
+        if len(state.size()) == 2:
+            state = state.unsqueeze(0)
+        
+        if len(action.size()) == 2:
+            action = action.unsqueeze(0)
+            
+        inputs = torch.concat([state, action], axis = 2)
+        next_state = self.predictor(inputs)
+        reward = self.reward_sender(next_state)
+        
+        self.check_terminal_state(next_state)
+        
+        self.state = next_state
+        
+        return next_state, reward, self.done, {}
+
+    def get_reward(self, next_state : torch.Tensor):
+        return self.reward_sender(next_state)
+    
+    def check_terminal_state(self, next_state : torch.Tensor):
+        # if state contains nan value, then terminate the environment
+        if torch.isnan(next_state).sum() > 0:
+            self.done = True

@@ -29,8 +29,9 @@ def real_time_predict(
     target = df_shot_copy[pred_cols].values
     predictions = []
     
-    idx = 0
-    time_length = seq_len + dist
+    idx_start = 64
+    idx = idx_start
+    time_length = idx_start + seq_len + dist
     idx_max = len(data) - pred_len - seq_len - dist
     
     model.to(device)
@@ -46,8 +47,11 @@ def real_time_predict(
         idx = time_length - dist - seq_len
     
     predictions = np.concatenate(predictions, axis = 0)
-    time_x = time_x[seq_len+dist:seq_len+dist + len(predictions)]
-    actual = target[seq_len+dist:seq_len+dist + len(predictions)]
+    # time_x = time_x[seq_len+dist:seq_len+dist + len(predictions)]
+    # actual = target[seq_len+dist:seq_len+dist + len(predictions)]
+    
+    time_x = time_x[idx_start + seq_len+dist:idx_start + seq_len+dist + len(predictions)]
+    actual = target[idx_start + seq_len+dist:idx_start + seq_len+dist + len(predictions)]
     
     fig,axes = plt.subplots(len(pred_cols), figsize = (6,12), sharex=True, facecolor = 'white')
     plt.suptitle(title)
@@ -91,8 +95,9 @@ def generate_shot_data(
     
     predictions = []
     
-    idx = 0
-    time_length = seq_len + dist
+    idx_start = 64
+    idx = idx_start
+    time_length = idx_start + seq_len + dist
     idx_max = len(time_x) - pred_len - seq_len - dist
     
     model.to(device)
@@ -108,7 +113,7 @@ def generate_shot_data(
             # previous_state : (1,T_in,C_in)
             # next_state : (1,T_out,C_out)
             # check whether initial input or not
-            if idx == 0:
+            if idx == idx_start:
                 previous_state = torch.from_numpy(initial_state[idx:idx+seq_len,:]).unsqueeze(0).to(device)
                 state_list = torch.from_numpy(initial_state[idx:idx+time_length,:]).unsqueeze(0).to(device)
 
@@ -133,8 +138,12 @@ def generate_shot_data(
             predictions.append(prediction)
             
     predictions = np.concatenate(predictions, axis = 0)
-    time_x = time_x[seq_len+dist:seq_len+dist + len(predictions)]
-    actual = target[seq_len+dist:seq_len+dist + len(predictions)]
+    
+    # time_x = time_x[seq_len+dist:seq_len+dist + len(predictions)]
+    # actual = target[seq_len+dist:seq_len+dist + len(predictions)]
+    
+    time_x = time_x[idx_start + seq_len+dist:idx_start + seq_len+dist + len(predictions)]
+    actual = target[idx_start + seq_len+dist:idx_start + seq_len+dist + len(predictions)]
     
     fig,axes = plt.subplots(len(state_cols), figsize = (6,12), sharex=True, facecolor = 'white')
     plt.suptitle(title)

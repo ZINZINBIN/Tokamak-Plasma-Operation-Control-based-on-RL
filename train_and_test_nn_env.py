@@ -22,8 +22,8 @@ parser.add_argument("--max_norm_grad", type = float, default = 1.0)
 parser.add_argument("--root_dir", type = str, default = "./weights/")
 parser.add_argument("--tag", type = str, default = "TStransformer")
 parser.add_argument("--seq_len", type = int, default = 21)
-parser.add_argument("--pred_len", type = int, default = 7)
-parser.add_argument("--interval", type = int, default = 7)
+parser.add_argument("--pred_len", type = int, default = 3)
+parser.add_argument("--interval", type = int, default = 3)
 parser.add_argument("--dist", type = int, default = 0)
 
 args = vars(parser.parse_args())
@@ -121,7 +121,6 @@ if __name__ == "__main__":
     valid_data = DatasetFor0D(ts_valid, df_disruption, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
     test_data = DatasetFor0D(ts_test, df_disruption, seq_len, pred_len, dist, cols_0D, cols_control, pred_cols, interval, scaler = None)
     
-    
     print("train data : ", train_data.__len__())
     print("valid data : ", valid_data.__len__())
     print("test data : ", test_data.__len__())
@@ -141,6 +140,7 @@ if __name__ == "__main__":
             dim_feedforward = 512, 
             dropout = 0.25, 
             mlp_dim = 64, 
+            pred_len = pred_len,
             output_dim = len(pred_cols)
         )
         
@@ -183,6 +183,7 @@ if __name__ == "__main__":
         save_last = save_last_dir,
         max_norm_grad = args['max_norm_grad'],
     )
+    
     
     model.load_state_dict(torch.load(save_best_dir))
 
