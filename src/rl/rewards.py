@@ -17,14 +17,14 @@ DEFAULT_TARGETS = {
 }
 
 def compute_reward(inputs : torch.Tensor, targets : torch.Tensor, a : float = 1e-3):
-    loss = F.mse_loss(inputs, targets, size_average=True, reduce = True)
+    loss = F.mse_loss(inputs, targets, reduction = 'mean')
     return 1 / (loss + a)
 
 class RewardSender:
     def __init__(self, targets_dict : Dict, total_cols : List):
         self.targets_dict = targets_dict
-        self.targets_cols = targets_dict.keys()
-        self.targets_value = targets_dict.values()
+        self.targets_cols = list(targets_dict.keys())
+        self.targets_value = list(targets_dict.values())
         self._extract_target_index(total_cols)
 
     def __call__(self, new_state : torch.Tensor):
@@ -34,9 +34,9 @@ class RewardSender:
         reward = 0
         device = state.device
         
-        for idx_dict, idx in zip(self.targets_value, self.target_cols_indices):
+        for target_value, idx in zip(self.targets_value, self.target_cols_indices):
             state_per_idx = state[:,:,idx]
-            target_per_idx = torch.ones(state_per_idx.size()).to(device) * self.targets_value[idx_dict]
+            target_per_idx = torch.ones(state_per_idx.size()).to(device) * target_value
             reward += compute_reward(state_per_idx, target_per_idx)
         return reward
     

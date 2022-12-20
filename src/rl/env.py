@@ -10,7 +10,7 @@
     - https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py
 '''
 import gym
-import os, subprocess, time, signal
+import os, subprocess, time, signal, gc
 import torch
 import torch.nn as nn
 from gym import error, spaces
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class NeuralEnv(gym.Env):
     metadata = {'render.modes':['human']} # what does it means?
-    def __init__(self, predictor : nn.Module, device : str, reward_sender : RewardSender):
+    def __init__(self, predictor : nn.Module, device : str, reward_sender : RewardSender, seq_len : int, pred_len : int):
         super().__init__()
         # predictor : output as next state of plasma
         self.predictor = predictor.to(device)
@@ -40,13 +40,35 @@ class NeuralEnv(gym.Env):
         
         self.state = None
         self.action = None
+        
+        # input sequence length
+        self.seq_len = seq_len
+        # output sequence length
+        self.pred_len = pred_len
     
     # update initial condition for plasma operation
     def update_init_state(self, init_state : torch.Tensor, init_action : torch.Tensor):
+        
+        if len(init_state.size()) == 2:
+            init_state = init_state.unsqueeze(0)
+            
+        if len(init_action.size()) == 2:
+            init_action = init_action.unsqueeze(0)
+        
         self.init_state = init_state.to(self.device)
         self.init_action = init_action.to(self.device)
         
         self.state = init_state.to(self.device)
+        
+    def update_state(self, next_state : torch.Tensor):
+        state = self.state
+        next_state = next_state.to(self.device)
+        
+        if len(next_state.size()) == 2:
+            next_state = next_state.unsqueeze(0)
+        
+        next_state = torch.concat([state, next_state], axis = 1)
+        self.state = next_state[:,-self.seq_len:,:]
     
     def reset(self):
         self.done = False
@@ -64,13 +86,17 @@ class NeuralEnv(gym.Env):
         if len(action.size()) == 2:
             action = action.unsqueeze(0)
             
+        action = action.to(self.device)
+            
         inputs = torch.concat([state, action], axis = 2)
         next_state = self.predictor(inputs)
         reward = self.reward_sender(next_state)
         
+        # update done
         self.check_terminal_state(next_state)
         
-        self.state = next_state
+        # update state
+        self.update_state(next_state)
         
         return next_state, reward, self.done, {}
 
@@ -81,3 +107,26 @@ class NeuralEnv(gym.Env):
         # if state contains nan value, then terminate the environment
         if torch.isnan(next_state).sum() > 0:
             self.done = True
+            
+    def close(self):
+        
+        # gpu -> cpu
+        self.state.cpu()
+        self.init_state.cpu()
+        
+        self.action.cpu()
+        self.init_action.cpu()
+        
+        self.predictor.cpu()
+        
+        self.state = None
+        self.init_state = None
+        
+        self.action = None
+        self.init_action = None
+        
+        # cpu cache memory clear
+        gc.collect()
+        
+        # cuda gpu cache memory clear
+        torch.cuda.empty_cache()
