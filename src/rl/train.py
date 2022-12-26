@@ -7,8 +7,9 @@ from tqdm.auto import tqdm
 from typing import Optional, List, Literal
 from src.rl.buffer import Transition, ReplayBuffer
 from src.rl.ddpg import OUNoise
-from src.rl.utility import get_state
+from src.rl.utility import InitGenerator
 from itertools import count
+from src.rl.env import NeuralEnv
 
 # update policy
 def update_policy(
@@ -106,7 +107,8 @@ def update_policy(
     return value_loss.item(), policy_loss.item()
 
 def train_ddpg(
-    env,
+    env : NeuralEnv,
+    init_generator : InitGenerator,
     memory : ReplayBuffer, 
     policy_network : nn.Module, 
     value_network : nn.Module, 
@@ -122,7 +124,7 @@ def train_ddpg(
     max_value : float = np.inf,
     tau : float = 1e-2,
     num_episode : int = 256,  
-    verbose : int = 8
+    verbose : int = 8,
     ):
 
     value_network.train()
@@ -139,9 +141,14 @@ def train_ddpg(
     ou_noise = OUNoise(env.action_space)
 
     for i_episode in tqdm(range(num_episode)):
-        env.reset()
+        
+        # update new initial state and action
+        init_state, init_action = init_generator.get_state()
+        env.update_init_state(init_state, init_action)
+        
+        # reset ou noise and current state from env
         ou_noise.reset()
-        state = get_state(env)
+        state = env.reset()
         mean_reward = []
 
         for t in count():
@@ -155,7 +162,7 @@ def train_ddpg(
             reward = torch.tensor([reward], device = device)
 
             if not done:
-                next_state = get_state(env)
+                next_state = env.get_state()
 
             else:
                 next_state = None

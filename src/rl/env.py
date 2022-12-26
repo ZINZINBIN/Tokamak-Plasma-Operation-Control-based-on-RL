@@ -33,7 +33,7 @@ class NeuralEnv(gym.Env):
         # reward engineering
         self.reward_sender = reward_sender
         
-        # initalize state, action, done
+        # initalize state, action, done, time released
         self.done = False
         self.init_state = None
         self.init_action = None
@@ -41,10 +41,15 @@ class NeuralEnv(gym.Env):
         self.state = None
         self.action = None
         
+        self.t_released = 0
+        self.dt = 4 * 1 / 210
+        
+        self.t_terminal = 16
+        
         # input sequence length
         self.seq_len = seq_len
         # output sequence length
-        self.pred_len = pred_len
+        self.pred_len = pred_len    
     
     # update initial condition for plasma operation
     def update_init_state(self, init_state : torch.Tensor, init_action : torch.Tensor):
@@ -69,6 +74,12 @@ class NeuralEnv(gym.Env):
         
         next_state = torch.concat([state, next_state], axis = 1)
         self.state = next_state[:,-self.seq_len:,:]
+        
+        # time sync
+        self.t_released += self.dt
+        
+    def get_state(self):
+        return self.state
     
     def reset(self):
         self.done = False
@@ -106,6 +117,9 @@ class NeuralEnv(gym.Env):
     def check_terminal_state(self, next_state : torch.Tensor):
         # if state contains nan value, then terminate the environment
         if torch.isnan(next_state).sum() > 0:
+            self.done = True
+        
+        if self.t_released >= self.t_terminal:
             self.done = True
             
     def close(self):
