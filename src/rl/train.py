@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gc
+import time
 from tqdm.auto import tqdm
 from typing import Optional, List, Literal
 from src.rl.buffer import Transition, ReplayBuffer
@@ -59,11 +60,12 @@ def update_policy(
     action_batch = torch.cat(batch.action).to(device)
     reward_batch = torch.cat(batch.reward).to(device)
 
-    state_batch_ = state_batch.clone()
+    state_batch_ = state_batch.detach().clone()
 
     # update value network
     # Q = r + r'* Q'(s_{t+1}, J(a|s_{t+1}))
     # Loss[y - Q] -> update value network
+    value_network.train()
     next_q_values = torch.zeros((batch_size,1), device = device)
     next_q_values[non_final_mask] = target_value_network(non_final_next_states, target_policy_network(non_final_next_states).detach()).detach()
     
@@ -74,16 +76,17 @@ def update_policy(
     value_loss = criterion(q_values, bellman_q_values)
 
     value_optimizer.zero_grad()
-    value_loss.backward()    
+    value_loss.backward(retain_graph = True)    
     value_optimizer.step()
 
     # update policy network 
     # sum of Q-value -> grad Q(s,a) * grad J(a|s) -> update policy
-    policy_loss = value_network(state_batch, policy_network(state_batch))
+    value_network.eval()
+    policy_loss = value_network(state_batch_, policy_network(state_batch_))
     policy_loss = -policy_loss.mean()
 
     policy_optimizer.zero_grad()
-    policy_loss.backward()
+    policy_loss.backward(retain_graph = True)
     policy_optimizer.step()
 
     # gradient clipping for value_network and policy_network
@@ -125,7 +128,11 @@ def train_ddpg(
     tau : float = 1e-2,
     num_episode : int = 256,  
     verbose : int = 8,
+    save_best : Optional[str] = None,
+    save_last : Optional[str] = None,
     ):
+    
+    T_MAX = 1024
 
     value_network.train()
     policy_network.train()
@@ -138,16 +145,18 @@ def train_ddpg(
 
     episode_durations = []
     reward_list = []
-    ou_noise = OUNoise(env.action_space)
+    # ou_noise = OUNoise(env.action_space)
 
     for i_episode in tqdm(range(num_episode)):
+        
+        start_time = time.time()
         
         # update new initial state and action
         init_state, init_action = init_generator.get_state()
         env.update_init_state(init_state, init_action)
         
         # reset ou noise and current state from env
-        ou_noise.reset()
+        # ou_noise.reset()
         state = env.reset()
         mean_reward = []
 
@@ -155,18 +164,20 @@ def train_ddpg(
             state = state.to(device)
             policy_network.eval()
             action = policy_network(state).detach()
-            env_input_action = ou_noise.get_action(action.detach().cpu().numpy()[0,0], t)
+            
+            # env_input_action = ou_noise.get_action(action.detach().cpu().numpy()[0,0], t)
+            env_input_action = action
             _, reward, done, _ = env.step(env_input_action)
 
-            mean_reward.append(reward)
+            mean_reward.append(reward.detach().cpu().numpy())
             reward = torch.tensor([reward], device = device)
-
+            
             if not done:
                 next_state = env.get_state()
 
             else:
                 next_state = None
-            
+
             # memory에 transition 저장
             memory.push(state, action, next_state, reward, done)
 
@@ -189,13 +200,15 @@ def train_ddpg(
                 tau
             )
 
-            if done:
+            if done or t > T_MAX:
                 episode_durations.append(t+1)
                 mean_reward = np.mean(mean_reward)
                 break
+            
+        end_time = time.time()
 
         if i_episode % verbose == 0:
-            print("episode : {}, duration : {} and mean reward : {:.2f}".format(i_episode+1, t + 1, mean_reward))
+            print("# episode : {} | duration : {} | mean-reward : {:.2f} | run time : {:.2f}".format(i_episode+1, t + 1, mean_reward, end_time - start_time))
 
         reward_list.append(mean_reward) 
 
@@ -204,6 +217,9 @@ def train_ddpg(
 
         # torch cache delete
         torch.cuda.empty_cache()
+        
+        # save weights
+        torch.save(policy_network.state_dict(), save_best)
 
     print("training policy network and target network done....!")
     env.close()

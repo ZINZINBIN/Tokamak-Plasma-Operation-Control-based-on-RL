@@ -18,7 +18,7 @@ class InitGenerator:
     def get_state(self):
         
         if self.random or self.shot_num is None:
-            shot_num = int(np.random.sample(len(self.shot_list)))
+            shot_num = self.shot_list[int(np.random.randint(len(self.shot_list)))]
             df_shot = self.df[self.df.shot == shot_num]
             init_indices = df_shot[df_shot.time >= self.t_init].index[0:self.seq_len].values
             init_state = df_shot[self.state_cols].loc[init_indices].values
@@ -30,5 +30,8 @@ class InitGenerator:
             init_indices = df_shot[df_shot.time >= self.t_init].index[0:self.seq_len].values
             init_state = df_shot[self.state_cols].loc[init_indices].values
             init_action = df_shot[self.control_cols].loc[init_indices].values
+        
+        init_state = torch.from_numpy(init_state)
+        init_action = torch.from_numpy(init_action)
             
         return init_state, init_action

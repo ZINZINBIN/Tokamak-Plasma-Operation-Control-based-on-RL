@@ -44,7 +44,7 @@ class NeuralEnv(gym.Env):
         self.t_released = 0
         self.dt = 4 * 1 / 210
         
-        self.t_terminal = 16
+        self.t_terminal = 4
         
         # input sequence length
         self.seq_len = seq_len
@@ -54,16 +54,17 @@ class NeuralEnv(gym.Env):
     # update initial condition for plasma operation
     def update_init_state(self, init_state : torch.Tensor, init_action : torch.Tensor):
         
-        if len(init_state.size()) == 2:
+        if init_state.ndim == 2:
             init_state = init_state.unsqueeze(0)
             
-        if len(init_action.size()) == 2:
+        if init_action.ndim == 2:
             init_action = init_action.unsqueeze(0)
         
         self.init_state = init_state.to(self.device)
         self.init_action = init_action.to(self.device)
         
         self.state = init_state.to(self.device)
+        self.action = init_action.to(self.device)
         
     def update_state(self, next_state : torch.Tensor):
         state = self.state
@@ -78,6 +79,16 @@ class NeuralEnv(gym.Env):
         # time sync
         self.t_released += self.dt
         
+    def update_action(self, next_action : torch.Tensor):
+        action = self.action
+        next_action = next_action.to(self.device)
+        
+        if len(next_action.size()) == 2:
+            next_action = next_action.unsqueeze(0)
+        
+        next_action = torch.concat([action, next_action], axis = 1)
+        self.action = next_action[:,-self.seq_len:,:]
+        
     def get_state(self):
         return self.state
     
@@ -85,6 +96,7 @@ class NeuralEnv(gym.Env):
         self.done = False
         self.state = self.init_state
         self.action = self.init_action
+        self.t_released = 0
         
         return self.state
 
@@ -98,7 +110,12 @@ class NeuralEnv(gym.Env):
             action = action.unsqueeze(0)
             
         action = action.to(self.device)
+        
+        # update action
+        self.update_action(action)
+        action = self.action
             
+        # next input
         inputs = torch.concat([state, action], axis = 2)
         next_state = self.predictor(inputs)
         reward = self.reward_sender(next_state)

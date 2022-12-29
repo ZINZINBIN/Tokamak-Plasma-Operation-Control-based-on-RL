@@ -22,7 +22,7 @@ parser.add_argument("--max_norm_grad", type = float, default = 1.0)
 parser.add_argument("--root_dir", type = str, default = "./weights/")
 parser.add_argument("--tag", type = str, default = "TStransformer")
 parser.add_argument("--seq_len", type = int, default = 21)
-parser.add_argument("--pred_len", type = int, default = 3)
+parser.add_argument("--pred_len", type = int, default = 1)
 parser.add_argument("--interval", type = int, default = 3)
 parser.add_argument("--dist", type = int, default = 0)
 
