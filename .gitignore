@@ -6,3 +6,6 @@
 
 # ignore dataset
 dataset/*
+
+# ignore run file
+runs/*

@@ -683,4 +683,17 @@ epoch : 45, train loss : 4.852, valid loss : 5.766,
 training process:  35%|███▌      | 45/128 [4:46:57<8:55:04, 386.80s/it]training process:  36%|███▌      | 46/128 [4:53:09<8:42:23, 382.23s/it]training process:  37%|███▋      | 47/128 [4:59:03<8:24:34, 373.76s/it]training process:  38%|███▊      | 48/128 [5:04:49<8:07:34, 365.68s/it]epoch : 49, train loss : 4.777, valid loss : 5.698,
 training process:  38%|███▊      | 49/128 [5:10:47<7:58:29, 363.42s/it]training process:  39%|███▉      | 50/128 [5:16:50<7:52:01, 363.10s/it]training process:  40%|███▉      | 51/128 [5:23:00<7:48:51, 365.34s/it]training process:  41%|████      | 52/128 [5:28:56<7:39:03, 362.41s/it]epoch : 53, train loss : 4.698, valid loss : 5.633,
 training process:  41%|████▏     | 53/128 [5:34:58<7:32:58, 362.38s/it]training process:  42%|████▏     | 54/128 [5:41:03<7:27:46, 363.06s/it]training process:  43%|████▎     | 55/128 [5:46:56<7:18:13, 360.18s/it]training process:  44%|████▍     | 56/128 [5:52:48<7:08:59, 357.50s/it]epoch : 57, train loss : 4.632, valid loss : 5.717,
-training process:  45%|████▍     | 57/128 [5:58:39<7:00:42, 355.52s/it]
+training process:  45%|████▍     | 57/128 [5:58:39<7:00:42, 355.52s/it]training process:  45%|████▌     | 58/128 [6:04:22<6:50:41, 352.02s/it]Traceback (most recent call last):
+  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/resource_sharer.py", line 138, in _serve
+    with self._listener.accept() as conn:
+  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 470, in accept
+    deliver_challenge(c, self._authkey)
+  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 745, in deliver_challenge
+    response = connection.recv_bytes(256)        # reject large message
+  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 221, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 419, in _recv_bytes
+    buf = self._recv(4)
+  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 388, in _recv
+    raise EOFError
+EOFError

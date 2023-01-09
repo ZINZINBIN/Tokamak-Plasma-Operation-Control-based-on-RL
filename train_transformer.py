@@ -12,10 +12,10 @@ from sklearn.preprocessing import RobustScaler, MinMaxScaler, StandardScaler
 from torch.utils.data import DataLoader
 
 parser = argparse.ArgumentParser(description="training NN based environment - Transformer")
-parser.add_argument("--batch_size", type = int, default = 256)
+parser.add_argument("--batch_size", type = int, default = 128)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--gpu_num", type = int, default = 0)
-parser.add_argument("--num_epoch", type = int, default = 128)
+parser.add_argument("--num_epoch", type = int, default = 50)
 parser.add_argument("--gamma", type = float, default = 0.95)
 parser.add_argument("--verbose", type = int, default = 4)
 parser.add_argument("--max_norm_grad", type = float, default = 1.0)
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         '\\q0', '\\q95', '\\ipmhd', '\\kappa', 
         '\\tritop', '\\tribot','\\betap','\\betan',
         '\\li', '\\WTOT_DLM03', '\\ne_inter01',
-    ]
+    ] + ['\\TS_NE_CORE_AVG', '\\TS_NE_EDGE_AVG', '\\TS_TE_CORE_AVG','\\TS_TE_EDGE_AVG']
     
     # else diagnostics
     cols_diag = [
