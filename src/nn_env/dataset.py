@@ -11,7 +11,7 @@ from typing import Optional, Dict, List, Union, Literal
 DEFAULT_0D_COLS = [
     '\\q0','\\q95', '\\ipmhd', '\\kappa', 
     '\\tritop', '\\tribot','\\betap','\\betan',
-    '\\li', '\\WTOT_DLM03'
+    '\\li', '\\WTOT_DLM03', '\\ne_inter01'
 ]
 
 DEFAULT_DIAG = [
@@ -60,6 +60,8 @@ class DatasetFor0D(Dataset):
         
         self.scaler = scaler
         
+        self.shot_list = np.unique(self.ts_data.shot.values).tolist()
+        
         # preprocessing
         self.preprocessing()
         
@@ -67,19 +69,13 @@ class DatasetFor0D(Dataset):
         self._generate_index()
         
     def preprocessing(self):
-    
+        
         # control value : NAN -> 0
         self.ts_data[self.control_cols] = self.ts_data[self.control_cols].fillna(0)
         
-        # 0D parameter : NAN -> forward fill
-        self.ts_data[self.state_cols] = self.ts_data[self.state_cols].fillna(method='ffill')
-
-    def _generate_index(self):
-        shot_list = np.unique(self.ts_data.shot.values).tolist()
-        
         # ignore shot which have too many nan values
         shot_ignore = []
-        for shot in tqdm(shot_list, desc = 'extract the null data'):
+        for shot in tqdm(self.shot_list, desc = 'extract the null data'):
             df_shot = self.ts_data[self.ts_data.shot == shot]
             null_check = df_shot[self.cols].isna().sum()
             
@@ -87,13 +83,30 @@ class DatasetFor0D(Dataset):
                 if c > 0.5 * len(df_shot):
                     shot_ignore.append(shot)
                     break
-          
-        shot_list = [shot_num for shot_num in shot_list if shot_num not in shot_ignore]
+                
+        # update shot list with ignoring the null data
+        shot_list_new = [shot_num for shot_num in self.shot_list if shot_num not in shot_ignore]
+        self.shot_list = shot_list_new
         
+        # 0D parameter : NAN -> forward fill
+        # self.ts_data[self.state_cols] = self.ts_data[self.state_cols].fillna(method='ffill')
+        
+        for shot in tqdm(self.shot_list, desc = 'replace nan value'):
+            df_shot = self.ts_data[self.ts_data.shot == shot].copy()
+            self.ts_data.loc[self.ts_data.shot == shot, self.state_cols] = df_shot[self.state_cols].fillna(method='ffill')
+            
+        if self.scaler:
+            self.ts_data[self.state_cols + self.control_cols] = self.scaler.transform(
+                self.ts_data[self.state_cols + self.control_cols]
+            )
+
+    def _generate_index(self):
+        
+        # disruption data : tftsrt, tipminf
         df_disruption = self.disrupt_data
 
-        # preprocessing
-        for shot in tqdm(shot_list, desc = "Dataset preprocessing..."):
+        # Index generation
+        for shot in tqdm(self.shot_list, desc = "Dataset Indices generation..."):
             
             if shot not in df_disruption.shot:
                 tftsrt = 1.5

@@ -9,6 +9,7 @@ def evaluate(
     optimizer : torch.optim.Optimizer,
     loss_fn : torch.nn.Module,
     device : str = "cpu",
+    is_print : bool = True,
     ):
 
     model.eval()
@@ -33,11 +34,13 @@ def evaluate(
             gts.append(target.cpu().numpy().reshape(-1, target.size()[-1]))
             
     test_loss /= (batch_idx + 1)
-    print("test loss : {:.3f}".format(test_loss))
+    
+    if is_print:
+        print("test loss : {:.3f}".format(test_loss))
     
     pts = np.concatenate(pts, axis = 0)
     gts = np.concatenate(gts, axis = 0)
     
-    mse, rmse, mae = compute_metrics(gts,pts,None,True)
+    mse, rmse, mae = compute_metrics(gts,pts,None,is_print)
 
-    return test_loss
+    return test_loss, mse, rmse, mae

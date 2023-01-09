@@ -20,9 +20,10 @@ parser.add_argument("--gamma", type = float, default = 0.95)
 parser.add_argument("--verbose", type = int, default = 4)
 parser.add_argument("--max_norm_grad", type = float, default = 1.0)
 parser.add_argument("--root_dir", type = str, default = "./weights/")
-parser.add_argument("--tag", type = str, default = "TStransformer")
+parser.add_argument("--tag", type = str, default = "TStransformer", choices=['TStransformer', 'SCINet', 'CnnLSTM'])
+parser.add_argument("--use_scaler", type = bool, default = False)
 parser.add_argument("--seq_len", type = int, default = 21)
-parser.add_argument("--pred_len", type = int, default = 1)
+parser.add_argument("--pred_len", type = int, default = 3)
 parser.add_argument("--interval", type = int, default = 3)
 parser.add_argument("--dist", type = int, default = 0)
 
@@ -100,10 +101,14 @@ if __name__ == "__main__":
     for shot in shot_test:
         df_test = pd.concat([df_test, df[df.shot == shot]], axis = 0)
 
-    scaler = RobustScaler()
-    df_train[ts_cols] = scaler.fit_transform(df_train[ts_cols].values)
-    df_valid[ts_cols] = scaler.transform(df_valid[ts_cols].values)
-    df_test[ts_cols] = scaler.transform(df_test[ts_cols].values)
+
+    if args['use_scaler']:
+        scaler = RobustScaler()
+        df_train[ts_cols] = scaler.fit_transform(df_train[ts_cols].values)
+        df_valid[ts_cols] = scaler.transform(df_valid[ts_cols].values)
+        df_test[ts_cols] = scaler.transform(df_test[ts_cols].values)
+    else:
+        scaler = None
 
     ts_train = df_train
     ts_valid = df_valid
@@ -132,7 +137,8 @@ if __name__ == "__main__":
     if args['tag'] == 'TStransformer':
         
         model = TStransformer(
-            n_features = len(cols_0D + cols_control), 
+            n_features_0D = len(cols_0D),
+            n_features_control=len(cols_control),
             feature_dims = 128, 
             max_len = seq_len, 
             n_layers = 4, 
@@ -156,16 +162,21 @@ if __name__ == "__main__":
             output_dim = len(pred_cols)
         )
 
-    model.summary()
-    
+    sample_data, sample_target = next(iter(train_loader))
+    sample_output = model(sample_data)
+    print("sample_data : ", sample_data.size())
+    print("sample_output : ", sample_output.size())
+
+    # model.summary()
     model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr = args['lr'])
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = 4, gamma=args['gamma'])
     
     import os
-    save_best_dir = os.path.join(args['root_dir'], args['tag'] + "_best.pt")
-    save_last_dir = os.path.join(args['root_dir'], args['tag'] + "_last.pt")
+    
+    save_best_dir = os.path.join(args['root_dir'], "{}_seq{}_dis{}_best.pt".format(args['tag'], args['seq_len'], args['pred_len']))
+    save_last_dir = os.path.join(args['root_dir'], "{}_seq{}_dis{}_last.pt".format(args['tag'], args['seq_len'], args['pred_len']))
 
     loss_fn = CustomLoss()
     

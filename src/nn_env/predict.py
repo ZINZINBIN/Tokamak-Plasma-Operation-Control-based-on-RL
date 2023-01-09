@@ -1,6 +1,7 @@
 import torch
 import pandas as pd
 import numpy as np
+import random
 from typing import Optional, List
 import matplotlib.pyplot as plt
 
@@ -157,3 +158,63 @@ def generate_shot_data(
     ax.set_xlabel('time (unit:s)')
     fig.tight_layout()
     plt.savefig(save_dir)
+    
+# for tensorboard
+def predict_tensorboard(
+    model : torch.nn.Module,
+    test_data : torch.utils.data.Dataset,
+    device : str = 'cpu',
+    ):
+    
+    shot_list = np.unique(test_data.ts_data.shot.values)
+    seq_len = test_data.seq_len
+    pred_len = test_data.pred_len
+    dist = test_data.dist
+    shot_num = random.choice(shot_list)
+    
+    cols = test_data.cols
+    pred_cols = test_data.pred_cols
+    
+    df_shot = test_data.ts_data[test_data.ts_data.shot == shot_num].reset_index(drop = True)
+    df_shot_copy = df_shot.copy(deep = True)
+    
+    time_x = df_shot['time'].values
+    data = df_shot[cols].values
+    target = df_shot_copy[pred_cols].values
+    predictions = []
+    
+    idx_start = 64
+    idx = idx_start
+    time_length = idx_start + seq_len + dist
+    idx_max = len(data) - pred_len - seq_len - dist
+    
+    model.to(device)
+    model.eval()
+    
+    while(idx < idx_max):
+        with torch.no_grad():
+            inputs = torch.from_numpy(data[idx:idx+seq_len,:]).unsqueeze(0).to(device)
+            outputs = model(inputs).squeeze(0).cpu().numpy()
+            predictions.append(outputs)
+            
+        time_length += pred_len
+        idx = time_length - dist - seq_len
+    
+    predictions = np.concatenate(predictions, axis = 0)
+    
+    time_x = time_x[idx_start + seq_len+dist:idx_start + seq_len+dist + len(predictions)]
+    actual = target[idx_start + seq_len+dist:idx_start + seq_len+dist + len(predictions)]
+    
+    fig, axes = plt.subplots(len(pred_cols), figsize = (6,12), sharex=True, facecolor = 'white')
+    plt.suptitle("shot : {}-running-process".format(shot_num))
+    
+    for i, (ax, col) in enumerate(zip(axes, pred_cols)):
+        ax.plot(time_x, actual[:,i], 'k', label = "{}-real".format(col))
+        ax.plot(time_x, predictions[:,i], 'b', label = "{}-predict".format(col))
+        ax.set_ylabel(col)
+        ax.legend(loc = "upper right")
+   
+    ax.set_xlabel('time (unit:s)')
+    fig.tight_layout()
+    
+    return fig

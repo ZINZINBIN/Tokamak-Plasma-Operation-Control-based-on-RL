@@ -1,5 +1,7 @@
 ''' Temporal self-attention based Conv-LSTM for multivariate time series prediction
     - Reference : https://www.sciencedirect.com/science/article/pii/S0925231222007330
+    
+    ReVIN : Reversible Instance Normalization for Accuracte Time-Series Forecasting against Distribution shift
 '''
 import math
 import torch
@@ -10,6 +12,7 @@ from torch.nn import functional as F
 from typing import List, Optional, Union, Tuple
 from pytorch_model_summary import summary
 from typing import Optional, List, Tuple
+from src.nn_env.RevIN import RevIN
 
 class CnnLSTM(nn.Module):
     def __init__(
@@ -306,7 +309,8 @@ class GELU(nn.Module):
 class TStransformer(nn.Module):
     def __init__(
         self, 
-        n_features : int = 11, 
+        n_features_0D : int, 
+        n_features_control : int,
         feature_dims : int = 256, 
         max_len : int = 128, 
         n_layers : int = 1, 
@@ -320,14 +324,20 @@ class TStransformer(nn.Module):
         super(TStransformer, self).__init__()
         
         self.src_mask = None
-        self.n_features = n_features
+        self.n_features = n_features_0D + n_features_control
+        self.n_features_0D = n_features_0D
+        self.n_features_control = n_features_control
+        
         self.max_len = max_len
         self.pred_len = pred_len
         self.output_dim = output_dim
         self.feature_dims = feature_dims
         
         self.noise = NoiseLayer(mean = 0, std = 1e-2)
-        self.encoder_input_layer = nn.Linear(in_features = n_features, out_features = feature_dims)
+        self.revin_0D = RevIN(n_features_0D, eps = 1e-5, affine = True)
+        self.revin_control = RevIN(n_features_control, eps = 1e-5, affine = True)
+        
+        self.encoder_input_layer = nn.Linear(in_features = self.n_features, out_features = feature_dims)
         self.pos_enc = PositionalEncoding(d_model = feature_dims, max_len = max_len)
         self.encoder = nn.TransformerEncoderLayer(
             d_model = feature_dims, 
@@ -353,6 +363,14 @@ class TStransformer(nn.Module):
         
     def forward(self, x : torch.Tensor):
         b = x.size()[0]
+        
+        x_0D = x[:,:,0:self.n_features_0D]
+        x_control = x[:,:,-self.n_features_control : ]
+        
+        x_0D = self.revin_0D(x_0D, 'norm')
+        x_control = self.revin_control(x_control, 'norm')
+        
+        x = torch.concat([x_0D, x_control], axis = 2)
         x = self.noise(x)
         x = self.encoder_input_layer(x)
         x = x.permute(1,0,2)
@@ -364,11 +382,10 @@ class TStransformer(nn.Module):
         
         x = self.pos_enc(x)
         x = self.transformer_encoder(x, self.src_mask.to(x.device)) # (seq_len, batch, feature_dims)
-        # print(x.size())
         x = x.permute(1,0,2).reshape(b, -1) # (batch, seq_len * feature_dims)
         x = self.bottle_neck(x).reshape(b, self.pred_len, -1)
         x = self.regressor(x)
-        
+        x = self.revin_0D(x, 'denorm')
         return x
 
     def _generate_square_subsequent_mask(self, size : int):
@@ -377,5 +394,5 @@ class TStransformer(nn.Module):
         return mask
 
     def summary(self):
-        sample_x = torch.zeros((1, self.max_len, self.n_features))
-        summary(self, sample_x, batch_size = 1, show_input = True, print_summary=True)
+        sample_x = torch.zeros((8, self.max_len, self.n_features))
+        summary(self, sample_x, batch_size = 8, show_input = True, print_summary=True)

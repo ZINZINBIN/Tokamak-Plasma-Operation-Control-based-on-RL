@@ -43,7 +43,6 @@ print("torch device num : ", torch.cuda.device_count())
 # torch cuda initialize and clear cache
 torch.cuda.init()
 torch.cuda.empty_cache()
-
     
 if __name__ == "__main__":
     
