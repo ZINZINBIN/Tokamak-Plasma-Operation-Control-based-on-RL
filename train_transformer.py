@@ -212,7 +212,7 @@ if __name__ == "__main__":
         None,
         device,
         "shot number : {}".format(shot_num),
-        save_dir = os.path.join("./result/", "{}_seq{}_dis{}_feedforward.pt".format(args['tag'], args['seq_len'], args['pred_len']))
+        save_dir = os.path.join("./result/", "{}_seq{}_dis{}_feedforward.png".format(args['tag'], args['seq_len'], args['pred_len']))
     )
     
     generate_shot_data(
@@ -225,5 +225,5 @@ if __name__ == "__main__":
         cols_control,
         device,
         "shot number : {}".format(shot_num),
-        save_dir = os.path.join("./result/", "{}_seq{}_dis{}_without_feedforward.pt".format(args['tag'], args['seq_len'], args['pred_len']))
+        save_dir = os.path.join("./result/", "{}_seq{}_dis{}_without_feedforward.png".format(args['tag'], args['seq_len'], args['pred_len']))
     )
