@@ -83,7 +83,7 @@ def valid_per_epoch(
     
             valid_loss += loss.item()
             
-            if batch_idx % 32 == 31 and writer is not None:
+            if batch_idx % 8 == 7 and writer is not None:
                 writer.add_scalar('Running/valid', running_loss / 32, epoch * len(valid_loader) + batch_idx)
                 running_loss = 0
 

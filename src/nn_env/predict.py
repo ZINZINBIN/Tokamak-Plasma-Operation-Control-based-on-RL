@@ -170,23 +170,32 @@ def predict_tensorboard(
     seq_len = test_data.seq_len
     pred_len = test_data.pred_len
     dist = test_data.dist
-    shot_num = random.choice(shot_list)
     
-    cols = test_data.cols
-    pred_cols = test_data.pred_cols
-    
-    df_shot = test_data.ts_data[test_data.ts_data.shot == shot_num].reset_index(drop = True)
-    df_shot_copy = df_shot.copy(deep = True)
-    
-    time_x = df_shot['time'].values
-    data = df_shot[cols].values
-    target = df_shot_copy[pred_cols].values
-    predictions = []
-    
-    idx_start = 64
-    idx = idx_start
-    time_length = idx_start + seq_len + dist
-    idx_max = len(data) - pred_len - seq_len - dist
+    is_shot_valid = False
+    while(not is_shot_valid):
+        
+        shot_num = random.choice(shot_list)
+        
+        cols = test_data.cols
+        pred_cols = test_data.pred_cols
+        
+        df_shot = test_data.ts_data[test_data.ts_data.shot == shot_num].reset_index(drop = True)
+        df_shot_copy = df_shot.copy(deep = True)
+        
+        time_x = df_shot['time'].values
+        data = df_shot[cols].values
+        target = df_shot_copy[pred_cols].values
+        predictions = []
+        
+        idx_start = int(len(df_shot) * 0.2)
+        idx = idx_start
+        time_length = idx_start + seq_len + dist
+        idx_max = len(data) - pred_len - seq_len - dist
+        
+        if idx_max < 0 or idx_max < idx_start:
+            is_shot_valid = False
+        else:
+            is_shot_valid = True
     
     model.to(device)
     model.eval()
