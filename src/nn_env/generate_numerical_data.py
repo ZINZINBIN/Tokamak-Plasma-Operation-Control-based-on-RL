@@ -12,6 +12,18 @@ def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
     df_interpolate = pd.DataFrame()
     shot_list = np.unique(df.shot.values).tolist()
     
+    # inf, -inf to nan
+    df = df.replace([np.inf, -np.inf], np.nan)
+    
+    # nan interpolation
+    df[config.DEFAULT_0D_COLS] = df[config.DEFAULT_0D_COLS].interpolate(method = 'linear', limit_direction = 'forward')
+    df[config.DEFAULT_CONTROL_COLS] = df[config.DEFAULT_CONTROL_COLS].interpolate(method = 'linear', limit_direction = 'forward')
+    
+    df[config.TS_NE_CORE_COLS] = df[config.TS_NE_CORE_COLS].interpolate(method = 'linear', limit_direction = 'forward')
+    df[config.TS_TE_CORE_COLS] = df[config.TS_TE_CORE_COLS].interpolate(method = 'linear', limit_direction = 'forward')
+    df[config.TS_NE_EDGE_COLS] = df[config.TS_NE_EDGE_COLS].interpolate(method = 'linear', limit_direction = 'forward')
+    df[config.TS_TE_EDGE_COLS] = df[config.TS_TE_EDGE_COLS].interpolate(method = 'linear', limit_direction = 'forward')
+    
     # Control parameter : Nan -> 0
     df[config.DEFAULT_CONTROL_COLS] = df[config.DEFAULT_CONTROL_COLS].fillna(0)
     
@@ -29,17 +41,65 @@ def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
     df[config.TS_TE_CORE_COLS] = df[config.TS_TE_CORE_COLS].apply(lambda x : x / (1e3))
     df[config.TS_TE_EDGE_COLS] = df[config.TS_TE_EDGE_COLS].apply(lambda x : x / (1e3))
     
+    # Some negative values are mis-estimated due to equipmental problem
+    # These values will be replaced by preprocessing
+    if '\\ipmhd' in config.DEFAULT_0D_COLS:
+        df['\\ipmhd'] = df['\\ipmhd'].abs().values
+        
+    if '\\betap' in config.DEFAULT_0D_COLS:
+        df['\\betap'] = df['\\betap'].apply(lambda x : x if x > 0 else 0)
+    
+    if '\\betan' in config.DEFAULT_0D_COLS:
+        df['\\betan'] = df['\\betan'].apply(lambda x : x if x > 0 else 0)
+        
+    if '\\WTOT_DLM03' in config.DEFAULT_0D_COLS:
+        df['\\WTOT_DLM03'] = df['\\WTOT_DLM03'].apply(lambda x : x if x > 0 else 0)
+        
+    if '\\ne_inter01' in config.DEFAULT_0D_COLS:
+        df['\\ne_inter01'] = df['\\ne_inter01'].apply(lambda x : x if x > 0 else 0)
+        
+    # outlier removal with rule-based mothod
+    # Tomson scattering measurement
+    for col in config.TS_NE_CORE_COLS:
+        df[col] = df[col].apply(lambda x : 0 if abs(x/1e6)>1 else x)
+    
+    for col in config.TS_NE_EDGE_COLS:
+        df[col] = df[col].apply(lambda x : 0 if abs(x/1e6)>1 else x)
+    
+    for col in config.TS_TE_CORE_COLS:
+        df[col] = df[col].apply(lambda x : 0 if abs(x/1e3)>1 else x)
+    
+    for col in config.TS_TE_EDGE_COLS:
+        df[col] = df[col].apply(lambda x : 0 if abs(x/1e3)>1 else x)
+
+    
     # Diagnose paramter
     cols_dia = [x for x in config.DEFAULT_DIAG if x != 'ne_inter01']
     df[cols_dia] = df[cols_dia].fillna(0)
-    
+        
+    # filtering the experiment : too many nan values for measurement or time length is too short
     shot_ignore = []
     for shot in tqdm(shot_list, desc = 'remove the invalid values'):
+        # dataframe per shot
         df_shot = df[df.shot==shot]
+        
+        # time length of the experiment is too short : at least larger than 2(s)
+        if df_shot.time.iloc[-1] - df_shot.time.iloc[0] < 2.0:
+            shot_ignore.append(shot)
+            continue
+        
+        # measurement error : null data or constant that the measure did not proceed well
         for col in config.DEFAULT_0D_COLS:
+            # null data
             if np.sum(df_shot[col] == 0) > 0.5 * len(df_shot):
                 shot_ignore.append(shot)
                 break
+            
+            # constant value
+            if df_shot[col].max() - df_shot[col].min() < 1e-3:
+                shot_ignore.append(shot)
+                break
+            
     
     shot_list = [x for x in shot_list if x not in shot_ignore]
     
@@ -47,7 +107,25 @@ def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
         
         # ts data with shot number = shot
         df_shot = df[df.shot == shot]
-        df_shot.fillna(method = 'ffill')
+        df_shot[config.DEFAULT_0D_COLS] = df_shot[config.DEFAULT_0D_COLS].fillna(method = 'ffill')
+        
+        # outlier replacement
+        for col in cols:
+            
+            # plasma current -> pass
+            if col == '\\ipmhd':
+                continue
+            
+            q1 = df_shot[col].quantile(0.25)
+            q3 = df_shot[col].quantile(0.75)
+            
+            IQR = q3 - q1
+            whisker_width = 1.25      
+            
+            lower_whisker = q1 - whisker_width * IQR
+            upper_whisker = q3 + whisker_width * IQR
+            
+            df_shot.loc[:,col] = np.where(df_shot[col]>upper_whisker, upper_whisker, np.where(df_shot[col]<lower_whisker,lower_whisker, df_shot[col]))
         
         dict_extend = {}
         t = df_shot.time.values.reshape(-1,)
@@ -62,11 +140,11 @@ def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
 
         for col in cols:
             data = df_shot[col].values.reshape(-1,)
-            interp = interp1d(t, data, kind = 'cubic', fill_value = 'extrapolate')
+            interp = interp1d(t, data, kind = 'linear', fill_value = 'extrapolate')
             data_extend = interp(t_extend).reshape(-1,)
             
             if col == "\\ipmhd":
-                dict_extend[col] = data_extend * (-1)
+                dict_extend[col] = np.abs(data_extend)
             else:
                 dict_extend[col] = data_extend
 
@@ -79,6 +157,27 @@ def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
     
     df_interpolate['\\TS_TE_CORE_AVG'] = df_interpolate[config.TS_TE_CORE_COLS].mean(axis = 1)
     df_interpolate['\\TS_TE_EDGE_AVG'] = df_interpolate[config.TS_TE_EDGE_COLS].mean(axis = 1)
+    
+    df_interpolate['shot'] = df_interpolate['shot'].astype(int)
+    
+    # negative value removal
+    if '\\ipmhd' in config.DEFAULT_0D_COLS:
+        df_interpolate['\\ipmhd'] = df_interpolate['\\ipmhd'].abs().values
+        
+    if '\\betap' in config.DEFAULT_0D_COLS:
+        df_interpolate['\\betap'] = df_interpolate['\\betap'].apply(lambda x : x if x > 0 else 0)
+    
+    if '\\betan' in config.DEFAULT_0D_COLS:
+        df_interpolate['\\betan'] = df_interpolate['\\betan'].apply(lambda x : x if x > 0 else 0)
+        
+    if '\\WTOT_DLM03' in config.DEFAULT_0D_COLS:
+        df_interpolate['\\WTOT_DLM03'] = df_interpolate['\\WTOT_DLM03'].apply(lambda x : x if x > 0 else 0)
+        
+    if '\\ne_inter01' in config.DEFAULT_0D_COLS:
+        df_interpolate['\\ne_inter01'] = df_interpolate['\\ne_inter01'].apply(lambda x : x if x > 0 else 0)
+        
+    if '\\li' in config.DEFAULT_0D_COLS:
+        df_interpolate['\\li'] = df_interpolate['\\li'].apply(lambda x : x if x > 0 else 0)
 
     return df_interpolate
 

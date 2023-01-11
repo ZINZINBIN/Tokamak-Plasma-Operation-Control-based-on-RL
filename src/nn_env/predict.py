@@ -30,7 +30,7 @@ def real_time_predict(
     target = df_shot_copy[pred_cols].values
     predictions = []
     
-    idx_start = 64
+    idx_start = 0.15 * len(df_shot)
     idx = idx_start
     time_length = idx_start + seq_len + dist
     idx_max = len(data) - pred_len - seq_len - dist
@@ -96,7 +96,7 @@ def generate_shot_data(
     
     predictions = []
     
-    idx_start = 64
+    idx_start = 0.15 * len(df_shot)
     idx = idx_start
     time_length = idx_start + seq_len + dist
     idx_max = len(time_x) - pred_len - seq_len - dist
