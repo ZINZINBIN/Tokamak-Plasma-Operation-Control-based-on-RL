@@ -16,26 +16,27 @@ def train_per_epoch(
     loss_fn : torch.nn.Module,
     device : str = "cpu",
     max_norm_grad : Optional[float] = None,
-    writer = None,
-    epoch : Optional[int] = None
     ):
 
     model.train()
     model.to(device)
 
     train_loss = 0
-    running_loss = 0
 
-    for batch_idx, (data, target) in enumerate(train_loader):
-        optimizer.zero_grad()
-        data = data.to(device)
-        target = target.to(device)
-    
-        output = model(data)
+    for batch_idx, (data_0D, data_ctrl, target) in enumerate(train_loader):
         
-        loss = loss_fn(output, target)
-
-        loss.backward()
+        if data_0D.size()[0] <= 1:
+            continue
+        
+        optimizer.zero_grad()
+        output = model(data_0D.to(device), data_ctrl.to(device))
+        loss = loss_fn(output, target.to(device))
+        
+        if not torch.isfinite(loss):
+            print("train_per_epoch | warning : loss nan occurs")
+            break
+        else:
+            loss.backward()
         
         # use gradient clipping
         if max_norm_grad:
@@ -44,11 +45,6 @@ def train_per_epoch(
         optimizer.step()
 
         train_loss += loss.item()
-        running_loss += loss.item()
-        
-        if batch_idx % 32 == 31 and writer is not None:
-            writer.add_scalar('Running/train', running_loss / 32, epoch * len(train_loader) + batch_idx)
-            running_loss = 0
 
     if scheduler:
         scheduler.step()
@@ -63,30 +59,23 @@ def valid_per_epoch(
     optimizer : torch.optim.Optimizer,
     loss_fn : torch.nn.Module,
     device : str = "cpu",
-    writer = None,
-    epoch : Optional[int] = None,
     ):
 
     model.eval()
     model.to(device)
     valid_loss = 0
-    running_loss = 0
-
-    for batch_idx, (data, target) in enumerate(valid_loader):
-        with torch.no_grad():
-            optimizer.zero_grad()
-            data = data.to(device)
-            target = target.to(device)
-            output = model(data)
-
-            loss = loss_fn(output, target)
     
-            valid_loss += loss.item()
+    for batch_idx, (data_0D, data_ctrl, target) in enumerate(valid_loader):
+        with torch.no_grad():
+            if data_0D.size()[0] <= 1:
+                continue
             
-            if batch_idx % 8 == 7 and writer is not None:
-                writer.add_scalar('Running/valid', running_loss / 32, epoch * len(valid_loader) + batch_idx)
-                running_loss = 0
-
+            optimizer.zero_grad()
+            output = model(data_0D.to(device), data_ctrl.to(device))
+            loss = loss_fn(output, target.to(device))
+            
+            valid_loss += loss.item()
+        
     valid_loss /= (batch_idx + 1)
 
     return valid_loss
@@ -105,7 +94,7 @@ def train(
     save_last : str = "./weights/last.pt",
     max_norm_grad : Optional[float] = None,
     tensorboard_dir : Optional[str] = None,
-    test_for_check_per_epoch : Optional[DataLoader] = None
+    test_for_check_per_epoch : Optional[DataLoader] = None,
     ):
 
     train_loss_list = []
@@ -130,8 +119,6 @@ def train(
             loss_fn,
             device,
             max_norm_grad,
-            writer,
-            epoch
         )
 
         valid_loss = valid_per_epoch(
@@ -140,8 +127,6 @@ def train(
             optimizer,
             loss_fn,
             device,
-            writer,
-            epoch
         )
 
         train_loss_list.append(train_loss)
@@ -149,9 +134,27 @@ def train(
 
         if verbose:
             if epoch % verbose == 0:
-                print("epoch : {}, train loss : {:.3f}, valid loss : {:.3f},".format(
-                    epoch+1, train_loss, valid_loss
-                ))
+                print("epoch : {}, train loss : {:.3f}, valid loss : {:.3f},".format(epoch+1, train_loss, valid_loss))
+                
+                if test_for_check_per_epoch:
+                    model.eval()
+                    # evaluate metric in tensorboard
+                    test_loss, mse, rmse, mae, r2 = evaluate(test_for_check_per_epoch, model, optimizer, loss_fn, device, False)
+                    writer.add_scalars('test', 
+                                        {
+                                            'loss' : test_loss,
+                                            'mse':mse,
+                                            'rmse':rmse,
+                                            'mae':mae,
+                                            'r2':r2,
+                                        }, 
+                                        epoch + 1)
+                    
+                    fig = predict_tensorboard(model, test_for_check_per_epoch.dataset, device)
+                    
+                    # model performance check in tensorboard
+                    writer.add_figure('model performance', fig, epoch+1)
+                    model.train()
                 
         # tensorboard recording
         writer.add_scalar('Loss/train', train_loss, epoch)
@@ -166,30 +169,7 @@ def train(
         # save the last parameters
         torch.save(model.state_dict(), save_last)
         
-        if test_for_check_per_epoch:
-            
-            model.eval()
-            # evaluate metric in tensorboard
-            test_loss, mse, rmse, mae = evaluate(test_for_check_per_epoch, model, optimizer, loss_fn, device, False)
-            writer.add_scalars('Loss/test', 
-                                {
-                                  'test loss' : test_loss,
-                                  'mse':mse,
-                                  'rmse':rmse,
-                                  'mae':mae,
-                                }, epoch)
-            
-            fig = predict_tensorboard(model, test_for_check_per_epoch.dataset, device)
-            
-            # model performance check in tensorboard
-            writer.add_figure('Model_performance', fig, epoch)
-            
-            model.train()
-
-    # print("\n============ Report ==============\n")
-    print("training process finished, best loss : {:.3f}, best epoch : {}".format(
-        best_loss, best_epoch
-    ))
+    print("training process finished, best loss : {:.3f}, best epoch : {}".format(best_loss, best_epoch))
     
     if writer:
         writer.close()

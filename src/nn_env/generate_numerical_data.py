@@ -4,10 +4,13 @@ from typing import List
 from scipy.interpolate import interp1d
 from tqdm.auto import tqdm
 from src.nn_env.config import Config
+import warnings
+
+warnings.filterwarnings(action = 'ignore')
 
 config = Config()
 
-def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
+def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
     
     df_interpolate = pd.DataFrame()
     shot_list = np.unique(df.shot.values).tolist()
@@ -130,9 +133,43 @@ def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
         dict_extend = {}
         t = df_shot.time.values.reshape(-1,)
 
-        t_start = 0
+        # quench info
+        tTQend = df_disruption[df_disruption.shot == shot].tTQend.values[0]
+        tftsrt = df_disruption[df_disruption.shot == shot].tftsrt.values[0]
+        tipminf = df_disruption[df_disruption.shot == shot].tipminf.values[0]
+        
+        # define t_start and t_end
+        t_start = min(t)
         t_end = max(t)
-        t_end += dt
+        
+        # valid shot selection
+        if t_end < tftsrt:
+            print("Invalid shot : {} - loss of data".format(shot))
+            continue
+        elif t_end < 2.0:
+            print("Invalid shot : {} - operation time is too short".format(shot))
+            continue
+        elif int((t_end - tftsrt) // dt) < 4:
+            print("Invalid shot : {} - data too small".format(shot))
+            continue
+        
+        # correct the t_end
+        # we want to see flattop interval
+        t_start = tftsrt
+        
+        if t_end >= tTQend:
+            t_end = tTQend - dt * 4
+            
+        # double check : n points should be larger than 4 for stable interpolation
+        if int((t_end - t_start) // dt) < 4:
+            print("Invalid shot : {} - data too small".format(shot))
+            continue
+        elif t_end < t_start:
+            print("Invalid shot : {} - t_end is smaller than t_start".format(shot))
+            continue
+        elif t_end - t_start < 2.0:
+            print("Invalid shot : {} - operation time is too short".format(shot))
+            continue
 
         t_extend = np.arange(t_start, t_end + dt, dt)
         dict_extend['time'] = t_extend
@@ -140,7 +177,7 @@ def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
 
         for col in cols:
             data = df_shot[col].values.reshape(-1,)
-            interp = interp1d(t, data, kind = 'linear', fill_value = 'extrapolate')
+            interp = interp1d(t, data, kind = 'cubic', fill_value = 'extrapolate')
             data_extend = interp(t_extend).reshape(-1,)
             
             if col == "\\ipmhd":
@@ -183,10 +220,13 @@ def ts_interpolate(df : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
 
 if __name__ == "__main__":
     df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data.csv")
+    df_disrupt = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding = "euc-kr")
+    print(df.describe())
+    
     cols = df.columns[df.notna().any()].drop(['Unnamed: 0','shot','time']).tolist()
-    fps = 210
-    dt = 1.0 / fps * 4
+    dt = 0.01
 
-    df_extend = ts_interpolate(df, cols, dt)
-    df_extend['frame_idx'] = df_extend.time.apply(lambda x : int(round(x * fps)))
+    df_extend = ts_interpolate(df, df_disrupt, cols, dt)
     df_extend.to_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv", index = False)
+    
+    print(df_extend.describe())

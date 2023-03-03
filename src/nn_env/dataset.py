@@ -11,7 +11,8 @@ from typing import Optional, Dict, List, Union, Literal
 DEFAULT_0D_COLS = [
     '\\q0','\\q95', '\\ipmhd', '\\kappa', 
     '\\tritop', '\\tribot','\\betap','\\betan',
-    '\\li', '\\WTOT_DLM03', '\\ne_inter01'
+    '\\li', '\\WTOT_DLM03', '\\ne_inter01',
+    '\\TS_NE_CORE_AVG', '\\TS_TE_CORE_AVG'
 ]
 
 DEFAULT_DIAG = [
@@ -27,39 +28,49 @@ DEFAULT_CONTROL_COLS = [
     '\\LV01'
 ]
 
+# NN based predictor uses 0D parameters and control parameters to predict the next state of the plasma
+#   However, considering RL application, control parameters should contains future values 
+#   which is equal to future 0D parameters over next time
+# Thus, two different input data should be generated
+
 class DatasetFor0D(Dataset):
     def __init__(
         self, 
         ts_data : pd.DataFrame, 
         disrupt_data : pd.DataFrame,
-        seq_len : int = 21, 
-        pred_len : int = 1, 
-        dist:int = 3, 
-        state_cols : List = DEFAULT_0D_COLS,
-        control_cols : List = DEFAULT_CONTROL_COLS,
-        pred_cols : List = DEFAULT_0D_COLS, 
-        interval : int = 14,
-        scaler = None,
+        seq_len_0D : int = 20,
+        seq_len_ctrl : int = 24,
+        pred_len_0D : int = 4,
+        cols_0D : List = DEFAULT_0D_COLS,
+        cols_ctrl : List = DEFAULT_CONTROL_COLS,
+        interval : int = 10,
+        scaler_0D = None,
+        scaler_ctrl = None,
         ):
-        self.ts_data = ts_data
-        self.seq_len = seq_len
-        self.pred_len = pred_len
         
+        # dataframe : time series data and disruption information
+        self.ts_data = ts_data
         self.disrupt_data = disrupt_data
         
-        self.cols = state_cols + control_cols
-        self.state_cols = state_cols
-        self.control_cols = control_cols
-        self.pred_cols = pred_cols
+        # dataset info
+        self.seq_len_0D = seq_len_0D
+        self.seq_len_ctrl = seq_len_ctrl
         
-        self.dist = dist
+        self.cols_0D = cols_0D
+        self.cols_ctrl = cols_ctrl
+        
+        self.pred_len_0D = pred_len_0D
         self.interval = interval
-
+        
+        # scaler
+        self.scaler_0D = scaler_0D
+        self.scaler_ctrl = scaler_ctrl
+        
+        # indice for getitem method
         self.input_indices = []
         self.target_indices = []
         
-        self.scaler = scaler
-        
+        # experiment list
         self.shot_list = np.unique(self.ts_data.shot.values).tolist()
         
         # preprocessing
@@ -71,34 +82,35 @@ class DatasetFor0D(Dataset):
     def preprocessing(self):
         
         # control value : NAN -> 0
-        self.ts_data[self.control_cols] = self.ts_data[self.control_cols].fillna(0)
+        self.ts_data[self.cols_ctrl] = self.ts_data[self.cols_ctrl].fillna(0)
         
         # ignore shot which have too many nan values
         shot_ignore = []
+        
         for shot in tqdm(self.shot_list, desc = 'extract the null data'):
             df_shot = self.ts_data[self.ts_data.shot == shot]
-            null_check = df_shot[self.cols].isna().sum()
+            null_check = df_shot[self.cols_0D + self.cols_ctrl].isna().sum()
             
             for c in null_check:
                 if c > 0.5 * len(df_shot):
                     shot_ignore.append(shot)
                     break
-                
+          
         # update shot list with ignoring the null data
         shot_list_new = [shot_num for shot_num in self.shot_list if shot_num not in shot_ignore]
         self.shot_list = shot_list_new
         
         # 0D parameter : NAN -> forward fill
-        # self.ts_data[self.state_cols] = self.ts_data[self.state_cols].fillna(method='ffill')
-        
         for shot in tqdm(self.shot_list, desc = 'replace nan value'):
             df_shot = self.ts_data[self.ts_data.shot == shot].copy()
-            self.ts_data.loc[self.ts_data.shot == shot, self.state_cols] = df_shot[self.state_cols].fillna(method='ffill')
+            self.ts_data.loc[self.ts_data.shot == shot, self.cols_0D] = df_shot[self.cols_0D].fillna(method='ffill')
+        
+        # scaling
+        if self.scaler_0D:
+            self.ts_data[self.cols_0D] = self.scaler_0D.transform(self.ts_data[self.cols_0D])
             
-        if self.scaler:
-            self.ts_data[self.state_cols + self.control_cols] = self.scaler.transform(
-                self.ts_data[self.state_cols + self.control_cols]
-            )
+        if self.scaler_ctrl:
+            self.ts_data[self.cols_ctrl] = self.scaler_ctrl.transform(self.ts_data[self.cols_ctrl])
 
     def _generate_index(self):
         
@@ -118,7 +130,7 @@ class DatasetFor0D(Dataset):
             target_indices = []
 
             idx = 0
-            idx_last = len(df_shot.index) - self.seq_len - self.pred_len - self.dist
+            idx_last = len(df_shot.index) - self.seq_len_0D - self.pred_len_0D
 
             while(idx < idx_last):
                 row = df_shot.iloc[idx]
@@ -129,13 +141,14 @@ class DatasetFor0D(Dataset):
                     continue
                 
                 input_indx = df_shot.index.values[idx]
-                target_indx = df_shot.index.values[idx + self.seq_len + self.dist]
+                target_indx = df_shot.index.values[idx + self.seq_len_0D]
                 
                 input_indices.append(input_indx)
                 target_indices.append(target_indx)
                 
-                if idx_last - idx - self.seq_len - self.dist - self.pred_len < 0:
+                if idx_last - target_indx < 0 or idx_last - idx - self.seq_len_ctrl < 0:
                     break
+                
                 else:
                     idx += self.interval
 
@@ -147,13 +160,16 @@ class DatasetFor0D(Dataset):
         input_idx = self.input_indices[idx]
         target_idx = self.target_indices[idx]
         
-        data = self.ts_data[self.state_cols + self.control_cols].loc[input_idx+1:input_idx + self.seq_len].values
-        target = self.ts_data[self.pred_cols].loc[target_idx+1: target_idx + self.pred_len].values
+        data_0D = self.ts_data[self.cols_0D].loc[input_idx+1:input_idx + self.seq_len_0D].values
+        data_ctrl = self.ts_data[self.cols_ctrl].loc[input_idx+1:input_idx + self.seq_len_ctrl].values
         
-        data = torch.from_numpy(data).float()
+        target = self.ts_data[self.cols_0D].loc[target_idx+1: target_idx + self.pred_len_0D].values
+        
+        data_0D = torch.from_numpy(data_0D).float()
+        data_ctrl = torch.from_numpy(data_ctrl).float()
         target = torch.from_numpy(target).float()
 
-        return data, target
+        return data_0D, data_ctrl, target
 
     def __len__(self):
         return len(self.input_indices)

@@ -18,3 +18,4 @@
 ### Dataset
 
 ## Reference
+- Deep Neural Network-Based Surrogate Model for Optimal Component Sizing of Power Converters Using Deep Reinforcement Learning(https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9841555)

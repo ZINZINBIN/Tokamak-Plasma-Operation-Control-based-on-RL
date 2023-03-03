@@ -50,115 +50,188 @@ class GELU(nn.Module):
 class Transformer(nn.Module):
     def __init__(
         self, 
-        input_dim: int = 11, 
-        feature_dim : int = 256, 
-        seq_len : int = 128, 
-        n_layers : int = 1, 
+        n_layers : int = 2, 
         n_heads : int = 8, 
         dim_feedforward : int = 1024, 
-        dropout : float = 0.1, 
-        pred_len : int = 7, 
-        output_dim : int = 1,
-        RIN : bool = False
+        dropout : float = 0.1,        
+        RIN : bool = False,
+        input_0D_dim : int = 12,
+        input_0D_seq_len : int = 20,
+        input_ctrl_dim : int = 14,
+        input_ctrl_seq_len : int = 24,
+        output_0D_pred_len : int = 4,
+        output_0D_dim : int = 12,
+        feature_0D_dim : int = 128,
+        feature_ctrl_dim : int = 128,
         ):
         
         super(Transformer, self).__init__()
         
-        self.src_mask = None
-        self.input_dim = input_dim
-        self.max_len = seq_len
-        self.pred_len = pred_len
-        self.output_dim = output_dim
-        self.feature_dim = feature_dim
+        # input information
+        self.input_0D_dim = input_0D_dim
+        self.input_0D_seq_len = input_0D_seq_len
+        self.input_ctrl_dim = input_ctrl_dim
+        self.input_ctrl_seq_len = input_ctrl_seq_len
+        
+        # output information
+        self.output_0D_pred_len = output_0D_pred_len
+        self.output_0D_dim = output_0D_dim
+        
+        # source mask
+        self.src_mask_0D = None
+        self.src_mask_ctrl = None
+        
+        # transformer info
+        self.feature_0D_dim = feature_0D_dim
+        self.n_layers = n_layers
+        self.n_heads = n_heads
+        self.feature_ctrl_dim = feature_ctrl_dim
+        
         self.RIN = RIN
         
         self.noise = NoiseLayer(mean = 0, std = 1e-2)
         
-        self.encoder_input_layer = nn.Sequential(
-            nn.Linear(in_features=input_dim, out_features=feature_dim // 2),
+        # 0D data encoder
+        self.encoder_input_0D = nn.Sequential(
+            nn.Linear(in_features=input_0D_dim, out_features=feature_0D_dim // 2),
             nn.ReLU(),
-            nn.Linear(feature_dim //2, feature_dim)
+            nn.Linear(feature_0D_dim //2, feature_0D_dim)
         )
         
-        self.pos_enc = PositionalEncoding(d_model = feature_dim, max_len = seq_len)
+        self.pos_0D = PositionalEncoding(d_model = feature_0D_dim, max_len = input_0D_seq_len)
         
-        self.encoder = nn.TransformerEncoderLayer(
-            d_model = feature_dim, 
+        self.enc_0D = nn.TransformerEncoderLayer(
+            d_model = feature_0D_dim, 
             nhead = n_heads, 
             dropout = dropout,
             dim_feedforward = dim_feedforward,
             activation = GELU()
         )
         
-        # encoder layer
-        self.transformer_encoder = nn.TransformerEncoder(self.encoder, num_layers=n_layers)
+        self.trans_enc_0D = nn.TransformerEncoder(self.enc_0D, num_layers=n_layers)
         
+        # ctrl data encoder
+        self.encoder_input_ctrl = nn.Sequential(
+            nn.Linear(in_features=input_ctrl_dim, out_features=feature_ctrl_dim // 2),
+            nn.ReLU(),
+            nn.Linear(feature_ctrl_dim //2, feature_ctrl_dim)
+        )
+        
+        self.pos_ctrl = PositionalEncoding(d_model = feature_ctrl_dim, max_len = input_ctrl_seq_len)
+        self.enc_ctrl = nn.TransformerEncoderLayer(
+            d_model = feature_ctrl_dim, 
+            nhead = n_heads, 
+            dropout = dropout,
+            dim_feedforward = dim_feedforward,
+            activation = GELU()
+        )
+        
+        self.trans_enc_ctrl = nn.TransformerEncoder(self.enc_ctrl, num_layers=n_layers)
+
         # FC decoder
-        # dimension reduction
-        self.lc_feat= nn.Linear(feature_dim, input_dim)
-        
         # sequence length reduction
-        self.lc_seq = nn.Linear(seq_len, pred_len)
+        self.lc_0D_seq = nn.Linear(input_0D_seq_len, output_0D_pred_len)
+        self.lc_ctrl_seq = nn.Linear(input_ctrl_seq_len, output_0D_pred_len)
         
-        if input_dim != output_dim:
-            self.lc_feat2 = nn.Linear(input_dim, output_dim)
+        # dimension reduction
+        self.lc_feat= nn.Sequential(
+            nn.Linear(feature_0D_dim + feature_ctrl_dim, (feature_0D_dim + feature_ctrl_dim) // 2),
+            nn.ReLU(),
+            nn.Linear((feature_0D_dim + feature_ctrl_dim) // 2, output_0D_dim),
+        )
         
         # Reversible Instance Normalization
         if self.RIN:
-            self.affine_weight = nn.Parameter(torch.ones(1, 1, input_dim))
-            self.affine_bias = nn.Parameter(torch.zeros(1, 1, input_dim))
+            self.affine_weight_0D = nn.Parameter(torch.ones(1, 1, input_0D_dim))
+            self.affine_bias_0D = nn.Parameter(torch.zeros(1, 1, input_0D_dim))
+            
+            self.affine_weight_ctrl = nn.Parameter(torch.ones(1, 1, input_ctrl_dim))
+            self.affine_bias_ctrl = nn.Parameter(torch.zeros(1, 1, input_ctrl_dim))
         
-    def forward(self, x : torch.Tensor):
+    def forward(self, x_0D : torch.Tensor, x_ctrl : torch.Tensor):
         
-        b = x.size()[0]
+        b = x_0D.size()[0]
         
         # add noise to robust performance
-        x = self.noise(x)
+        x_0D = self.noise(x_0D)
+        x_ctrl = self.noise(x_ctrl)
         
         if self.RIN:
-            means = x.mean(1, keepdim=True).detach()
-            x = x - means
-            stdev = torch.sqrt(torch.var(x, dim=1, keepdim=True, unbiased=False) + 1e-5)
-            x /= stdev
-            x = x * self.affine_weight + self.affine_bias
-        
+            means_0D = x_0D.mean(1, keepdim=True).detach()
+            x_0D = x_0D - means_0D
+            stdev_0D = torch.sqrt(torch.var(x_0D, dim=1, keepdim=True, unbiased=False) + 1e-5)
+            x_0D /= stdev_0D
+            x_0D = x_0D * self.affine_weight_0D + self.affine_bias_0D
+            
+            means_ctrl = x_ctrl.mean(1, keepdim=True).detach()
+            x_ctrl = x_ctrl - means_ctrl
+            stdev_ctrl = torch.sqrt(torch.var(x_ctrl, dim=1, keepdim=True, unbiased=False) + 1e-5)
+            x_ctrl /= stdev_ctrl
+            x_ctrl = x_ctrl * self.affine_weight_ctrl + self.affine_bias_ctrl
+            
+        # path : 0D data
         # encoding : (N, T, F) -> (N, T, d_model)
-        x = self.encoder_input_layer(x)
+        x_0D = self.encoder_input_0D(x_0D)
         
         # (T, N, d_model)
-        x = x.permute(1,0,2)
+        x_0D = x_0D.permute(1,0,2)
         
-        if self.src_mask is None or self.src_mask.size(0) != len(x):
-            device = x.device
-            mask = self._generate_square_subsequent_mask(len(x)).to(device)
-            self.src_mask = mask
+        if self.src_mask_0D is None or self.src_mask_0D.size(0) != len(x_0D):
+            device = x_0D.device
+            mask = self._generate_square_subsequent_mask(len(x_0D)).to(device)
+            self.src_mask_0D = mask
+        
         
         # positional encoding for time axis : (T, N, d_model)
-        x = self.pos_enc(x)
+        x_0D = self.pos_0D(x_0D)
         
         # transformer encoding layer : (T, N, d_model)
-        x = self.transformer_encoder(x, self.src_mask.to(x.device))
+        x_0D = self.trans_enc_0D(x_0D, self.src_mask_0D.to(x_0D.device))
         
         # (N, T, d_model)
-        x = x.permute(1,0,2)
+        x_0D = x_0D.permute(1,0,2)
+        
+        # path : ctrl data
+        x_ctrl = self.encoder_input_ctrl(x_ctrl)
+        
+        # (T, N, d_model)
+        x_ctrl = x_ctrl.permute(1,0,2)
+        
+        if self.src_mask_ctrl is None or self.src_mask_ctrl.size(0) != len(x_ctrl):
+            device = x_ctrl.device
+            mask = self._generate_square_subsequent_mask(len(x_ctrl)).to(device)
+            self.src_mask_ctrl = mask
+        
+        # positional encoding for time axis : (T, N, d_model)
+        x_ctrl = self.pos_ctrl(x_ctrl)
+        
+        # transformer encoding layer : (T, N, d_model)
+        x_ctrl = self.trans_enc_ctrl(x_ctrl, self.src_mask_ctrl.to(x_ctrl.device))
+        
+        # (N, T, d_model)
+        x_ctrl = x_ctrl.permute(1,0,2)
+        
+        # (N, d_model, T_)
+        x_0D = self.lc_0D_seq(x_0D.permute(0,2,1))
+        # (N, T_, d_model)
+        x_0D = x_0D.permute(0,2,1)
+        
+        # (N, d_model, T_)
+        x_ctrl = self.lc_ctrl_seq(x_ctrl.permute(0,2,1))
+        # (N, T_, d_model)
+        x_ctrl = x_ctrl.permute(0,2,1)
+        
+        x = torch.concat([x_0D, x_ctrl], axis = 2)
         
         # dim reduction
         x = self.lc_feat(x)
-        
-        # seq reduction
-        x = x.permute(0,2,1)
-        x = self.lc_seq(x)
-        x = x.permute(0,2,1)
-        
+    
         if self.RIN:
-            x = x - self.affine_bias
-            x = x / (self.affine_weight + 1e-10)
-            x = x * stdev
-            x = x + means
+            x = x - self.affine_bias_0D
+            x = x / (self.affine_weight_0D + 1e-10)
+            x = x * stdev_0D
+            x = x + means_0D  
             
-        if self.lc_feat2:
-            x = self.lc_feat2(x)
-        
         return x
 
     def _generate_square_subsequent_mask(self, size : int):
@@ -167,29 +240,6 @@ class Transformer(nn.Module):
         return mask
 
     def summary(self):
-        sample_x = torch.zeros((1, self.max_len, self.input_dim))
-        summary(self, sample_x, batch_size = 1, show_input = True, print_summary=True)
-        
-    def predict(self, x : torch.Tensor, target_len : Optional[int]):
-        
-        output = torch.zeros((self.max_len + target_len, self.n_features,)).to(x.device)
-        output[0:self.max_len,:] = x
-        
-        if x.ndim == 2:
-            x = x.unsqueeze(0)
-        
-        with torch.no_grad():
-            for idx_srt in range(0, self.max_len + target_len, self.pred_len):
-                
-                if self.max_len + target_len - idx_srt < self.pred_len:
-                    idx_end = -1
-                    idx_srt = idx_end - self.max_len
-                else:
-                    idx_end = idx_srt + self.pred_len
-                
-                pred = self.forward(x).squeeze(0)
-                output[idx_srt : idx_end,:] = pred
-                
-        output = output[self.max_len:, :].unsqueeze(0)
-        return output
-            
+        sample_0D = torch.zeros((1, self.input_0D_seq_len, self.input_0D_dim))
+        sample_ctrl = torch.zeros((1, self.input_ctrl_seq_len, self.input_ctrl_dim))
+        summary(self, sample_0D, sample_ctrl, batch_size = 1, show_input = True, print_summary=True)

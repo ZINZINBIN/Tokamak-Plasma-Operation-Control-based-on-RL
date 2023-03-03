@@ -1,699 +1,0 @@
-torch device avaliable :  True
-torch current device :  0
-torch device num :  4
-
-extract the null data:   0%|          | 0/620 [00:00<?, ?it/s]
-extract the null data:  10%|▉         | 60/620 [00:00<00:00, 594.96it/s]
-extract the null data:  19%|█▉        | 120/620 [00:00<00:00, 549.79it/s]
-extract the null data:  30%|██▉       | 183/620 [00:00<00:00, 583.80it/s]
-extract the null data:  40%|████      | 249/620 [00:00<00:00, 612.80it/s]
-extract the null data:  51%|█████     | 315/620 [00:00<00:00, 629.20it/s]
-extract the null data:  62%|██████▏   | 382/620 [00:00<00:00, 641.82it/s]
-extract the null data:  72%|███████▏  | 447/620 [00:00<00:00, 636.56it/s]
-extract the null data:  82%|████████▏ | 511/620 [00:00<00:00, 616.59it/s]
-extract the null data:  93%|█████████▎| 577/620 [00:00<00:00, 629.58it/s]
-extract the null data: 100%|██████████| 620/620 [00:00<00:00, 621.85it/s]
-
-Dataset preprocessing...:   0%|          | 0/620 [00:00<?, ?it/s]
-Dataset preprocessing...:   3%|▎         | 17/620 [00:00<00:03, 159.83it/s]
-Dataset preprocessing...:   5%|▌         | 33/620 [00:00<00:06, 87.43it/s] 
-Dataset preprocessing...:   7%|▋         | 44/620 [00:00<00:07, 76.61it/s]
-Dataset preprocessing...:   9%|▊         | 53/620 [00:00<00:07, 73.40it/s]
-Dataset preprocessing...:  10%|▉         | 61/620 [00:00<00:08, 66.82it/s]
-Dataset preprocessing...:  11%|█         | 68/620 [00:00<00:09, 59.55it/s]
-Dataset preprocessing...:  12%|█▏        | 76/620 [00:01<00:08, 61.58it/s]
-Dataset preprocessing...:  13%|█▎        | 83/620 [00:01<00:09, 55.85it/s]
-Dataset preprocessing...:  15%|█▍        | 90/620 [00:01<00:09, 57.17it/s]
-Dataset preprocessing...:  15%|█▌        | 96/620 [00:01<00:09, 53.52it/s]
-Dataset preprocessing...:  17%|█▋        | 105/620 [00:01<00:08, 61.21it/s]
-Dataset preprocessing...:  18%|█▊        | 112/620 [00:01<00:08, 59.85it/s]
-Dataset preprocessing...:  20%|█▉        | 122/620 [00:01<00:07, 68.12it/s]
-Dataset preprocessing...:  21%|██        | 130/620 [00:01<00:07, 69.17it/s]
-Dataset preprocessing...:  22%|██▏       | 138/620 [00:02<00:07, 67.09it/s]
-Dataset preprocessing...:  23%|██▎       | 145/620 [00:02<00:07, 66.67it/s]
-Dataset preprocessing...:  25%|██▍       | 153/620 [00:02<00:07, 64.37it/s]
-Dataset preprocessing...:  26%|██▌       | 161/620 [00:02<00:06, 67.35it/s]
-Dataset preprocessing...:  27%|██▋       | 168/620 [00:02<00:07, 57.88it/s]
-Dataset preprocessing...:  29%|██▉       | 181/620 [00:02<00:05, 74.64it/s]
-Dataset preprocessing...:  31%|███       | 190/620 [00:02<00:05, 77.59it/s]
-Dataset preprocessing...:  32%|███▏      | 199/620 [00:02<00:05, 80.63it/s]
-Dataset preprocessing...:  34%|███▎      | 208/620 [00:03<00:05, 77.29it/s]
-Dataset preprocessing...:  35%|███▍      | 216/620 [00:03<00:05, 73.92it/s]
-Dataset preprocessing...:  36%|███▌      | 224/620 [00:03<00:05, 72.10it/s]
-Dataset preprocessing...:  38%|███▊      | 233/620 [00:03<00:05, 75.12it/s]
-Dataset preprocessing...:  39%|███▉      | 241/620 [00:03<00:05, 72.89it/s]
-Dataset preprocessing...:  40%|████      | 249/620 [00:03<00:05, 70.20it/s]
-Dataset preprocessing...:  41%|████▏     | 257/620 [00:03<00:05, 64.08it/s]
-Dataset preprocessing...:  43%|████▎     | 264/620 [00:03<00:05, 60.48it/s]
-Dataset preprocessing...:  44%|████▎     | 271/620 [00:04<00:06, 57.64it/s]
-Dataset preprocessing...:  45%|████▍     | 278/620 [00:04<00:05, 60.27it/s]
-Dataset preprocessing...:  46%|████▌     | 285/620 [00:04<00:05, 57.64it/s]
-Dataset preprocessing...:  47%|████▋     | 293/620 [00:04<00:05, 62.10it/s]
-Dataset preprocessing...:  48%|████▊     | 300/620 [00:04<00:08, 38.32it/s]
-Dataset preprocessing...:  50%|█████     | 310/620 [00:04<00:06, 47.68it/s]
-Dataset preprocessing...:  51%|█████▏    | 318/620 [00:04<00:05, 51.86it/s]
-Dataset preprocessing...:  52%|█████▏    | 325/620 [00:05<00:07, 37.51it/s]
-Dataset preprocessing...:  54%|█████▎    | 332/620 [00:05<00:06, 42.36it/s]
-Dataset preprocessing...:  55%|█████▌    | 341/620 [00:05<00:05, 48.82it/s]
-Dataset preprocessing...:  56%|█████▌    | 347/620 [00:05<00:05, 49.30it/s]
-Dataset preprocessing...:  57%|█████▋    | 354/620 [00:05<00:05, 52.20it/s]
-Dataset preprocessing...:  58%|█████▊    | 360/620 [00:05<00:04, 53.84it/s]
-Dataset preprocessing...:  59%|█████▉    | 367/620 [00:05<00:04, 56.83it/s]
-Dataset preprocessing...:  60%|██████    | 375/620 [00:06<00:03, 62.31it/s]
-Dataset preprocessing...:  62%|██████▏   | 382/620 [00:06<00:03, 63.87it/s]
-Dataset preprocessing...:  63%|██████▎   | 389/620 [00:06<00:03, 63.80it/s]
-Dataset preprocessing...:  64%|██████▍   | 397/620 [00:06<00:03, 67.26it/s]
-Dataset preprocessing...:  65%|██████▌   | 404/620 [00:06<00:03, 57.97it/s]
-Dataset preprocessing...:  66%|██████▋   | 411/620 [00:06<00:03, 59.93it/s]
-Dataset preprocessing...:  67%|██████▋   | 418/620 [00:06<00:03, 55.71it/s]
-Dataset preprocessing...:  69%|██████▉   | 427/620 [00:06<00:03, 64.14it/s]
-Dataset preprocessing...:  70%|███████   | 434/620 [00:07<00:02, 64.12it/s]
-Dataset preprocessing...:  71%|███████▏  | 442/620 [00:07<00:02, 67.70it/s]
-Dataset preprocessing...:  72%|███████▏  | 449/620 [00:07<00:03, 55.09it/s]
-Dataset preprocessing...:  73%|███████▎  | 455/620 [00:07<00:03, 53.54it/s]
-Dataset preprocessing...:  75%|███████▍  | 462/620 [00:07<00:02, 54.37it/s]
-Dataset preprocessing...:  76%|███████▌  | 470/620 [00:07<00:02, 59.99it/s]
-Dataset preprocessing...:  77%|███████▋  | 477/620 [00:07<00:02, 55.30it/s]
-Dataset preprocessing...:  78%|███████▊  | 483/620 [00:08<00:02, 46.73it/s]
-Dataset preprocessing...:  79%|███████▉  | 489/620 [00:08<00:02, 45.90it/s]
-Dataset preprocessing...:  80%|███████▉  | 495/620 [00:08<00:02, 47.41it/s]
-Dataset preprocessing...:  81%|████████▏ | 504/620 [00:08<00:02, 55.08it/s]
-Dataset preprocessing...:  83%|████████▎ | 513/620 [00:08<00:01, 62.36it/s]
-Dataset preprocessing...:  84%|████████▍ | 521/620 [00:08<00:01, 65.99it/s]
-Dataset preprocessing...:  85%|████████▌ | 528/620 [00:08<00:01, 62.92it/s]
-Dataset preprocessing...:  86%|████████▋ | 535/620 [00:08<00:01, 64.46it/s]
-Dataset preprocessing...:  87%|████████▋ | 542/620 [00:08<00:01, 63.01it/s]
-Dataset preprocessing...:  89%|████████▊ | 549/620 [00:09<00:01, 62.52it/s]
-Dataset preprocessing...:  90%|████████▉ | 556/620 [00:09<00:01, 52.74it/s]
-Dataset preprocessing...:  91%|█████████ | 562/620 [00:09<00:01, 51.40it/s]
-Dataset preprocessing...:  92%|█████████▏| 568/620 [00:09<00:01, 49.74it/s]
-Dataset preprocessing...:  93%|█████████▎| 574/620 [00:09<00:00, 51.90it/s]
-Dataset preprocessing...:  94%|█████████▎| 580/620 [00:09<00:00, 50.30it/s]
-Dataset preprocessing...:  95%|█████████▍| 587/620 [00:09<00:00, 53.86it/s]
-Dataset preprocessing...:  96%|█████████▌| 593/620 [00:09<00:00, 47.98it/s]
-Dataset preprocessing...:  96%|█████████▋| 598/620 [00:10<00:00, 37.79it/s]
-Dataset preprocessing...:  98%|█████████▊| 606/620 [00:10<00:00, 45.99it/s]
-Dataset preprocessing...:  99%|█████████▊| 612/620 [00:10<00:00, 42.80it/s]
-Dataset preprocessing...: 100%|█████████▉| 619/620 [00:10<00:00, 34.48it/s]
-Dataset preprocessing...: 100%|██████████| 620/620 [00:10<00:00, 56.57it/s]
-
-extract the null data:   0%|          | 0/155 [00:00<?, ?it/s]
-extract the null data:  38%|███▊      | 59/155 [00:00<00:00, 589.49it/s]
-extract the null data:  88%|████████▊ | 137/155 [00:00<00:00, 697.38it/s]
-extract the null data: 100%|██████████| 155/155 [00:00<00:00, 693.32it/s]
-
-Dataset preprocessing...:   0%|          | 0/155 [00:00<?, ?it/s]
-Dataset preprocessing...:   6%|▌         | 9/155 [00:00<00:01, 85.65it/s]
-Dataset preprocessing...:  12%|█▏        | 18/155 [00:00<00:02, 59.18it/s]
-Dataset preprocessing...:  16%|█▌        | 25/155 [00:00<00:02, 58.80it/s]
-Dataset preprocessing...:  21%|██▏       | 33/155 [00:00<00:01, 64.97it/s]
-Dataset preprocessing...:  26%|██▌       | 40/155 [00:00<00:01, 65.27it/s]
-Dataset preprocessing...:  33%|███▎      | 51/155 [00:00<00:01, 75.71it/s]
-Dataset preprocessing...:  38%|███▊      | 59/155 [00:00<00:01, 75.28it/s]
-Dataset preprocessing...:  43%|████▎     | 67/155 [00:00<00:01, 73.61it/s]
-Dataset preprocessing...:  48%|████▊     | 75/155 [00:01<00:01, 69.02it/s]
-Dataset preprocessing...:  54%|█████▎    | 83/155 [00:01<00:01, 70.99it/s]
-Dataset preprocessing...:  59%|█████▊    | 91/155 [00:01<00:00, 73.23it/s]
-Dataset preprocessing...:  64%|██████▍   | 99/155 [00:01<00:00, 73.99it/s]
-Dataset preprocessing...:  69%|██████▉   | 107/155 [00:01<00:00, 64.17it/s]
-Dataset preprocessing...:  74%|███████▎  | 114/155 [00:01<00:00, 60.62it/s]
-Dataset preprocessing...:  78%|███████▊  | 121/155 [00:01<00:00, 54.14it/s]
-Dataset preprocessing...:  83%|████████▎ | 129/155 [00:01<00:00, 58.93it/s]
-Dataset preprocessing...:  88%|████████▊ | 136/155 [00:02<00:00, 57.87it/s]
-Dataset preprocessing...:  92%|█████████▏| 142/155 [00:02<00:00, 57.20it/s]
-Dataset preprocessing...:  95%|█████████▌| 148/155 [00:02<00:00, 55.35it/s]
-Dataset preprocessing...: 100%|██████████| 155/155 [00:02<00:00, 64.07it/s]
-
-extract the null data:   0%|          | 0/194 [00:00<?, ?it/s]
-extract the null data:  31%|███▏      | 61/194 [00:00<00:00, 604.43it/s]
-extract the null data:  68%|██████▊   | 132/194 [00:00<00:00, 661.35it/s]
-extract the null data: 100%|██████████| 194/194 [00:00<00:00, 677.07it/s]
-
-Dataset preprocessing...:   0%|          | 0/194 [00:00<?, ?it/s]
-Dataset preprocessing...:   3%|▎         | 6/194 [00:00<00:03, 56.88it/s]
-Dataset preprocessing...:   6%|▌         | 12/194 [00:00<00:03, 58.58it/s]
-Dataset preprocessing...:  10%|▉         | 19/194 [00:00<00:03, 58.29it/s]
-Dataset preprocessing...:  13%|█▎        | 25/194 [00:00<00:02, 57.23it/s]
-Dataset preprocessing...:  16%|█▋        | 32/194 [00:00<00:02, 59.85it/s]
-Dataset preprocessing...:  20%|█▉        | 38/194 [00:00<00:02, 59.02it/s]
-Dataset preprocessing...:  26%|██▌       | 50/194 [00:00<00:01, 75.67it/s]
-Dataset preprocessing...:  31%|███       | 60/194 [00:00<00:01, 81.18it/s]
-Dataset preprocessing...:  36%|███▌      | 69/194 [00:00<00:01, 79.61it/s]
-Dataset preprocessing...:  40%|███▉      | 77/194 [00:01<00:01, 78.02it/s]
-Dataset preprocessing...:  44%|████▍     | 85/194 [00:01<00:01, 76.48it/s]
-Dataset preprocessing...:  48%|████▊     | 93/194 [00:01<00:01, 66.61it/s]
-Dataset preprocessing...:  52%|█████▏    | 100/194 [00:01<00:01, 63.27it/s]
-Dataset preprocessing...:  55%|█████▌    | 107/194 [00:01<00:01, 63.41it/s]
-Dataset preprocessing...:  59%|█████▉    | 114/194 [00:01<00:01, 46.52it/s]
-Dataset preprocessing...:  62%|██████▏   | 121/194 [00:01<00:01, 50.73it/s]
-Dataset preprocessing...:  65%|██████▌   | 127/194 [00:02<00:01, 42.58it/s]
-Dataset preprocessing...:  68%|██████▊   | 132/194 [00:02<00:01, 44.07it/s]
-Dataset preprocessing...:  72%|███████▏  | 140/194 [00:02<00:01, 52.23it/s]
-Dataset preprocessing...:  76%|███████▌  | 147/194 [00:02<00:00, 56.15it/s]
-Dataset preprocessing...:  79%|███████▉  | 154/194 [00:02<00:00, 54.99it/s]
-Dataset preprocessing...:  82%|████████▏ | 160/194 [00:02<00:00, 55.70it/s]
-Dataset preprocessing...:  87%|████████▋ | 168/194 [00:02<00:00, 61.57it/s]
-Dataset preprocessing...:  90%|█████████ | 175/194 [00:02<00:00, 63.22it/s]
-Dataset preprocessing...:  94%|█████████▍| 182/194 [00:03<00:00, 61.17it/s]
-Dataset preprocessing...:  97%|█████████▋| 189/194 [00:03<00:00, 54.22it/s]
-Dataset preprocessing...: 100%|██████████| 194/194 [00:03<00:00, 56.97it/s]
-train data :  71404
-valid data :  16010
-test data :  23937
------------------------------------------------------------------------------------
-           Layer (type)                Input Shape         Param #     Tr. Param #
-===================================================================================
-           NoiseLayer-1                [1, 21, 24]               0               0
-               Linear-2                [1, 21, 24]           3,200           3,200
-   PositionalEncoding-3               [21, 1, 128]               0               0
-   TransformerEncoder-4     [21, 1, 128], [21, 21]         793,088         793,088
-               Linear-5                  [1, 2688]       1,032,576       1,032,576
-               Linear-6                [1, 3, 128]           8,256           8,256
-            LayerNorm-7                 [1, 3, 64]             128             128
-                 ReLU-8                 [1, 3, 64]               0               0
-               Linear-9                 [1, 3, 64]           4,160           4,160
-           LayerNorm-10                 [1, 3, 64]             128             128
-                ReLU-11                 [1, 3, 64]               0               0
-              Linear-12                 [1, 3, 64]             650             650
-===================================================================================
-Total params: 1,842,186
-Trainable params: 1,842,186
-Non-trainable params: 0
-Batch size: 1
------------------------------------------------------------------------------------
-
-training process:   0%|          | 0/32 [00:00<?, ?it/s]
-training process:   3%|▎         | 1/32 [03:31<1:49:23, 211.72s/it]epoch : 1, train loss : 19.867, valid loss : 15.604,
-
-training process:   6%|▋         | 2/32 [07:14<1:49:02, 218.09s/it]
-training process:   9%|▉         | 3/32 [10:48<1:44:35, 216.41s/it]
-training process:  12%|█▎        | 4/32 [14:33<1:42:27, 219.57s/it]
-training process:  16%|█▌        | 5/32 [18:05<1:37:38, 216.98s/it]epoch : 5, train loss : 11.433, valid loss : 10.772,
-
-training process:  19%|█▉        | 6/32 [21:51<1:35:20, 220.02s/it]
-training process:  22%|██▏       | 7/32 [25:24<1:30:45, 217.81s/it]
-training process:  25%|██▌       | 8/32 [29:12<1:28:26, 221.11s/it]
-training process:  28%|██▊       | 9/32 [32:48<1:24:05, 219.37s/it]epoch : 9, train loss : 9.279, valid loss : 8.936,
-
-training process:  31%|███▏      | 10/32 [36:14<1:18:54, 215.19s/it]
-training process:  34%|███▍      | 11/32 [39:37<1:14:03, 211.58s/it]
-training process:  38%|███▊      | 12/32 [43:01<1:09:45, 209.27s/it]
-training process:  41%|████      | 13/32 [46:27<1:05:56, 208.25s/it]epoch : 13, train loss : 7.995, valid loss : 8.003,
-
-training process:  44%|████▍     | 14/32 [49:53<1:02:14, 207.45s/it]
-training process:  47%|████▋     | 15/32 [53:19<58:39, 207.02s/it]  
-training process:  50%|█████     | 16/32 [56:50<55:33, 208.33s/it]
-training process:  53%|█████▎    | 17/32 [1:00:44<53:59, 215.94s/it]epoch : 17, train loss : 7.397, valid loss : 7.505,
-
-training process:  56%|█████▋    | 18/32 [1:04:49<52:28, 224.93s/it]
-training process:  59%|█████▉    | 19/32 [1:08:55<50:06, 231.26s/it]
-training process:  62%|██████▎   | 20/32 [1:13:02<47:11, 235.97s/it]
-training process:  66%|██████▌   | 21/32 [1:17:08<43:47, 238.83s/it]epoch : 21, train loss : 6.923, valid loss : 7.998,
-
-training process:  69%|██████▉   | 22/32 [1:21:15<40:12, 241.24s/it]
-training process:  72%|███████▏  | 23/32 [1:25:21<36:24, 242.70s/it]
-training process:  75%|███████▌  | 24/32 [1:29:27<32:29, 243.67s/it]
-training process:  78%|███████▊  | 25/32 [1:33:28<28:19, 242.84s/it]epoch : 25, train loss : 6.669, valid loss : 6.925,
-
-training process:  81%|████████▏ | 26/32 [1:37:35<24:24, 244.12s/it]
-training process:  84%|████████▍ | 27/32 [1:41:41<20:24, 244.86s/it]
-training process:  88%|████████▊ | 28/32 [1:45:48<16:20, 245.23s/it]
-training process:  91%|█████████ | 29/32 [1:49:46<12:09, 243.10s/it]epoch : 29, train loss : 6.365, valid loss : 6.757,
-
-training process:  94%|█████████▍| 30/32 [1:53:18<07:47, 233.98s/it]
-training process:  97%|█████████▋| 31/32 [1:57:06<03:52, 232.14s/it]
-training process: 100%|██████████| 32/32 [2:00:42<00:00, 227.37s/it]
-training process: 100%|██████████| 32/32 [2:00:42<00:00, 226.34s/it]
-training process finished, best loss : 6.402, best epoch : 30
-test loss : 16.879
-# mse : 0.194, rmse : 0.372, mae : 0.102
-torch device avaliable :  True
-torch current device :  0
-torch device num :  4
-
-extract the null data:   0%|          | 0/620 [00:00<?, ?it/s]
-extract the null data:  10%|▉         | 59/620 [00:00<00:00, 588.95it/s]
-extract the null data:  20%|██        | 127/620 [00:00<00:00, 637.81it/s]
-extract the null data:  31%|███▏      | 195/620 [00:00<00:00, 653.74it/s]
-extract the null data:  42%|████▏     | 262/620 [00:00<00:00, 660.05it/s]
-extract the null data:  53%|█████▎    | 328/620 [00:00<00:00, 659.51it/s]
-extract the null data:  64%|██████▎   | 395/620 [00:00<00:00, 662.91it/s]
-extract the null data:  75%|███████▍  | 462/620 [00:00<00:00, 651.07it/s]
-extract the null data:  85%|████████▌ | 529/620 [00:00<00:00, 654.97it/s]
-extract the null data:  96%|█████████▌| 595/620 [00:00<00:00, 656.26it/s]
-extract the null data: 100%|██████████| 620/620 [00:00<00:00, 652.31it/s]
-
-Dataset preprocessing...:   0%|          | 0/620 [00:00<?, ?it/s]
-Dataset preprocessing...:   3%|▎         | 17/620 [00:00<00:04, 144.78it/s]
-Dataset preprocessing...:   5%|▌         | 32/620 [00:00<00:07, 81.50it/s] 
-Dataset preprocessing...:   7%|▋         | 42/620 [00:00<00:07, 76.08it/s]
-Dataset preprocessing...:   8%|▊         | 51/620 [00:00<00:07, 71.37it/s]
-Dataset preprocessing...:  10%|▉         | 59/620 [00:00<00:08, 66.61it/s]
-Dataset preprocessing...:  11%|█         | 66/620 [00:00<00:09, 58.04it/s]
-Dataset preprocessing...:  12%|█▏        | 73/620 [00:01<00:09, 57.77it/s]
-Dataset preprocessing...:  13%|█▎        | 79/620 [00:01<00:09, 56.00it/s]
-Dataset preprocessing...:  14%|█▎        | 85/620 [00:01<00:10, 51.65it/s]
-Dataset preprocessing...:  15%|█▍        | 91/620 [00:01<00:10, 51.90it/s]
-Dataset preprocessing...:  16%|█▌        | 97/620 [00:01<00:10, 49.31it/s]
-Dataset preprocessing...:  17%|█▋        | 105/620 [00:01<00:09, 55.72it/s]
-Dataset preprocessing...:  18%|█▊        | 111/620 [00:01<00:09, 55.43it/s]
-Dataset preprocessing...:  19%|█▉        | 120/620 [00:01<00:07, 63.16it/s]
-Dataset preprocessing...:  20%|██        | 127/620 [00:02<00:08, 61.31it/s]
-Dataset preprocessing...:  22%|██▏       | 134/620 [00:02<00:08, 58.81it/s]
-Dataset preprocessing...:  23%|██▎       | 143/620 [00:02<00:07, 66.08it/s]
-Dataset preprocessing...:  24%|██▍       | 150/620 [00:02<00:07, 64.17it/s]
-Dataset preprocessing...:  25%|██▌       | 157/620 [00:02<00:07, 58.65it/s]
-Dataset preprocessing...:  26%|██▋       | 164/620 [00:02<00:07, 60.35it/s]
-Dataset preprocessing...:  28%|██▊       | 171/620 [00:02<00:07, 57.99it/s]
-Dataset preprocessing...:  29%|██▉       | 181/620 [00:02<00:06, 67.79it/s]
-Dataset preprocessing...:  30%|███       | 189/620 [00:02<00:06, 69.98it/s]
-Dataset preprocessing...:  32%|███▏      | 198/620 [00:03<00:05, 74.02it/s]
-Dataset preprocessing...:  33%|███▎      | 206/620 [00:03<00:05, 71.88it/s]
-Dataset preprocessing...:  35%|███▍      | 214/620 [00:03<00:05, 68.19it/s]
-Dataset preprocessing...:  36%|███▌      | 221/620 [00:03<00:06, 65.86it/s]
-Dataset preprocessing...:  37%|███▋      | 228/620 [00:03<00:05, 65.77it/s]
-Dataset preprocessing...:  38%|███▊      | 236/620 [00:03<00:05, 69.02it/s]
-Dataset preprocessing...:  39%|███▉      | 243/620 [00:03<00:05, 65.32it/s]
-Dataset preprocessing...:  40%|████      | 250/620 [00:03<00:05, 65.78it/s]
-Dataset preprocessing...:  41%|████▏     | 257/620 [00:04<00:06, 57.87it/s]
-Dataset preprocessing...:  42%|████▏     | 263/620 [00:04<00:06, 53.95it/s]
-Dataset preprocessing...:  44%|████▎     | 270/620 [00:04<00:06, 54.03it/s]
-Dataset preprocessing...:  45%|████▍     | 276/620 [00:04<00:06, 53.71it/s]
-Dataset preprocessing...:  45%|████▌     | 282/620 [00:04<00:06, 54.13it/s]
-Dataset preprocessing...:  46%|████▋     | 288/620 [00:04<00:06, 52.97it/s]
-Dataset preprocessing...:  47%|████▋     | 294/620 [00:04<00:06, 53.19it/s]
-Dataset preprocessing...:  48%|████▊     | 300/620 [00:05<00:09, 32.97it/s]
-Dataset preprocessing...:  50%|████▉     | 309/620 [00:05<00:07, 43.09it/s]
-Dataset preprocessing...:  51%|█████     | 316/620 [00:05<00:06, 47.64it/s]
-Dataset preprocessing...:  52%|█████▏    | 322/620 [00:05<00:07, 42.11it/s]
-Dataset preprocessing...:  53%|█████▎    | 327/620 [00:05<00:08, 36.35it/s]
-Dataset preprocessing...:  54%|█████▎    | 332/620 [00:05<00:07, 38.72it/s]
-Dataset preprocessing...:  55%|█████▍    | 340/620 [00:05<00:05, 47.02it/s]
-Dataset preprocessing...:  56%|█████▌    | 346/620 [00:06<00:06, 44.61it/s]
-Dataset preprocessing...:  57%|█████▋    | 352/620 [00:06<00:05, 46.96it/s]
-Dataset preprocessing...:  58%|█████▊    | 358/620 [00:06<00:05, 47.60it/s]
-Dataset preprocessing...:  59%|█████▉    | 366/620 [00:06<00:04, 54.38it/s]
-Dataset preprocessing...:  60%|██████    | 374/620 [00:06<00:04, 59.35it/s]
-Dataset preprocessing...:  61%|██████▏   | 381/620 [00:06<00:03, 60.80it/s]
-Dataset preprocessing...:  63%|██████▎   | 388/620 [00:06<00:03, 60.49it/s]
-Dataset preprocessing...:  64%|██████▍   | 396/620 [00:06<00:03, 63.34it/s]
-Dataset preprocessing...:  65%|██████▌   | 403/620 [00:07<00:04, 53.65it/s]
-Dataset preprocessing...:  66%|██████▌   | 410/620 [00:07<00:03, 57.45it/s]
-Dataset preprocessing...:  67%|██████▋   | 417/620 [00:07<00:03, 51.91it/s]
-Dataset preprocessing...:  69%|██████▊   | 426/620 [00:07<00:03, 59.65it/s]
-Dataset preprocessing...:  70%|██████▉   | 433/620 [00:07<00:03, 60.57it/s]
-Dataset preprocessing...:  71%|███████   | 440/620 [00:07<00:02, 62.79it/s]
-Dataset preprocessing...:  72%|███████▏  | 447/620 [00:07<00:03, 57.07it/s]
-Dataset preprocessing...:  73%|███████▎  | 453/620 [00:07<00:03, 53.29it/s]
-Dataset preprocessing...:  74%|███████▍  | 459/620 [00:08<00:03, 50.56it/s]
-Dataset preprocessing...:  75%|███████▌  | 466/620 [00:08<00:02, 53.69it/s]
-Dataset preprocessing...:  76%|███████▋  | 474/620 [00:08<00:02, 55.88it/s]
-Dataset preprocessing...:  77%|███████▋  | 480/620 [00:08<00:02, 47.66it/s]
-Dataset preprocessing...:  78%|███████▊  | 485/620 [00:08<00:03, 44.28it/s]
-Dataset preprocessing...:  79%|███████▉  | 490/620 [00:08<00:02, 43.98it/s]
-Dataset preprocessing...:  80%|███████▉  | 495/620 [00:08<00:02, 44.69it/s]
-Dataset preprocessing...:  81%|████████  | 503/620 [00:08<00:02, 52.62it/s]
-Dataset preprocessing...:  82%|████████▏ | 511/620 [00:09<00:01, 58.74it/s]
-Dataset preprocessing...:  84%|████████▎ | 518/620 [00:09<00:01, 60.79it/s]
-Dataset preprocessing...:  85%|████████▍ | 525/620 [00:09<00:01, 60.57it/s]
-Dataset preprocessing...:  86%|████████▌ | 532/620 [00:09<00:01, 59.77it/s]
-Dataset preprocessing...:  87%|████████▋ | 539/620 [00:09<00:01, 57.58it/s]
-Dataset preprocessing...:  88%|████████▊ | 546/620 [00:09<00:01, 56.15it/s]
-Dataset preprocessing...:  89%|████████▉ | 552/620 [00:09<00:01, 53.13it/s]
-Dataset preprocessing...:  90%|█████████ | 558/620 [00:09<00:01, 50.06it/s]
-Dataset preprocessing...:  91%|█████████ | 564/620 [00:10<00:01, 48.32it/s]
-Dataset preprocessing...:  92%|█████████▏| 569/620 [00:10<00:01, 47.67it/s]
-Dataset preprocessing...:  93%|█████████▎| 575/620 [00:10<00:00, 47.60it/s]
-Dataset preprocessing...:  94%|█████████▎| 581/620 [00:10<00:00, 48.59it/s]
-Dataset preprocessing...:  95%|█████████▍| 587/620 [00:10<00:00, 50.84it/s]
-Dataset preprocessing...:  96%|█████████▌| 593/620 [00:10<00:00, 44.26it/s]
-Dataset preprocessing...:  96%|█████████▋| 598/620 [00:10<00:00, 34.56it/s]
-Dataset preprocessing...:  98%|█████████▊| 605/620 [00:11<00:00, 41.00it/s]
-Dataset preprocessing...:  98%|█████████▊| 610/620 [00:11<00:00, 38.07it/s]
-Dataset preprocessing...: 100%|█████████▉| 617/620 [00:11<00:00, 43.57it/s]
-Dataset preprocessing...: 100%|██████████| 620/620 [00:11<00:00, 52.79it/s]
-
-extract the null data:   0%|          | 0/155 [00:00<?, ?it/s]
-extract the null data:  48%|████▊     | 75/155 [00:00<00:00, 742.42it/s]
-extract the null data:  99%|█████████▊| 153/155 [00:00<00:00, 759.46it/s]
-extract the null data: 100%|██████████| 155/155 [00:00<00:00, 756.45it/s]
-
-Dataset preprocessing...:   0%|          | 0/155 [00:00<?, ?it/s]
-Dataset preprocessing...:   6%|▌         | 9/155 [00:00<00:01, 87.63it/s]
-Dataset preprocessing...:  12%|█▏        | 18/155 [00:00<00:02, 56.70it/s]
-Dataset preprocessing...:  16%|█▌        | 25/155 [00:00<00:02, 56.66it/s]
-Dataset preprocessing...:  21%|██        | 32/155 [00:00<00:02, 59.96it/s]
-Dataset preprocessing...:  25%|██▌       | 39/155 [00:00<00:01, 59.38it/s]
-Dataset preprocessing...:  31%|███       | 48/155 [00:00<00:01, 66.73it/s]
-Dataset preprocessing...:  37%|███▋      | 57/155 [00:00<00:01, 71.29it/s]
-Dataset preprocessing...:  42%|████▏     | 65/155 [00:01<00:01, 65.29it/s]
-Dataset preprocessing...:  47%|████▋     | 73/155 [00:01<00:01, 67.98it/s]
-Dataset preprocessing...:  52%|█████▏    | 80/155 [00:01<00:01, 60.76it/s]
-Dataset preprocessing...:  57%|█████▋    | 89/155 [00:01<00:00, 67.33it/s]
-Dataset preprocessing...:  62%|██████▏   | 96/155 [00:01<00:00, 67.82it/s]
-Dataset preprocessing...:  66%|██████▋   | 103/155 [00:01<00:00, 63.96it/s]
-Dataset preprocessing...:  71%|███████   | 110/155 [00:01<00:00, 59.38it/s]
-Dataset preprocessing...:  75%|███████▌  | 117/155 [00:01<00:00, 50.77it/s]
-Dataset preprocessing...:  80%|████████  | 124/155 [00:02<00:00, 54.50it/s]
-Dataset preprocessing...:  85%|████████▍ | 131/155 [00:02<00:00, 57.62it/s]
-Dataset preprocessing...:  89%|████████▉ | 138/155 [00:02<00:00, 53.46it/s]
-Dataset preprocessing...:  94%|█████████▎| 145/155 [00:02<00:00, 54.46it/s]
-Dataset preprocessing...:  97%|█████████▋| 151/155 [00:02<00:00, 55.62it/s]
-Dataset preprocessing...: 100%|██████████| 155/155 [00:02<00:00, 60.16it/s]
-
-extract the null data:   0%|          | 0/194 [00:00<?, ?it/s]
-extract the null data:  38%|███▊      | 73/194 [00:00<00:00, 720.59it/s]
-extract the null data:  76%|███████▌  | 147/194 [00:00<00:00, 731.29it/s]
-extract the null data: 100%|██████████| 194/194 [00:00<00:00, 731.10it/s]
-
-Dataset preprocessing...:   0%|          | 0/194 [00:00<?, ?it/s]
-Dataset preprocessing...:   3%|▎         | 6/194 [00:00<00:03, 51.83it/s]
-Dataset preprocessing...:   6%|▌         | 12/194 [00:00<00:03, 53.66it/s]
-Dataset preprocessing...:   9%|▉         | 18/194 [00:00<00:03, 55.07it/s]
-Dataset preprocessing...:  12%|█▏        | 24/194 [00:00<00:03, 51.35it/s]
-Dataset preprocessing...:  16%|█▌        | 31/194 [00:00<00:02, 55.75it/s]
-Dataset preprocessing...:  19%|█▉        | 37/194 [00:00<00:02, 54.37it/s]
-Dataset preprocessing...:  24%|██▎       | 46/194 [00:00<00:02, 64.84it/s]
-Dataset preprocessing...:  28%|██▊       | 55/194 [00:00<00:01, 70.88it/s]
-Dataset preprocessing...:  32%|███▏      | 63/194 [00:00<00:01, 72.45it/s]
-Dataset preprocessing...:  37%|███▋      | 71/194 [00:01<00:01, 70.02it/s]
-Dataset preprocessing...:  41%|████      | 79/194 [00:01<00:01, 67.79it/s]
-Dataset preprocessing...:  45%|████▍     | 87/194 [00:01<00:01, 65.75it/s]
-Dataset preprocessing...:  48%|████▊     | 94/194 [00:01<00:01, 56.15it/s]
-Dataset preprocessing...:  52%|█████▏    | 100/194 [00:01<00:01, 56.24it/s]
-Dataset preprocessing...:  55%|█████▍    | 106/194 [00:01<00:01, 55.68it/s]
-Dataset preprocessing...:  58%|█████▊    | 112/194 [00:01<00:01, 56.05it/s]
-Dataset preprocessing...:  61%|██████    | 118/194 [00:02<00:01, 41.18it/s]
-Dataset preprocessing...:  63%|██████▎   | 123/194 [00:02<00:02, 34.42it/s]
-Dataset preprocessing...:  66%|██████▋   | 129/194 [00:02<00:01, 39.12it/s]
-Dataset preprocessing...:  69%|██████▉   | 134/194 [00:02<00:01, 39.19it/s]
-Dataset preprocessing...:  74%|███████▎  | 143/194 [00:02<00:01, 48.89it/s]
-Dataset preprocessing...:  78%|███████▊  | 151/194 [00:02<00:00, 54.47it/s]
-Dataset preprocessing...:  81%|████████  | 157/194 [00:02<00:00, 49.41it/s]
-Dataset preprocessing...:  85%|████████▌ | 165/194 [00:03<00:00, 56.40it/s]
-Dataset preprocessing...:  89%|████████▊ | 172/194 [00:03<00:00, 53.64it/s]
-Dataset preprocessing...:  92%|█████████▏| 179/194 [00:03<00:00, 56.34it/s]
-Dataset preprocessing...:  95%|█████████▌| 185/194 [00:03<00:00, 53.00it/s]
-Dataset preprocessing...:  98%|█████████▊| 191/194 [00:03<00:00, 49.52it/s]
-Dataset preprocessing...: 100%|██████████| 194/194 [00:03<00:00, 51.20it/s]
-train data :  72169
-valid data :  16195
-test data :  24177
------------------------------------------------------------------------------------
-           Layer (type)                Input Shape         Param #     Tr. Param #
-===================================================================================
-           NoiseLayer-1                [1, 21, 24]               0               0
-               Linear-2                [1, 21, 24]           3,200           3,200
-   PositionalEncoding-3               [21, 1, 128]               0               0
-   TransformerEncoder-4     [21, 1, 128], [21, 21]         793,088         793,088
-               Linear-5                  [1, 2688]         344,192         344,192
-               Linear-6                [1, 1, 128]           8,256           8,256
-            LayerNorm-7                 [1, 1, 64]             128             128
-                 ReLU-8                 [1, 1, 64]               0               0
-               Linear-9                 [1, 1, 64]           4,160           4,160
-           LayerNorm-10                 [1, 1, 64]             128             128
-                ReLU-11                 [1, 1, 64]               0               0
-              Linear-12                 [1, 1, 64]             650             650
-===================================================================================
-Total params: 1,153,802
-Trainable params: 1,153,802
-Non-trainable params: 0
-Batch size: 1
------------------------------------------------------------------------------------
-
-training process:   0%|          | 0/128 [00:00<?, ?it/s]
-training process:   1%|          | 1/128 [03:58<8:25:35, 238.86s/it]epoch : 1, train loss : 7.880, valid loss : 6.410,
-
-training process:   2%|▏         | 2/128 [07:48<8:09:36, 233.15s/it]
-training process:   2%|▏         | 3/128 [11:43<8:08:15, 234.37s/it]
-training process:   3%|▎         | 4/128 [15:37<8:03:53, 234.14s/it]
-training process:   4%|▍         | 5/128 [19:26<7:56:17, 232.34s/it]epoch : 5, train loss : 4.143, valid loss : 4.084,
-
-training process:   5%|▍         | 6/128 [23:09<7:45:50, 229.10s/it]
-training process:   5%|▌         | 7/128 [26:59<7:42:49, 229.50s/it]
-training process:   6%|▋         | 8/128 [30:37<7:31:38, 225.82s/it]
-training process:   7%|▋         | 9/128 [34:11<7:20:05, 221.89s/it]epoch : 9, train loss : 3.474, valid loss : 3.119,
-
-training process:   8%|▊         | 10/128 [37:43<7:10:52, 219.09s/it]
-training process:   9%|▊         | 11/128 [41:16<7:03:35, 217.22s/it]
-training process:   9%|▉         | 12/128 [44:51<6:58:14, 216.33s/it]
-training process:  10%|█         | 13/128 [48:20<6:50:19, 214.09s/it]epoch : 13, train loss : 3.102, valid loss : 2.856,
-
-training process:  11%|█         | 14/128 [51:52<6:45:43, 213.54s/it]
-training process:  12%|█▏        | 15/128 [55:24<6:41:09, 213.01s/it]
-training process:  12%|█▎        | 16/128 [58:58<6:38:21, 213.41s/it]
-training process:  13%|█▎        | 17/128 [1:02:32<6:35:03, 213.54s/it]epoch : 17, train loss : 2.832, valid loss : 2.499,
-
-training process:  14%|█▍        | 18/128 [1:06:03<6:30:13, 212.85s/it]
-training process:  15%|█▍        | 19/128 [1:09:39<6:28:16, 213.73s/it]
-training process:  16%|█▌        | 20/128 [1:13:15<6:26:07, 214.52s/it]
-training process:  16%|█▋        | 21/128 [1:16:45<6:19:50, 212.99s/it]epoch : 21, train loss : 2.645, valid loss : 2.329,
-
-training process:  17%|█▋        | 22/128 [1:20:16<6:15:18, 212.44s/it]
-training process:  18%|█▊        | 23/128 [1:23:47<6:11:14, 212.14s/it]
-training process:  19%|█▉        | 24/128 [1:27:16<6:06:02, 211.18s/it]
-training process:  20%|█▉        | 25/128 [1:30:48<6:02:37, 211.24s/it]epoch : 25, train loss : 2.491, valid loss : 2.228,
-
-training process:  20%|██        | 26/128 [1:34:17<5:58:18, 210.77s/it]
-training process:  21%|██        | 27/128 [1:37:48<5:54:59, 210.89s/it]
-training process:  22%|██▏       | 28/128 [1:41:19<5:51:12, 210.73s/it]
-training process:  23%|██▎       | 29/128 [1:44:57<5:51:31, 213.04s/it]epoch : 29, train loss : 2.344, valid loss : 2.121,
-
-training process:  23%|██▎       | 30/128 [1:48:29<5:47:23, 212.69s/it]
-training process:  24%|██▍       | 31/128 [1:52:07<5:46:31, 214.34s/it]
-training process:  25%|██▌       | 32/128 [1:55:55<5:49:18, 218.32s/it]
-training process:  26%|██▌       | 33/128 [1:59:40<5:48:41, 220.23s/it]epoch : 33, train loss : 2.235, valid loss : 2.072,
-
-training process:  27%|██▋       | 34/128 [2:03:20<5:45:18, 220.41s/it]
-training process:  27%|██▋       | 35/128 [2:07:01<5:41:39, 220.43s/it]
-training process:  28%|██▊       | 36/128 [2:10:37<5:36:10, 219.24s/it]
-training process:  29%|██▉       | 37/128 [2:14:16<5:32:26, 219.20s/it]epoch : 37, train loss : 2.137, valid loss : 2.064,
-
-training process:  30%|██▉       | 38/128 [2:18:06<5:33:26, 222.29s/it]
-training process:  30%|███       | 39/128 [2:21:48<5:29:46, 222.32s/it]
-training process:  31%|███▏      | 40/128 [2:25:34<5:27:36, 223.37s/it]
-training process:  32%|███▏      | 41/128 [2:29:22<5:25:48, 224.70s/it]epoch : 41, train loss : 2.017, valid loss : 2.017,
-
-training process:  33%|███▎      | 42/128 [2:33:09<5:22:57, 225.32s/it]
-training process:  34%|███▎      | 43/128 [2:36:47<5:16:14, 223.23s/it]
-training process:  34%|███▍      | 44/128 [2:40:24<5:09:58, 221.41s/it]
-training process:  35%|███▌      | 45/128 [2:44:10<5:08:07, 222.74s/it]epoch : 45, train loss : 1.975, valid loss : 2.039,
-
-training process:  36%|███▌      | 46/128 [2:47:55<5:05:17, 223.38s/it]
-training process:  37%|███▋      | 47/128 [2:51:38<5:01:18, 223.19s/it]
-training process:  38%|███▊      | 48/128 [2:55:22<4:57:54, 223.43s/it]
-training process:  38%|███▊      | 49/128 [2:59:05<4:54:07, 223.39s/it]epoch : 49, train loss : 1.869, valid loss : 1.974,
-
-training process:  39%|███▉      | 50/128 [3:02:48<4:50:23, 223.38s/it]
-training process:  40%|███▉      | 51/128 [3:06:34<4:47:27, 224.00s/it]
-training process:  41%|████      | 52/128 [3:10:12<4:41:38, 222.35s/it]
-training process:  41%|████▏     | 53/128 [3:13:56<4:38:26, 222.75s/it]epoch : 53, train loss : 1.803, valid loss : 1.941,
-
-training process:  42%|████▏     | 54/128 [3:17:44<4:36:50, 224.46s/it]
-training process:  43%|████▎     | 55/128 [3:21:28<4:32:41, 224.13s/it]
-training process:  44%|████▍     | 56/128 [3:25:05<4:26:33, 222.14s/it]
-training process:  45%|████▍     | 57/128 [3:28:39<4:19:46, 219.53s/it]epoch : 57, train loss : 1.749, valid loss : 1.803,
-
-training process:  45%|████▌     | 58/128 [3:32:17<4:15:46, 219.23s/it]
-training process:  46%|████▌     | 59/128 [3:35:54<4:11:08, 218.39s/it]
-training process:  47%|████▋     | 60/128 [3:39:33<4:07:50, 218.69s/it]
-training process:  48%|████▊     | 61/128 [3:43:08<4:02:49, 217.45s/it]epoch : 61, train loss : 1.712, valid loss : 1.802,
-
-training process:  48%|████▊     | 62/128 [3:46:45<3:59:05, 217.35s/it]
-training process:  49%|████▉     | 63/128 [3:50:22<3:55:29, 217.38s/it]
-training process:  50%|█████     | 64/128 [3:54:05<3:53:38, 219.04s/it]
-training process:  51%|█████     | 65/128 [3:57:46<3:50:41, 219.70s/it]epoch : 65, train loss : 1.645, valid loss : 1.921,
-
-training process:  52%|█████▏    | 66/128 [4:01:25<3:46:41, 219.38s/it]
-training process:  52%|█████▏    | 67/128 [4:05:09<3:44:19, 220.64s/it]
-training process:  53%|█████▎    | 68/128 [4:08:50<3:41:01, 221.03s/it]
-training process:  54%|█████▍    | 69/128 [4:12:28<3:36:09, 219.83s/it]epoch : 69, train loss : 1.591, valid loss : 1.821,
-
-training process:  55%|█████▍    | 70/128 [4:16:05<3:31:54, 219.21s/it]
-training process:  55%|█████▌    | 71/128 [4:19:52<3:30:29, 221.57s/it]
-training process:  56%|█████▋    | 72/128 [4:23:31<3:25:53, 220.60s/it]
-training process:  57%|█████▋    | 73/128 [4:27:11<3:22:03, 220.43s/it]epoch : 73, train loss : 1.572, valid loss : 1.758,
-
-training process:  58%|█████▊    | 74/128 [4:30:54<3:19:09, 221.29s/it]
-training process:  59%|█████▊    | 75/128 [4:34:37<3:16:01, 221.92s/it]
-training process:  59%|█████▉    | 76/128 [4:38:21<3:12:48, 222.46s/it]
-training process:  60%|██████    | 77/128 [4:41:58<3:07:39, 220.78s/it]epoch : 77, train loss : 1.516, valid loss : 1.729,
-
-training process:  61%|██████    | 78/128 [4:45:35<3:03:01, 219.63s/it]
-training process:  62%|██████▏   | 79/128 [4:49:12<2:58:43, 218.86s/it]
-training process:  62%|██████▎   | 80/128 [4:52:55<2:56:10, 220.22s/it]
-training process:  63%|██████▎   | 81/128 [4:56:40<2:53:37, 221.65s/it]epoch : 81, train loss : 1.491, valid loss : 1.682,
-
-training process:  64%|██████▍   | 82/128 [5:00:24<2:50:28, 222.37s/it]
-training process:  65%|██████▍   | 83/128 [5:04:03<2:45:51, 221.15s/it]
-training process:  66%|██████▌   | 84/128 [5:07:41<2:41:34, 220.34s/it]
-training process:  66%|██████▋   | 85/128 [5:11:15<2:36:32, 218.43s/it]epoch : 85, train loss : 1.459, valid loss : 1.697,
-
-training process:  67%|██████▋   | 86/128 [5:14:50<2:32:04, 217.24s/it]
-training process:  68%|██████▊   | 87/128 [5:18:25<2:27:58, 216.54s/it]
-training process:  69%|██████▉   | 88/128 [5:22:00<2:24:11, 216.29s/it]
-training process:  70%|██████▉   | 89/128 [5:25:31<2:19:25, 214.50s/it]epoch : 89, train loss : 1.416, valid loss : 1.736,
-
-training process:  70%|███████   | 90/128 [5:29:02<2:15:10, 213.44s/it]
-training process:  71%|███████   | 91/128 [5:32:28<2:10:24, 211.46s/it]
-training process:  72%|███████▏  | 92/128 [5:36:04<2:07:34, 212.64s/it]
-training process:  73%|███████▎  | 93/128 [5:39:36<2:03:58, 212.52s/it]epoch : 93, train loss : 1.399, valid loss : 1.580,
-
-training process:  73%|███████▎  | 94/128 [5:43:06<2:00:01, 211.82s/it]
-training process:  74%|███████▍  | 95/128 [5:46:39<1:56:37, 212.05s/it]
-training process:  75%|███████▌  | 96/128 [5:50:08<1:52:40, 211.26s/it]
-training process:  76%|███████▌  | 97/128 [5:53:43<1:49:42, 212.34s/it]epoch : 97, train loss : 1.365, valid loss : 1.617,
-
-training process:  77%|███████▋  | 98/128 [5:57:21<1:47:01, 214.04s/it]
-training process:  77%|███████▋  | 99/128 [6:00:53<1:43:10, 213.46s/it]
-training process:  78%|███████▊  | 100/128 [6:04:32<1:40:24, 215.16s/it]
-training process:  79%|███████▉  | 101/128 [6:08:01<1:35:58, 213.26s/it]epoch : 101, train loss : 1.342, valid loss : 1.633,
-
-training process:  80%|███████▉  | 102/128 [6:11:29<1:31:45, 211.75s/it]
-training process:  80%|████████  | 103/128 [6:15:11<1:29:24, 214.58s/it]
-training process:  81%|████████▏ | 104/128 [6:18:44<1:25:41, 214.24s/it]
-training process:  82%|████████▏ | 105/128 [6:22:20<1:22:18, 214.70s/it]epoch : 105, train loss : 1.329, valid loss : 1.598,
-
-training process:  83%|████████▎ | 106/128 [6:25:49<1:18:09, 213.15s/it]
-training process:  84%|████████▎ | 107/128 [6:29:18<1:14:08, 211.82s/it]
-training process:  84%|████████▍ | 108/128 [6:33:00<1:11:40, 215.02s/it]
-training process:  85%|████████▌ | 109/128 [6:36:41<1:08:35, 216.58s/it]epoch : 109, train loss : 1.304, valid loss : 1.583,
-
-training process:  86%|████████▌ | 110/128 [6:40:16<1:04:53, 216.30s/it]
-training process:  87%|████████▋ | 111/128 [6:44:01<1:02:01, 218.90s/it]
-training process:  88%|████████▊ | 112/128 [6:47:37<58:09, 218.07s/it]  
-training process:  88%|████████▊ | 113/128 [6:51:12<54:16, 217.10s/it]epoch : 113, train loss : 1.290, valid loss : 1.600,
-
-training process:  89%|████████▉ | 114/128 [6:54:46<50:24, 216.04s/it]
-training process:  90%|████████▉ | 115/128 [6:58:21<46:46, 215.88s/it]
-training process:  91%|█████████ | 116/128 [7:01:56<43:05, 215.46s/it]
-training process:  91%|█████████▏| 117/128 [7:05:34<39:37, 216.18s/it]epoch : 117, train loss : 1.267, valid loss : 1.562,
-
-training process:  92%|█████████▏| 118/128 [7:09:08<35:55, 215.57s/it]
-training process:  93%|█████████▎| 119/128 [7:12:41<32:14, 214.99s/it]
-training process:  94%|█████████▍| 120/128 [7:16:18<28:42, 215.30s/it]
-training process:  95%|█████████▍| 121/128 [7:19:52<25:06, 215.19s/it]epoch : 121, train loss : 1.243, valid loss : 1.570,
-
-training process:  95%|█████████▌| 122/128 [7:23:28<21:32, 215.43s/it]
-training process:  96%|█████████▌| 123/128 [7:27:04<17:56, 215.38s/it]
-training process:  97%|█████████▋| 124/128 [7:30:40<14:22, 215.52s/it]
-training process:  98%|█████████▊| 125/128 [7:34:17<10:48, 216.18s/it]epoch : 125, train loss : 1.233, valid loss : 1.518,
-
-training process:  98%|█████████▊| 126/128 [7:37:53<07:11, 215.91s/it]
-training process:  99%|█████████▉| 127/128 [7:41:27<03:35, 215.48s/it]
-training process: 100%|██████████| 128/128 [7:44:57<00:00, 213.73s/it]
-training process: 100%|██████████| 128/128 [7:44:57<00:00, 217.95s/it]
-training process finished, best loss : 1.459, best epoch : 127
-test loss : 2.067
-# mse : 0.043, rmse : 0.156, mae : 0.047
-torch device avaliable :  True
-torch current device :  0
-torch device num :  4
-Preprocessing | scaler : Robust
-extract the null data:   0%|          | 0/620 [00:00<?, ?it/s]extract the null data:  10%|█         | 62/620 [00:00<00:00, 612.45it/s]extract the null data:  21%|██▏       | 133/620 [00:00<00:00, 665.24it/s]extract the null data:  33%|███▎      | 204/620 [00:00<00:00, 684.16it/s]extract the null data:  45%|████▍     | 276/620 [00:00<00:00, 695.78it/s]extract the null data:  56%|█████▌    | 346/620 [00:00<00:00, 693.78it/s]extract the null data:  67%|██████▋   | 417/620 [00:00<00:00, 698.66it/s]extract the null data:  79%|███████▉  | 489/620 [00:00<00:00, 703.00it/s]extract the null data:  90%|█████████ | 561/620 [00:00<00:00, 707.69it/s]extract the null data: 100%|██████████| 620/620 [00:00<00:00, 694.82it/s]
-Dataset preprocessing...:   0%|          | 0/620 [00:00<?, ?it/s]Dataset preprocessing...:   3%|▎         | 17/620 [00:00<00:03, 160.12it/s]Dataset preprocessing...:   5%|▌         | 34/620 [00:00<00:06, 84.45it/s] Dataset preprocessing...:   7%|▋         | 45/620 [00:00<00:07, 78.93it/s]Dataset preprocessing...:   9%|▊         | 54/620 [00:00<00:07, 76.15it/s]Dataset preprocessing...:  10%|█         | 63/620 [00:00<00:08, 65.66it/s]Dataset preprocessing...:  11%|█▏        | 70/620 [00:00<00:08, 63.77it/s]Dataset preprocessing...:  12%|█▏        | 77/620 [00:01<00:08, 63.48it/s]Dataset preprocessing...:  14%|█▎        | 84/620 [00:01<00:09, 57.69it/s]Dataset preprocessing...:  15%|█▍        | 91/620 [00:01<00:09, 58.75it/s]Dataset preprocessing...:  16%|█▌        | 97/620 [00:01<00:09, 56.31it/s]Dataset preprocessing...:  17%|█▋        | 105/620 [00:01<00:08, 62.32it/s]Dataset preprocessing...:  18%|█▊        | 112/620 [00:01<00:08, 61.49it/s]Dataset preprocessing...:  20%|█▉        | 122/620 [00:01<00:07, 69.85it/s]Dataset preprocessing...:  21%|██        | 130/620 [00:01<00:06, 70.81it/s]Dataset preprocessing...:  22%|██▏       | 138/620 [00:02<00:06, 69.09it/s]Dataset preprocessing...:  23%|██▎       | 145/620 [00:02<00:06, 68.53it/s]Dataset preprocessing...:  25%|██▍       | 153/620 [00:02<00:07, 66.13it/s]Dataset preprocessing...:  26%|██▌       | 161/620 [00:02<00:06, 69.36it/s]Dataset preprocessing...:  27%|██▋       | 169/620 [00:02<00:07, 60.81it/s]Dataset preprocessing...:  29%|██▉       | 182/620 [00:02<00:05, 75.94it/s]Dataset preprocessing...:  31%|███       | 191/620 [00:02<00:05, 79.52it/s]Dataset preprocessing...:  32%|███▏      | 200/620 [00:02<00:05, 81.55it/s]Dataset preprocessing...:  34%|███▎      | 209/620 [00:02<00:05, 77.82it/s]Dataset preprocessing...:  35%|███▌      | 217/620 [00:03<00:05, 74.58it/s]Dataset preprocessing...:  36%|███▋      | 225/620 [00:03<00:05, 72.64it/s]Dataset preprocessing...:  38%|███▊      | 235/620 [00:03<00:04, 78.90it/s]Dataset preprocessing...:  39%|███▉      | 244/620 [00:03<00:05, 73.48it/s]Dataset preprocessing...:  41%|████      | 252/620 [00:03<00:05, 71.61it/s]Dataset preprocessing...:  42%|████▏     | 260/620 [00:03<00:05, 65.08it/s]Dataset preprocessing...:  43%|████▎     | 267/620 [00:03<00:05, 63.27it/s]Dataset preprocessing...:  44%|████▍     | 274/620 [00:03<00:05, 58.55it/s]Dataset preprocessing...:  45%|████▌     | 281/620 [00:04<00:05, 61.24it/s]Dataset preprocessing...:  46%|████▋     | 288/620 [00:04<00:05, 60.22it/s]Dataset preprocessing...:  48%|████▊     | 295/620 [00:04<00:06, 50.92it/s]Dataset preprocessing...:  49%|████▊     | 301/620 [00:04<00:07, 40.95it/s]Dataset preprocessing...:  50%|█████     | 310/620 [00:04<00:06, 49.63it/s]Dataset preprocessing...:  51%|█████▏    | 318/620 [00:04<00:05, 53.65it/s]Dataset preprocessing...:  52%|█████▏    | 324/620 [00:05<00:07, 40.18it/s]Dataset preprocessing...:  53%|█████▎    | 330/620 [00:05<00:06, 43.86it/s]Dataset preprocessing...:  55%|█████▍    | 339/620 [00:05<00:05, 53.14it/s]Dataset preprocessing...:  56%|█████▌    | 346/620 [00:05<00:05, 50.58it/s]Dataset preprocessing...:  57%|█████▋    | 353/620 [00:05<00:04, 53.61it/s]Dataset preprocessing...:  58%|█████▊    | 359/620 [00:05<00:04, 54.57it/s]Dataset preprocessing...:  59%|█████▉    | 367/620 [00:05<00:04, 59.22it/s]Dataset preprocessing...:  61%|██████    | 376/620 [00:05<00:03, 64.64it/s]Dataset preprocessing...:  62%|██████▏   | 383/620 [00:06<00:03, 65.52it/s]Dataset preprocessing...:  63%|██████▎   | 391/620 [00:06<00:03, 68.22it/s]Dataset preprocessing...:  64%|██████▍   | 399/620 [00:06<00:03, 64.89it/s]Dataset preprocessing...:  65%|██████▌   | 406/620 [00:06<00:03, 63.59it/s]Dataset preprocessing...:  67%|██████▋   | 413/620 [00:06<00:03, 62.96it/s]Dataset preprocessing...:  68%|██████▊   | 420/620 [00:06<00:03, 60.11it/s]Dataset preprocessing...:  69%|██████▉   | 429/620 [00:06<00:02, 66.13it/s]Dataset preprocessing...:  70%|███████   | 436/620 [00:06<00:02, 64.97it/s]Dataset preprocessing...:  72%|███████▏  | 444/620 [00:06<00:02, 67.57it/s]Dataset preprocessing...:  73%|███████▎  | 451/620 [00:07<00:02, 57.72it/s]Dataset preprocessing...:  74%|███████▍  | 458/620 [00:07<00:02, 56.37it/s]Dataset preprocessing...:  75%|███████▌  | 465/620 [00:07<00:02, 59.19it/s]Dataset preprocessing...:  76%|███████▋  | 473/620 [00:07<00:02, 63.73it/s]Dataset preprocessing...:  77%|███████▋  | 480/620 [00:07<00:02, 52.36it/s]Dataset preprocessing...:  78%|███████▊  | 486/620 [00:07<00:02, 49.34it/s]Dataset preprocessing...:  79%|███████▉  | 492/620 [00:07<00:02, 49.31it/s]Dataset preprocessing...:  80%|████████  | 498/620 [00:08<00:02, 50.67it/s]Dataset preprocessing...:  82%|████████▏ | 508/620 [00:08<00:01, 60.44it/s]Dataset preprocessing...:  84%|████████▎ | 518/620 [00:08<00:01, 66.22it/s]Dataset preprocessing...:  85%|████████▍ | 525/620 [00:08<00:01, 66.29it/s]Dataset preprocessing...:  86%|████████▌ | 532/620 [00:08<00:01, 65.60it/s]Dataset preprocessing...:  87%|████████▋ | 539/620 [00:08<00:01, 63.56it/s]Dataset preprocessing...:  88%|████████▊ | 546/620 [00:08<00:01, 62.38it/s]Dataset preprocessing...:  89%|████████▉ | 553/620 [00:08<00:01, 57.21it/s]Dataset preprocessing...:  90%|█████████ | 559/620 [00:08<00:01, 55.20it/s]Dataset preprocessing...:  91%|█████████ | 565/620 [00:09<00:01, 52.94it/s]torch device avaliable :  True
-torch current device :  0
-torch device num :  4
-Preprocessing | scaler : Robust
-extract the null data:   0%|          | 0/620 [00:00<?, ?it/s]Dataset preprocessing...:  92%|█████████▏| 571/620 [00:09<00:00, 53.13it/s]extract the null data:  10%|█         | 62/620 [00:00<00:00, 614.73it/s]Dataset preprocessing...:  93%|█████████▎| 577/620 [00:09<00:00, 53.34it/s]extract the null data:  21%|██        | 128/620 [00:00<00:00, 637.92it/s]Dataset preprocessing...:  94%|█████████▍| 583/620 [00:09<00:00, 54.86it/s]extract the null data:  32%|███▏      | 200/620 [00:00<00:00, 673.89it/s]Dataset preprocessing...:  95%|█████████▌| 589/620 [00:09<00:00, 52.96it/s]extract the null data:  44%|████▍     | 272/620 [00:00<00:00, 688.50it/s]extract the null data:  55%|█████▌    | 343/620 [00:00<00:00, 695.91it/s]Dataset preprocessing...:  96%|█████████▌| 595/620 [00:09<00:00, 47.41it/s]extract the null data:  67%|██████▋   | 415/620 [00:00<00:00, 703.79it/s]extract the null data:  79%|███████▊  | 487/620 [00:00<00:00, 707.48it/s]Dataset preprocessing...:  97%|█████████▋| 600/620 [00:09<00:00, 38.96it/s]extract the null data:  90%|█████████ | 559/620 [00:00<00:00, 711.14it/s]extract the null data: 100%|██████████| 620/620 [00:00<00:00, 694.69it/s]
-Dataset preprocessing...:   0%|          | 0/620 [00:00<?, ?it/s]Dataset preprocessing...:  98%|█████████▊| 610/620 [00:10<00:00, 43.35it/s]Dataset preprocessing...:   3%|▎         | 17/620 [00:00<00:03, 166.21it/s]Dataset preprocessing...: 100%|█████████▉| 617/620 [00:10<00:00, 48.53it/s]Dataset preprocessing...:   5%|▌         | 34/620 [00:00<00:06, 86.66it/s] Dataset preprocessing...:   7%|▋         | 45/620 [00:00<00:07, 81.76it/s]Dataset preprocessing...: 100%|██████████| 620/620 [00:10<00:00, 58.49it/s]
-extract the null data:   0%|          | 0/155 [00:00<?, ?it/s]Dataset preprocessing...:   9%|▉         | 55/620 [00:00<00:07, 78.79it/s]extract the null data:  51%|█████     | 79/155 [00:00<00:00, 785.28it/s]extract the null data: 100%|██████████| 155/155 [00:00<00:00, 803.86it/s]
-Dataset preprocessing...:   0%|          | 0/155 [00:00<?, ?it/s]Dataset preprocessing...:  10%|█         | 64/620 [00:00<00:08, 66.77it/s]Dataset preprocessing...:   6%|▋         | 10/155 [00:00<00:01, 89.23it/s]Dataset preprocessing...:  12%|█▏        | 72/620 [00:00<00:08, 66.16it/s]Dataset preprocessing...:  13%|█▎        | 79/620 [00:01<00:08, 61.78it/s]Dataset preprocessing...:  12%|█▏        | 19/155 [00:00<00:02, 63.27it/s]Dataset preprocessing...:  14%|█▍        | 86/620 [00:01<00:09, 57.96it/s]Dataset preprocessing...:  17%|█▋        | 26/155 [00:00<00:02, 61.66it/s]Dataset preprocessing...:  22%|██▏       | 34/155 [00:00<00:01, 67.28it/s]Dataset preprocessing...:  15%|█▍        | 92/620 [00:01<00:09, 54.86it/s]Dataset preprocessing...:  26%|██▋       | 41/155 [00:00<00:01, 64.83it/s]Dataset preprocessing...:  16%|█▌        | 99/620 [00:01<00:09, 57.48it/s]Dataset preprocessing...:  33%|███▎      | 51/155 [00:00<00:01, 71.95it/s]Dataset preprocessing...:  17%|█▋        | 106/620 [00:01<00:08, 58.53it/s]Dataset preprocessing...:  38%|███▊      | 59/155 [00:00<00:01, 72.89it/s]Dataset preprocessing...:  18%|█▊        | 113/620 [00:01<00:08, 61.15it/s]Dataset preprocessing...:  43%|████▎     | 67/155 [00:00<00:01, 71.62it/s]Dataset preprocessing...:  20%|█▉        | 123/620 [00:01<00:07, 68.56it/s]Dataset preprocessing...:  21%|██        | 131/620 [00:01<00:07, 69.10it/s]Dataset preprocessing...:  48%|████▊     | 75/155 [00:01<00:01, 66.98it/s]Dataset preprocessing...:  22%|██▏       | 138/620 [00:02<00:07, 68.35it/s]Dataset preprocessing...:  54%|█████▎    | 83/155 [00:01<00:01, 69.27it/s]Dataset preprocessing...:  23%|██▎       | 145/620 [00:02<00:07, 67.53it/s]Dataset preprocessing...:  59%|█████▊    | 91/155 [00:01<00:00, 71.17it/s]Dataset preprocessing...:  64%|██████▍   | 99/155 [00:01<00:00, 71.02it/s]Dataset preprocessing...:  25%|██▍       | 153/620 [00:02<00:07, 63.99it/s]Dataset preprocessing...:  26%|██▌       | 161/620 [00:02<00:06, 67.18it/s]Dataset preprocessing...:  69%|██████▉   | 107/155 [00:01<00:00, 60.58it/s]Dataset preprocessing...:  27%|██▋       | 168/620 [00:02<00:07, 57.91it/s]Dataset preprocessing...:  74%|███████▎  | 114/155 [00:01<00:00, 57.71it/s]Dataset preprocessing...:  29%|██▉       | 181/620 [00:02<00:05, 74.18it/s]Dataset preprocessing...:  77%|███████▋  | 120/155 [00:01<00:00, 51.08it/s]Dataset preprocessing...:  31%|███       | 190/620 [00:02<00:05, 76.96it/s]Dataset preprocessing...:  83%|████████▎ | 128/155 [00:02<00:00, 56.16it/s]Dataset preprocessing...:  32%|███▏      | 199/620 [00:02<00:05, 79.79it/s]Dataset preprocessing...:  86%|████████▋ | 134/155 [00:02<00:00, 54.80it/s]Dataset preprocessing...:  34%|███▎      | 208/620 [00:02<00:05, 76.87it/s]Dataset preprocessing...:  90%|█████████ | 140/155 [00:02<00:00, 54.01it/s]Dataset preprocessing...:  35%|███▍      | 216/620 [00:03<00:05, 74.05it/s]Dataset preprocessing...:  94%|█████████▍| 146/155 [00:02<00:00, 53.34it/s]Dataset preprocessing...:  36%|███▌      | 224/620 [00:03<00:05, 71.01it/s]Dataset preprocessing...:  99%|█████████▊| 153/155 [00:02<00:00, 56.32it/s]Dataset preprocessing...: 100%|██████████| 155/155 [00:02<00:00, 62.08it/s]
-Dataset preprocessing...:  37%|███▋      | 232/620 [00:03<00:05, 72.16it/s]Dataset preprocessing...:  39%|███▊      | 240/620 [00:03<00:05, 69.79it/s]extract the null data:   0%|          | 0/194 [00:00<?, ?it/s]Dataset preprocessing...:  40%|████      | 248/620 [00:03<00:05, 68.16it/s]extract the null data:  40%|████      | 78/194 [00:00<00:00, 775.50it/s]extract the null data:  82%|████████▏ | 159/194 [00:00<00:00, 792.75it/s]Dataset preprocessing...:  41%|████      | 255/620 [00:03<00:05, 63.50it/s]extract the null data: 100%|██████████| 194/194 [00:00<00:00, 791.50it/s]
-Dataset preprocessing...:   0%|          | 0/194 [00:00<?, ?it/s]Dataset preprocessing...:   3%|▎         | 6/194 [00:00<00:03, 55.22it/s]Dataset preprocessing...:  42%|████▏     | 262/620 [00:03<00:06, 56.49it/s]Dataset preprocessing...:   6%|▌         | 12/194 [00:00<00:03, 57.82it/s]Dataset preprocessing...:  43%|████▎     | 269/620 [00:03<00:06, 57.14it/s]Dataset preprocessing...:  10%|▉         | 19/194 [00:00<00:03, 57.37it/s]Dataset preprocessing...:  44%|████▍     | 275/620 [00:04<00:06, 54.49it/s]Dataset preprocessing...:  13%|█▎        | 25/194 [00:00<00:03, 56.13it/s]Dataset preprocessing...:  45%|████▌     | 282/620 [00:04<00:05, 56.67it/s]Dataset preprocessing...:  16%|█▋        | 32/194 [00:00<00:02, 59.22it/s]Dataset preprocessing...:  46%|████▋     | 288/620 [00:04<00:05, 56.00it/s]Dataset preprocessing...:  20%|█▉        | 38/194 [00:00<00:02, 57.87it/s]Dataset preprocessing...:  25%|██▌       | 49/194 [00:00<00:01, 72.59it/s]Dataset preprocessing...:  48%|████▊     | 295/620 [00:04<00:06, 47.77it/s]Dataset preprocessing...:  30%|███       | 59/194 [00:00<00:01, 79.63it/s]Dataset preprocessing...:  35%|███▌      | 68/194 [00:00<00:01, 76.71it/s]Dataset preprocessing...:  49%|████▊     | 301/620 [00:04<00:08, 38.89it/s]Dataset preprocessing...:  39%|███▉      | 76/194 [00:01<00:01, 76.20it/s]Dataset preprocessing...:  50%|█████     | 310/620 [00:04<00:06, 47.66it/s]Dataset preprocessing...:  43%|████▎     | 84/194 [00:01<00:01, 74.66it/s]Dataset preprocessing...:  51%|█████▏    | 318/620 [00:05<00:05, 52.03it/s]Dataset preprocessing...:  47%|████▋     | 92/194 [00:01<00:01, 67.81it/s]Dataset preprocessing...:  51%|█████     | 99/194 [00:01<00:01, 61.50it/s]Dataset preprocessing...:  52%|█████▏    | 324/620 [00:05<00:07, 38.83it/s]Dataset preprocessing...:  55%|█████▍    | 106/194 [00:01<00:01, 62.30it/s]Dataset preprocessing...:  53%|█████▎    | 330/620 [00:05<00:06, 42.38it/s]Dataset preprocessing...:  55%|█████▍    | 339/620 [00:05<00:05, 51.63it/s]Dataset preprocessing...:  58%|█████▊    | 113/194 [00:01<00:01, 47.75it/s]Dataset preprocessing...:  56%|█████▌    | 345/620 [00:05<00:05, 49.61it/s]Dataset preprocessing...:  62%|██████▏   | 120/194 [00:01<00:01, 51.40it/s]Dataset preprocessing...:  57%|█████▋    | 351/620 [00:05<00:05, 50.93it/s]Dataset preprocessing...:  58%|█████▊    | 357/620 [00:05<00:05, 51.39it/s]Dataset preprocessing...:  65%|██████▍   | 126/194 [00:02<00:01, 43.04it/s]Dataset preprocessing...:  59%|█████▉    | 366/620 [00:05<00:04, 59.97it/s]Dataset preprocessing...:  68%|██████▊   | 131/194 [00:02<00:01, 43.80it/s]Dataset preprocessing...:  60%|██████    | 374/620 [00:06<00:03, 65.20it/s]Dataset preprocessing...:  71%|███████   | 138/194 [00:02<00:01, 49.70it/s]Dataset preprocessing...:  62%|██████▏   | 382/620 [00:06<00:03, 66.70it/s]Dataset preprocessing...:  75%|███████▌  | 146/194 [00:02<00:00, 55.48it/s]Dataset preprocessing...:  63%|██████▎   | 390/620 [00:06<00:03, 68.44it/s]Dataset preprocessing...:  79%|███████▉  | 153/194 [00:02<00:00, 55.62it/s]Dataset preprocessing...:  64%|██████▍   | 398/620 [00:06<00:03, 71.04it/s]Dataset preprocessing...:  82%|████████▏ | 159/194 [00:02<00:00, 55.49it/s]Dataset preprocessing...:  65%|██████▌   | 406/620 [00:06<00:03, 62.89it/s]Dataset preprocessing...:  86%|████████▌ | 167/194 [00:02<00:00, 61.39it/s]Dataset preprocessing...:  67%|██████▋   | 413/620 [00:06<00:03, 62.93it/s]Dataset preprocessing...:  90%|████████▉ | 174/194 [00:02<00:00, 61.96it/s]Dataset preprocessing...:  68%|██████▊   | 420/620 [00:06<00:03, 60.77it/s]Dataset preprocessing...:  93%|█████████▎| 181/194 [00:03<00:00, 60.26it/s]Dataset preprocessing...:  69%|██████▉   | 429/620 [00:06<00:02, 66.58it/s]Dataset preprocessing...:  97%|█████████▋| 188/194 [00:03<00:00, 52.50it/s]Dataset preprocessing...:  70%|███████   | 436/620 [00:06<00:02, 65.50it/s]Dataset preprocessing...:  72%|███████▏  | 444/620 [00:07<00:02, 68.06it/s]Dataset preprocessing...: 100%|██████████| 194/194 [00:03<00:00, 41.90it/s]Dataset preprocessing...: 100%|██████████| 194/194 [00:03<00:00, 56.31it/s]
-Dataset preprocessing...:  73%|███████▎  | 451/620 [00:07<00:02, 57.40it/s]Dataset preprocessing...:  74%|███████▍  | 458/620 [00:07<00:02, 56.09it/s]Dataset preprocessing...:  75%|███████▌  | 465/620 [00:07<00:02, 59.22it/s]Dataset preprocessing...:  76%|███████▋  | 473/620 [00:07<00:02, 64.26it/s]Dataset preprocessing...:  77%|███████▋  | 480/620 [00:07<00:02, 53.28it/s]Dataset preprocessing...:  78%|███████▊  | 486/620 [00:07<00:02, 50.03it/s]Dataset preprocessing...:  79%|███████▉  | 492/620 [00:08<00:02, 50.15it/s]Dataset preprocessing...:  80%|████████  | 498/620 [00:08<00:02, 51.43it/s]Dataset preprocessing...:  82%|████████▏ | 508/620 [00:08<00:01, 61.13it/s]Dataset preprocessing...:  84%|████████▎ | 518/620 [00:08<00:01, 67.66it/s]Dataset preprocessing...:  85%|████████▍ | 525/620 [00:08<00:01, 67.32it/s]Dataset preprocessing...:  86%|████████▌ | 532/620 [00:08<00:01, 65.85it/s]Dataset preprocessing...:  87%|████████▋ | 539/620 [00:08<00:01, 63.76it/s]Dataset preprocessing...:  88%|████████▊ | 546/620 [00:08<00:01, 62.73it/s]train data :  72999
-valid data :  16412
-test data :  24438
------------------------------------------------------------------------------------
-           Layer (type)                Input Shape         Param #     Tr. Param #
-===================================================================================
-           NoiseLayer-1                [1, 16, 24]               0               0
-               Linear-2                [1, 16, 24]           1,600           1,600
-                 ReLU-3                [1, 16, 64]               0               0
-               Linear-4                [1, 16, 64]           8,320           8,320
-   PositionalEncoding-5               [16, 1, 128]               0               0
-   TransformerEncoder-6     [16, 1, 128], [16, 16]         793,088         793,088
-               Linear-7               [1, 16, 128]           3,096           3,096
-               Linear-8                [1, 24, 16]              68              68
-               Linear-9                 [1, 4, 24]             250             250
-===================================================================================
-Total params: 806,422
-Trainable params: 806,422
-Non-trainable params: 0
-Batch size: 1
------------------------------------------------------------------------------------
-training process:   0%|          | 0/128 [00:00<?, ?it/s]Dataset preprocessing...:  89%|████████▉ | 553/620 [00:09<00:01, 56.37it/s]Dataset preprocessing...:  90%|█████████ | 559/620 [00:09<00:01, 50.78it/s]Dataset preprocessing...:  91%|█████████ | 565/620 [00:09<00:01, 48.65it/s]Dataset preprocessing...:  92%|█████████▏| 571/620 [00:09<00:00, 49.79it/s]Dataset preprocessing...:  93%|█████████▎| 577/620 [00:09<00:00, 50.52it/s]Dataset preprocessing...:  94%|█████████▍| 583/620 [00:09<00:00, 51.80it/s]Dataset preprocessing...:  95%|█████████▌| 589/620 [00:09<00:00, 49.47it/s]Dataset preprocessing...:  96%|█████████▌| 595/620 [00:09<00:00, 43.12it/s]Dataset preprocessing...:  97%|█████████▋| 600/620 [00:10<00:00, 35.28it/s]Dataset preprocessing...:  98%|█████████▊| 608/620 [00:10<00:00, 44.12it/s]Dataset preprocessing...:  99%|█████████▉| 613/620 [00:10<00:00, 38.99it/s]Dataset preprocessing...: 100%|█████████▉| 619/620 [00:10<00:00, 30.87it/s]Dataset preprocessing...: 100%|██████████| 620/620 [00:10<00:00, 56.72it/s]
-extract the null data:   0%|          | 0/155 [00:00<?, ?it/s]extract the null data:  45%|████▍     | 69/155 [00:00<00:00, 688.00it/s]extract the null data:  90%|█████████ | 140/155 [00:00<00:00, 699.61it/s]extract the null data: 100%|██████████| 155/155 [00:00<00:00, 697.51it/s]
-Dataset preprocessing...:   0%|          | 0/155 [00:00<?, ?it/s]Dataset preprocessing...:   6%|▌         | 9/155 [00:00<00:01, 79.36it/s]Dataset preprocessing...:  11%|█         | 17/155 [00:00<00:02, 53.47it/s]Dataset preprocessing...:  15%|█▍        | 23/155 [00:00<00:02, 53.21it/s]Dataset preprocessing...:  19%|█▊        | 29/155 [00:00<00:02, 54.24it/s]Dataset preprocessing...:  23%|██▎       | 35/155 [00:00<00:02, 52.26it/s]Dataset preprocessing...:  27%|██▋       | 42/155 [00:00<00:01, 57.22it/s]Dataset preprocessing...:  32%|███▏      | 50/155 [00:00<00:01, 63.58it/s]Dataset preprocessing...:  37%|███▋      | 58/155 [00:00<00:01, 64.39it/s]Dataset preprocessing...:  42%|████▏     | 65/155 [00:01<00:01, 63.27it/s]Dataset preprocessing...:  47%|████▋     | 73/155 [00:01<00:01, 66.42it/s]Dataset preprocessing...:  52%|█████▏    | 80/155 [00:01<00:01, 59.06it/s]Dataset preprocessing...:  57%|█████▋    | 88/155 [00:01<00:01, 63.94it/s]Dataset preprocessing...:  61%|██████▏   | 95/155 [00:01<00:00, 64.88it/s]Dataset preprocessing...:  66%|██████▌   | 102/155 [00:01<00:00, 63.12it/s]Dataset preprocessing...:  70%|███████   | 109/155 [00:01<00:00, 56.19it/s]Dataset preprocessing...:  74%|███████▍  | 115/155 [00:01<00:00, 51.72it/s]Dataset preprocessing...:  78%|███████▊  | 121/155 [00:02<00:00, 48.08it/s]Dataset preprocessing...:  83%|████████▎ | 128/155 [00:02<00:00, 53.13it/s]Dataset preprocessing...:  86%|████████▋ | 134/155 [00:02<00:00, 51.43it/s]Dataset preprocessing...:  90%|█████████ | 140/155 [00:02<00:00, 50.80it/s]Dataset preprocessing...:  94%|█████████▍| 146/155 [00:02<00:00, 50.67it/s]Dataset preprocessing...:  98%|█████████▊| 152/155 [00:02<00:00, 52.86it/s]Dataset preprocessing...: 100%|██████████| 155/155 [00:02<00:00, 56.57it/s]
-extract the null data:   0%|          | 0/194 [00:00<?, ?it/s]extract the null data:  34%|███▍      | 66/194 [00:00<00:00, 656.92it/s]extract the null data:  69%|██████▊   | 133/194 [00:00<00:00, 664.49it/s]extract the null data: 100%|██████████| 194/194 [00:00<00:00, 662.90it/s]
-Dataset preprocessing...:   0%|          | 0/194 [00:00<?, ?it/s]Dataset preprocessing...:   3%|▎         | 5/194 [00:00<00:03, 47.60it/s]Dataset preprocessing...:   6%|▌         | 11/194 [00:00<00:03, 48.83it/s]Dataset preprocessing...:   9%|▉         | 17/194 [00:00<00:03, 50.09it/s]Dataset preprocessing...:  12%|█▏        | 23/194 [00:00<00:03, 49.89it/s]Dataset preprocessing...:  14%|█▍        | 28/194 [00:00<00:03, 46.58it/s]Dataset preprocessing...:  18%|█▊        | 34/194 [00:00<00:03, 48.84it/s]Dataset preprocessing...:  21%|██        | 40/194 [00:00<00:03, 50.85it/s]Dataset preprocessing...:  26%|██▌       | 50/194 [00:00<00:02, 64.74it/s]Dataset preprocessing...:  30%|███       | 59/194 [00:01<00:01, 70.10it/s]Dataset preprocessing...:  35%|███▍      | 67/194 [00:01<00:01, 65.22it/s]Dataset preprocessing...:  38%|███▊      | 74/194 [00:01<00:01, 66.10it/s]Dataset preprocessing...:  42%|████▏     | 81/194 [00:01<00:01, 62.62it/s]Dataset preprocessing...:  45%|████▌     | 88/194 [00:01<00:01, 60.30it/s]Dataset preprocessing...:  49%|████▉     | 95/194 [00:01<00:01, 51.94it/s]Dataset preprocessing...:  52%|█████▏    | 101/194 [00:01<00:01, 51.40it/s]Dataset preprocessing...:  55%|█████▌    | 107/194 [00:01<00:01, 51.02it/s]Dataset preprocessing...:  58%|█████▊    | 113/194 [00:02<00:02, 37.01it/s]Dataset preprocessing...:  61%|██████    | 118/194 [00:02<00:01, 39.48it/s]Dataset preprocessing...:  63%|██████▎   | 123/194 [00:02<00:02, 32.42it/s]Dataset preprocessing...:  66%|██████▋   | 129/194 [00:02<00:01, 36.86it/s]Dataset preprocessing...:  69%|██████▉   | 134/194 [00:02<00:01, 36.79it/s]Dataset preprocessing...:  73%|███████▎  | 142/194 [00:02<00:01, 45.66it/s]Dataset preprocessing...:  77%|███████▋  | 149/194 [00:03<00:00, 50.42it/s]Dataset preprocessing...:  80%|███████▉  | 155/194 [00:03<00:00, 45.73it/s]Dataset preprocessing...:  83%|████████▎ | 161/194 [00:03<00:00, 48.40it/s]Dataset preprocessing...:  87%|████████▋ | 168/194 [00:03<00:00, 51.53it/s]Dataset preprocessing...:  90%|████████▉ | 174/194 [00:03<00:00, 52.06it/s]Dataset preprocessing...:  93%|█████████▎| 180/194 [00:03<00:00, 51.23it/s]Dataset preprocessing...:  96%|█████████▌| 186/194 [00:03<00:00, 47.10it/s]Dataset preprocessing...:  98%|█████████▊| 191/194 [00:03<00:00, 46.43it/s]Dataset preprocessing...: 100%|██████████| 194/194 [00:04<00:00, 47.20it/s]
-train data :  72999
-valid data :  16412
-test data :  24438
------------------------------------------------------------------------
-      Layer (type)         Input Shape         Param #     Tr. Param #
-=======================================================================
-     EncoderTree-1         [1, 16, 24]          98,112          98,112
-          Conv1d-2         [1, 16, 24]              64              64
-          Linear-3          [1, 4, 24]             425             425
-            ReLU-4          [1, 4, 17]               0               0
-          Linear-5          [1, 4, 17]             180             180
-=======================================================================
-Total params: 98,781
-Trainable params: 98,781
-Non-trainable params: 0
-Batch size: 1
------------------------------------------------------------------------
-training process:   0%|          | 0/128 [00:00<?, ?it/s]epoch : 1, train loss : 364.643, valid loss : 178.390,
-training process:   1%|          | 1/128 [04:45<10:04:54, 285.78s/it]epoch : 1, train loss : 45.449, valid loss : 25.629,
-training process:   1%|          | 1/128 [06:23<13:30:48, 383.06s/it]training process:   2%|▏         | 2/128 [09:41<10:12:03, 291.46s/it]training process:   2%|▏         | 2/128 [12:47<13:25:44, 383.69s/it]training process:   2%|▏         | 3/128 [14:58<10:31:43, 303.23s/it]training process:   3%|▎         | 4/128 [18:15<9:00:15, 261.41s/it] training process:   2%|▏         | 3/128 [19:30<13:38:05, 392.69s/it]epoch : 5, train loss : 54.299, valid loss : 31.509,
-training process:   4%|▍         | 5/128 [23:31<9:35:49, 280.89s/it]training process:   3%|▎         | 4/128 [25:51<13:22:08, 388.13s/it]training process:   5%|▍         | 6/128 [28:39<9:49:51, 290.10s/it]epoch : 5, train loss : 9.013, valid loss : 8.587,
-training process:   4%|▍         | 5/128 [32:05<13:04:47, 382.83s/it]training process:   5%|▌         | 7/128 [33:50<9:58:59, 297.02s/it]training process:   5%|▍         | 6/128 [38:20<12:52:59, 380.16s/it]training process:   6%|▋         | 8/128 [38:59<10:01:36, 300.81s/it]epoch : 9, train loss : 24.460, valid loss : 22.675,
-training process:   7%|▋         | 9/128 [44:04<9:59:26, 302.24s/it] training process:   5%|▌         | 7/128 [44:33<12:42:09, 377.93s/it]training process:   8%|▊         | 10/128 [48:48<9:43:29, 296.69s/it]training process:   6%|▋         | 8/128 [50:33<12:24:31, 372.26s/it]training process:   9%|▊         | 11/128 [53:41<9:36:11, 295.48s/it]epoch : 9, train loss : 7.102, valid loss : 7.298,
-training process:   7%|▋         | 9/128 [56:51<12:21:41, 373.96s/it]training process:   9%|▉         | 12/128 [58:44<9:35:27, 297.65s/it]epoch : 13, train loss : 19.025, valid loss : 18.232,
-training process:   8%|▊         | 10/128 [1:02:55<12:09:24, 370.89s/it]training process:  10%|█         | 13/128 [1:03:35<9:26:54, 295.78s/it]training process:  11%|█         | 14/128 [1:08:55<9:35:32, 302.91s/it]training process:   9%|▊         | 11/128 [1:09:15<12:08:43, 373.70s/it]training process:  12%|█▏        | 15/128 [1:14:10<9:37:31, 306.65s/it]training process:   9%|▉         | 12/128 [1:15:28<12:02:02, 373.47s/it]training process:  12%|█▎        | 16/128 [1:19:29<9:39:11, 310.28s/it]epoch : 13, train loss : 6.272, valid loss : 6.769,
-training process:  10%|█         | 13/128 [1:21:43<11:56:32, 373.85s/it]epoch : 17, train loss : 15.825, valid loss : 15.352,
-training process:  13%|█▎        | 17/128 [1:24:22<9:24:16, 305.02s/it]training process:  11%|█         | 14/128 [1:27:52<11:47:41, 372.47s/it]training process:  14%|█▍        | 18/128 [1:29:15<9:13:03, 301.67s/it]training process:  12%|█▏        | 15/128 [1:33:55<11:36:12, 369.66s/it]training process:  15%|█▍        | 19/128 [1:34:10<9:04:09, 299.53s/it]training process:  16%|█▌        | 20/128 [1:39:18<9:03:45, 302.09s/it]training process:  12%|█▎        | 16/128 [1:40:09<11:32:31, 370.99s/it]epoch : 21, train loss : 14.127, valid loss : 14.105,
-training process:  16%|█▋        | 21/128 [1:44:29<9:03:39, 304.85s/it]epoch : 17, train loss : 5.880, valid loss : 6.375,
-training process:  13%|█▎        | 17/128 [1:46:13<11:22:28, 368.91s/it]training process:  17%|█▋        | 22/128 [1:49:17<8:49:32, 299.74s/it]training process:  14%|█▍        | 18/128 [1:52:18<11:14:03, 367.67s/it]training process:  18%|█▊        | 23/128 [1:54:23<8:47:50, 301.62s/it]training process:  15%|█▍        | 19/128 [1:58:23<11:06:35, 366.93s/it]training process:  19%|█▉        | 24/128 [1:59:24<8:42:16, 301.31s/it]epoch : 25, train loss : 12.923, valid loss : 13.266,
-training process:  20%|█▉        | 25/128 [2:04:26<8:37:37, 301.53s/it]training process:  16%|█▌        | 20/128 [2:04:41<11:06:09, 370.09s/it]training process:  20%|██        | 26/128 [2:09:28<8:33:13, 301.89s/it]epoch : 21, train loss : 5.619, valid loss : 6.229,
-training process:  16%|█▋        | 21/128 [2:10:56<11:02:35, 371.54s/it]training process:  21%|██        | 27/128 [2:14:06<8:16:06, 294.72s/it]training process:  17%|█▋        | 22/128 [2:17:17<11:01:53, 374.66s/it]training process:  22%|██▏       | 28/128 [2:19:11<8:15:52, 297.52s/it]epoch : 29, train loss : 12.291, valid loss : 12.575,
-training process:  18%|█▊        | 23/128 [2:23:44<11:02:08, 378.37s/it]training process:  23%|██▎       | 29/128 [2:24:24<8:18:55, 302.38s/it]training process:  23%|██▎       | 30/128 [2:29:56<8:28:08, 311.11s/it]training process:  19%|█▉        | 24/128 [2:30:07<10:58:12, 379.73s/it]training process:  24%|██▍       | 31/128 [2:34:58<8:18:49, 308.55s/it]epoch : 25, train loss : 5.469, valid loss : 6.069,
-training process:  20%|█▉        | 25/128 [2:36:26<10:51:12, 379.35s/it]training process:  25%|██▌       | 32/128 [2:40:36<8:27:52, 317.42s/it]training process:  20%|██        | 26/128 [2:42:50<10:47:28, 380.87s/it]epoch : 33, train loss : 11.601, valid loss : 11.923,
-training process:  26%|██▌       | 33/128 [2:45:46<8:18:41, 314.96s/it]training process:  21%|██        | 27/128 [2:49:02<10:36:31, 378.14s/it]training process:  27%|██▋       | 34/128 [2:51:12<8:18:35, 318.25s/it]training process:  22%|██▏       | 28/128 [2:55:38<10:39:08, 383.48s/it]training process:  27%|██▋       | 35/128 [2:56:28<8:12:15, 317.59s/it]training process:  28%|██▊       | 36/128 [3:01:27<7:58:35, 312.12s/it]epoch : 29, train loss : 5.282, valid loss : 6.036,
-training process:  23%|██▎       | 29/128 [3:02:13<10:38:15, 386.82s/it]epoch : 37, train loss : 11.268, valid loss : 11.883,
-training process:  29%|██▉       | 37/128 [3:06:34<7:51:15, 310.72s/it]training process:  23%|██▎       | 30/128 [3:08:44<10:34:06, 388.23s/it]training process:  30%|██▉       | 38/128 [3:11:52<7:49:08, 312.76s/it]training process:  24%|██▍       | 31/128 [3:15:21<10:31:51, 390.84s/it]training process:  30%|███       | 39/128 [3:17:17<7:49:17, 316.37s/it]training process:  25%|██▌       | 32/128 [3:21:58<10:28:18, 392.69s/it]training process:  31%|███▏      | 40/128 [3:22:41<7:47:21, 318.65s/it]epoch : 41, train loss : 10.975, valid loss : 12.049,
-epoch : 33, train loss : 5.178, valid loss : 6.034,
-training process:  32%|███▏      | 41/128 [3:28:10<7:46:38, 321.82s/it]training process:  26%|██▌       | 33/128 [3:28:25<10:18:59, 390.95s/it]training process:  33%|███▎      | 42/128 [3:33:24<7:38:04, 319.58s/it]training process:  27%|██▋       | 34/128 [3:35:08<10:18:16, 394.65s/it]training process:  34%|███▎      | 43/128 [3:39:01<7:39:51, 324.61s/it]training process:  27%|██▋       | 35/128 [3:41:45<10:12:44, 395.32s/it]training process:  34%|███▍      | 44/128 [3:44:44<7:42:29, 330.35s/it]training process:  28%|██▊       | 36/128 [3:48:11<10:01:48, 392.49s/it]epoch : 45, train loss : 10.656, valid loss : 11.371,
-training process:  35%|███▌      | 45/128 [3:50:26<7:41:28, 333.60s/it]epoch : 37, train loss : 5.050, valid loss : 5.863,
-training process:  29%|██▉       | 37/128 [3:54:40<9:53:52, 391.56s/it] training process:  36%|███▌      | 46/128 [3:55:40<7:28:10, 327.93s/it]training process:  37%|███▋      | 47/128 [4:00:51<7:15:47, 322.81s/it]training process:  30%|██▉       | 38/128 [4:01:11<9:46:59, 391.33s/it]training process:  38%|███▊      | 48/128 [4:05:58<7:04:03, 318.04s/it]training process:  30%|███       | 39/128 [4:08:02<9:49:13, 397.23s/it]epoch : 49, train loss : 10.503, valid loss : 11.233,
-training process:  38%|███▊      | 49/128 [4:11:16<6:58:44, 318.03s/it]training process:  31%|███▏      | 40/128 [4:14:35<9:40:33, 395.84s/it]training process:  39%|███▉      | 50/128 [4:16:27<6:50:44, 315.95s/it]epoch : 41, train loss : 4.953, valid loss : 5.821,
-training process:  32%|███▏      | 41/128 [4:21:04<9:31:04, 393.84s/it]training process:  40%|███▉      | 51/128 [4:21:49<6:47:34, 317.59s/it]training process:  41%|████      | 52/128 [4:27:06<6:42:23, 317.68s/it]training process:  33%|███▎      | 42/128 [4:27:38<9:24:37, 393.92s/it]epoch : 53, train loss : 10.261, valid loss : 11.013,
-training process:  41%|████▏     | 53/128 [4:32:21<6:35:50, 316.67s/it]training process:  34%|███▎      | 43/128 [4:34:08<9:16:23, 392.74s/it]training process:  42%|████▏     | 54/128 [4:37:44<6:33:08, 318.76s/it]training process:  34%|███▍      | 44/128 [4:40:52<9:14:26, 396.03s/it]training process:  42%|████▏     | 54/128 [4:42:54<6:27:42, 314.35s/it]
-Traceback (most recent call last):
-  File "/home/jinsukim/codes_for_study/plasma-shape-control/train_transformer.py", line 172, in <module>
-    train_loss, valid_loss = train(
-  File "/home/jinsukim/codes_for_study/plasma-shape-control/src/nn_env/train.py", line 182, in train
-    fig = predict_tensorboard(model, test_for_check_per_epoch.dataset, device)
-  File "/home/jinsukim/codes_for_study/plasma-shape-control/src/nn_env/predict.py", line 203, in predict_tensorboard
-    predictions = np.concatenate(predictions, axis = 0)
-  File "<__array_function__ internals>", line 5, in concatenate
-ValueError: need at least one array to concatenate
-epoch : 45, train loss : 4.852, valid loss : 5.766,
-training process:  35%|███▌      | 45/128 [4:46:57<8:55:04, 386.80s/it]training process:  36%|███▌      | 46/128 [4:53:09<8:42:23, 382.23s/it]training process:  37%|███▋      | 47/128 [4:59:03<8:24:34, 373.76s/it]training process:  38%|███▊      | 48/128 [5:04:49<8:07:34, 365.68s/it]epoch : 49, train loss : 4.777, valid loss : 5.698,
-training process:  38%|███▊      | 49/128 [5:10:47<7:58:29, 363.42s/it]training process:  39%|███▉      | 50/128 [5:16:50<7:52:01, 363.10s/it]training process:  40%|███▉      | 51/128 [5:23:00<7:48:51, 365.34s/it]training process:  41%|████      | 52/128 [5:28:56<7:39:03, 362.41s/it]epoch : 53, train loss : 4.698, valid loss : 5.633,
-training process:  41%|████▏     | 53/128 [5:34:58<7:32:58, 362.38s/it]training process:  42%|████▏     | 54/128 [5:41:03<7:27:46, 363.06s/it]training process:  43%|████▎     | 55/128 [5:46:56<7:18:13, 360.18s/it]training process:  44%|████▍     | 56/128 [5:52:48<7:08:59, 357.50s/it]epoch : 57, train loss : 4.632, valid loss : 5.717,
-training process:  45%|████▍     | 57/128 [5:58:39<7:00:42, 355.52s/it]training process:  45%|████▌     | 58/128 [6:04:22<6:50:41, 352.02s/it]Traceback (most recent call last):
-  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/resource_sharer.py", line 138, in _serve
-    with self._listener.accept() as conn:
-  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 470, in accept
-    deliver_challenge(c, self._authkey)
-  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 745, in deliver_challenge
-    response = connection.recv_bytes(256)        # reject large message
-  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 221, in recv_bytes
-    buf = self._recv_bytes(maxlength)
-  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 419, in _recv_bytes
-    buf = self._recv(4)
-  File "/home/jinsukim/miniconda3/envs/research-env/lib/python3.9/multiprocessing/connection.py", line 388, in _recv
-    raise EOFError
-EOFError

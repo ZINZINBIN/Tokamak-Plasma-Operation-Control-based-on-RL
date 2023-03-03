@@ -8,7 +8,7 @@ import torch.nn as nn
 from typing import Literal
 
 class RevIN(nn.Module):
-    def __init__(self, num_features: int, ep:float=1e-5, affine:bool=True):
+    def __init__(self, num_features: int, eps:float=1e-5, affine:bool=True):
         """
         :param num_features: the number of features or channels
         :param eps: a value added for numerical stability

@@ -19,15 +19,11 @@ def evaluate(
     pts = []
     gts = []
 
-    for batch_idx, (data, target) in enumerate(test_loader):
+    for batch_idx, (data_0D, data_ctrl, target) in enumerate(test_loader):
         with torch.no_grad():
             optimizer.zero_grad()
-            data = data.to(device)
-            target = target.to(device)
-            output = model(data)
-
-            loss = loss_fn(output, target)
-    
+            output = model(data_0D.to(device), data_ctrl.to(device))
+            loss = loss_fn(output, target.to(device))
             test_loss += loss.item()
             
             pts.append(output.cpu().numpy().reshape(-1, output.size()[-1]))
@@ -35,12 +31,9 @@ def evaluate(
             
     test_loss /= (batch_idx + 1)
     
-    if is_print:
-        print("test loss : {:.3f}".format(test_loss))
-    
     pts = np.concatenate(pts, axis = 0)
     gts = np.concatenate(gts, axis = 0)
     
-    mse, rmse, mae = compute_metrics(gts,pts,None,is_print)
+    mse, rmse, mae, r2 = compute_metrics(gts,pts,None,is_print)
 
-    return test_loss, mse, rmse, mae
+    return test_loss, mse, rmse, mae, r2

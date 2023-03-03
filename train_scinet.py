@@ -56,14 +56,15 @@ if __name__ == "__main__":
     # columns for use
     # 0D parameter
     cols_0D = [
-        '\\q0', '\\q95', '\\ipmhd', '\\kappa', 
+        '\\q95', '\\ipmhd', '\\kappa', 
         '\\tritop', '\\tribot','\\betap','\\betan',
-        '\\li', '\\WTOT_DLM03', '\\ne_inter01', 
-    ] + ['\\TS_NE_CORE_AVG', '\\TS_NE_EDGE_AVG', '\\TS_TE_CORE_AVG','\\TS_TE_EDGE_AVG']
+        '\\li', '\\WTOT_DLM03', '\\ne_inter01',
+        '\\TS_NE_CORE_AVG', '\\TS_TE_CORE_AVG'
+    ]
     
     # else diagnostics
     cols_diag = [
-        '\\ne_inter01', '\\ne_tci01', '\\ne_tci02', '\\ne_tci03', '\\ne_tci04', '\\ne_tci05',
+        '\\ne_tci01', '\\ne_tci02', '\\ne_tci03', '\\ne_tci04', '\\ne_tci05',
     ]
     
     # control value / parameter
@@ -138,9 +139,9 @@ if __name__ == "__main__":
     print("valid data : ", valid_data.__len__())
     print("test data : ", test_data.__len__())
 
-    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = 8, shuffle = True)
-    valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 8, shuffle = True)
-    test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 8, shuffle = True)
+    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = 4, shuffle = True)
+    valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 4, shuffle = True)
+    test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 4, shuffle = True)
 
     model = SCINet(
         output_len = pred_len,
@@ -154,7 +155,7 @@ if __name__ == "__main__":
         concat_len = 0,
         groups = 1,
         kernel = 3,
-        dropout = 0.25,
+        dropout = 0.1,
         single_step_output_One = 0,
         input_len_seg = 0,
         positionalE = False,
@@ -196,7 +197,7 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(save_best_dir))
 
     # evaluation process
-    test_loss, mse, rmse, mae = evaluate(
+    test_loss, mse, rmse, mae, r2 = evaluate(
         test_loader,
         model,
         optimizer,

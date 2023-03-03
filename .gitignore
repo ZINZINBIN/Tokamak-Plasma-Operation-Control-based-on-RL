@@ -9,3 +9,6 @@ dataset/*
 
 # ignore run file
 runs/*
+
+# ignore .out
+*.out

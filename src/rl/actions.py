@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+from typing import List, Dict
 
 class NormalizedActions(gym.ActionWrapper):
     def action(self, action):
@@ -19,3 +20,10 @@ class NormalizedActions(gym.ActionWrapper):
         action = np.clip(action, low_bound, upper_bound)
         
         return action
+    
+# Each control parameter have limit variation over time
+# We reduce its incline and decline rates + Maximum and minimum value + On / Off value
+class CtrlValScaler:
+    def __init__(self, ctrl_setup : Dict):
+        self.setup = ctrl_setup
+        self.ctrl_names = ctrl_setup.keys()

@@ -66,12 +66,12 @@ if __name__ == "__main__":
     cols_0D = [
         '\\q0', '\\q95', '\\ipmhd', '\\kappa', 
         '\\tritop', '\\tribot','\\betap','\\betan',
-        '\\li', '\\WTOT_DLM03'
+        '\\li', '\\WTOT_DLM03','\\ne_inter01',
     ]
     
     # else diagnostics
     cols_diag = [
-        '\\ne_inter01', '\\ne_tci01', '\\ne_tci02', '\\ne_tci03', '\\ne_tci04', '\\ne_tci05',
+        '\\ne_tci01', '\\ne_tci02', '\\ne_tci03', '\\ne_tci04', '\\ne_tci05',
     ]
 
     # control value / parameter
