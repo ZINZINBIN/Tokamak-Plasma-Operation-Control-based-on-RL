@@ -288,6 +288,9 @@ def train_ddpg(
     episode_durations = []
     reward_list = []
     
+    best_reward = 0
+    best_episode = 0
+    
     for i_episode in range(num_episode):
         
         start_time = time.time()
@@ -365,6 +368,11 @@ def train_ddpg(
         
         # save weights
         torch.save(policy_network.state_dict(), save_last)
+        
+        if mean_reward > best_reward:
+            best_reward = mean_reward
+            best_episode = i_episode
+            torch.save(policy_network.state_dict(), save_best)
 
     print("training policy network and target network done....!")
     env.close()

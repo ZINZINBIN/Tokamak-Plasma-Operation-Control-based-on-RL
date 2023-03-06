@@ -10,7 +10,6 @@ import argparse, os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import RobustScaler
 
 def parsing():
     parser = argparse.ArgumentParser(description="training ddpg algorithms for tokamak plasma control")

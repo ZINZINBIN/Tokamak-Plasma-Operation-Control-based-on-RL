@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import pandas as pd
 from src.config import Config
-from src.nn_env.utility import preparing_0D_dataset
+from src.nn_env.utility import preparing_0D_dataset, get_range_of_output
 from src.nn_env.dataset import DatasetFor0D
 from src.nn_env.transformer import Transformer
 from src.nn_env.train import train
@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description="training NN based environment - Tr
 parser.add_argument("--batch_size", type = int, default = 128)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--gpu_num", type = int, default = 3)
-parser.add_argument("--num_epoch", type = int, default = 16)
+parser.add_argument("--num_epoch", type = int, default = 2)
 parser.add_argument("--gamma", type = float, default = 0.95)
 parser.add_argument("--verbose", type = int, default = 4)
 parser.add_argument("--max_norm_grad", type = float, default = 1.0)
@@ -59,9 +59,6 @@ if __name__ == "__main__":
     # 0D parameter
     cols_0D = config.DEFAULT_COLS_0D
     
-    # else diagnostics
-    cols_diag = config.DEFAULT_COLS_DIAG
-    
     # control value / parameter
     cols_control = config.DEFAULT_COLS_CTRL
     
@@ -85,6 +82,10 @@ if __name__ == "__main__":
     valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 4, shuffle = True)
     test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 4, shuffle = True)
     
+    # data range
+    range_info = get_range_of_output(train_data.ts_data, cols_0D)
+    
+    # transformer model argument
     model = Transformer(
         n_layers = config.TRANSFORMER_CONF['n_layers'], 
         n_heads = config.TRANSFORMER_CONF['n_heads'], 
@@ -99,6 +100,9 @@ if __name__ == "__main__":
         output_0D_dim = len(cols_0D),
         feature_0D_dim = config.TRANSFORMER_CONF['feature_0D_dim'],
         feature_ctrl_dim = config.TRANSFORMER_CONF['feature_ctrl_dim'],
+        range_info = range_info,
+        noise_mean = config.TRANSFORMER_CONF['noise_mean'],
+        noise_std = config.TRANSFORMER_CONF['noise_std']
     )
 
     model.summary()
@@ -113,8 +117,8 @@ if __name__ == "__main__":
     save_last_dir = os.path.join(args['root_dir'], "{}_seq{}_dis{}_last.pt".format(args['tag'], args['seq_len'], args['pred_len']))
     tensorboard_dir = os.path.join("./runs/", "tensorboard_{}_seq{}_dis{}".format(args['tag'], args['seq_len'], args['pred_len']))
 
-    loss_fn = CustomLoss()
-
+    loss_fn = CustomLoss() 
+    
     train_loss, valid_loss = train(
         train_loader,
         valid_loader,

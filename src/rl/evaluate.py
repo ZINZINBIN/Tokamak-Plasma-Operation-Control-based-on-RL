@@ -35,13 +35,12 @@ def evaluate_ddpg(
     
     # reset ou noise and current state from env
     state = env.reset()
-    state_list.append(init_state)
-    action_list.append(init_action)
+    state_list.append(env.get_state().squeeze(0))
+    action_list.append(env.get_action().squeeze(0))
 
     for t in count():
-        state = state.to(device)
         policy_network.eval()
-        action = policy_network(state)
+        action = policy_network(state.to(device)).detach().cpu()
 
         env_input_action = action
         _, reward, done, _ = env.step(env_input_action)

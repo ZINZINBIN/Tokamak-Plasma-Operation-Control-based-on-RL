@@ -74,3 +74,15 @@ def preparing_0D_dataset(
     scaler_ctrl.fit(df_train[cols_ctrl].values)
         
     return df_train, df_valid, df_test, scaler_0D, scaler_ctrl
+
+# get range of each output
+def get_range_of_output(df : pd.DataFrame, cols_0D : List):
+    
+    range_info = {}
+
+    for col in cols_0D:
+        min_val = df[col].min()
+        max_val = df[col].max()
+        range_info[col] = [min_val, max_val]
+    
+    return range_info

@@ -75,7 +75,7 @@ def generate_shot_data_from_real(
     time_x = time_x.loc[seq_len_0D + 1: seq_len_0D + len(predictions)].values
     actual = data_0D[cols_0D].loc[seq_len_0D + 1 : seq_len_0D + len(predictions)].values
     
-    fig, axes = plt.subplots(len(cols_0D)//3, 3, figsize = (16,12), sharex=True, facecolor = 'white')
+    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (16,10), sharex=True, facecolor = 'white')
     plt.suptitle(title)
     
     if scaler_0D:
@@ -159,14 +159,11 @@ def generate_shot_data_from_self(
     time_x = time_x.loc[seq_len_0D + 1: seq_len_0D + len(predictions)].values
     actual = data_0D[cols_0D].loc[seq_len_0D + 1 : seq_len_0D + len(predictions)].values
     
-    fig, axes = plt.subplots(len(cols_0D)//3, 3, figsize = (16,12), sharex=True, facecolor = 'white')
-    plt.suptitle(title)
-    
     if scaler_0D:
         predictions = scaler_0D.inverse_transform(predictions)
         actual = scaler_0D.inverse_transform(actual)
     
-    fig, axes = plt.subplots(len(cols_0D)//3, 3, figsize = (16,12), sharex=True, facecolor = 'white')
+    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (16,10), sharex=True, facecolor = 'white')
     plt.suptitle(title)
     
     for i, (ax, col) in enumerate(zip(axes.ravel(), cols_0D)):
@@ -247,7 +244,7 @@ def predict_tensorboard(
     time_x = time_x.loc[seq_len_0D + 1: seq_len_0D + len(predictions)].values
     actual = data_0D[cols_0D].loc[seq_len_0D + 1 : seq_len_0D + len(predictions)].values
     
-    fig, axes = plt.subplots(len(cols_0D)//3, 3, figsize = (16,12), sharex=True, facecolor = 'white')
+    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (16,10), sharex=True, facecolor = 'white')
     plt.suptitle("shot : {}-running-process".format(shot_num))
     
     if test_data.scaler_0D:

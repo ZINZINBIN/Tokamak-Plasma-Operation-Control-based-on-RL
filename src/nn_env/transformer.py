@@ -1,7 +1,7 @@
 import torch, math
 import torch.nn as nn
 from torch.autograd import Variable
-from typing import Optional
+from typing import Optional, Dict
 from pytorch_model_summary import summary
 
 # Transformer model
@@ -63,6 +63,9 @@ class Transformer(nn.Module):
         output_0D_dim : int = 12,
         feature_0D_dim : int = 128,
         feature_ctrl_dim : int = 128,
+        range_info : Optional[Dict] = None,
+        noise_mean : float = 0,
+        noise_std : float = 0.81,
         ):
         
         super(Transformer, self).__init__()
@@ -89,7 +92,7 @@ class Transformer(nn.Module):
         
         self.RIN = RIN
         
-        self.noise = NoiseLayer(mean = 0, std = 1e-2)
+        self.noise = NoiseLayer(mean = noise_mean, std = noise_std)
         
         # 0D data encoder
         self.encoder_input_0D = nn.Sequential(
@@ -147,6 +150,15 @@ class Transformer(nn.Module):
             
             self.affine_weight_ctrl = nn.Parameter(torch.ones(1, 1, input_ctrl_dim))
             self.affine_bias_ctrl = nn.Parameter(torch.zeros(1, 1, input_ctrl_dim))
+            
+        self.range_info = range_info
+        
+        if range_info:
+            self.range_min = torch.Tensor([range_info[key][0] for key in range_info.keys()])
+            self.range_max = torch.Tensor([range_info[key][1] for key in range_info.keys()])
+        else:
+            self.range_min = None
+            self.range_max = None
         
     def forward(self, x_0D : torch.Tensor, x_ctrl : torch.Tensor):
         
@@ -226,13 +238,18 @@ class Transformer(nn.Module):
         # dim reduction
         x = self.lc_feat(x)
     
+        # RevIN for considering data distribution shift
         if self.RIN:
             x = x - self.affine_bias_0D
             x = x / (self.affine_weight_0D + 1e-10)
             x = x * stdev_0D
             x = x + means_0D  
-            
-        x = torch.nan_to_num(x, nan = 0, posinf = 1.0, neginf = -1.0)
+        
+        # clamping : output range
+        x = torch.clamp(x, min = self.range_min.to(x.device), max = self.range_max.to(x.device))
+        
+        # remove nan value for stability
+        x = torch.nan_to_num(x, nan = 0)
         
         return x
 

@@ -1,9 +1,9 @@
 class Config():
     
     DEFAULT_0D_COLS = [
-    '\\q0','\\q95', '\\ipmhd', '\\kappa', 
-    '\\tritop', '\\tribot','\\betap','\\betan',
-    '\\li', '\\WTOT_DLM03', '\\ne_inter01'
+        '\\q0','\\q95', '\\ipmhd', '\\kappa', 
+        '\\tritop', '\\tribot','\\betap','\\betan',
+        '\\li', '\\WTOT_DLM03', '\\ne_inter01'
     ]
 
     DEFAULT_DIAG = [
