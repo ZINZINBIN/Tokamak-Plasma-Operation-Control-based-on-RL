@@ -104,7 +104,7 @@ class DatasetFor0D(Dataset):
         for shot in tqdm(self.shot_list, desc = 'replace nan value'):
             df_shot = self.ts_data[self.ts_data.shot == shot].copy()
             self.ts_data.loc[self.ts_data.shot == shot, self.cols_0D] = df_shot[self.cols_0D].fillna(method='ffill')
-        
+                    
         # scaling
         if self.scaler_0D:
             self.ts_data[self.cols_0D] = self.scaler_0D.transform(self.ts_data[self.cols_0D])
@@ -146,7 +146,7 @@ class DatasetFor0D(Dataset):
                 input_indices.append(input_indx)
                 target_indices.append(target_indx)
                 
-                if idx_last - target_indx < 0 or idx_last - idx - self.seq_len_ctrl < 0:
+                if idx_last - idx - self.seq_len_ctrl < 0:
                     break
                 
                 else:

@@ -1,10 +1,10 @@
 from src.rl.env import NeuralEnv
-from src.nn_env.model import TStransformer
+from src.nn_env.transformer import Transformer
 from src.rl.rewards import RewardSender
-from src.rl.utility import InitGenerator
-from src.rl.train import train_ddpg
-from src.rl.ddpg import Actor, Critic
+from src.rl.utility import InitGenerator, preparing_initial_dataset
+from src.rl.ddpg import Actor, Critic, train_ddpg, OUNoise
 from src.rl.buffer import ReplayBuffer
+from src.config import Config
 import torch
 import argparse, os
 import pandas as pd
@@ -21,14 +21,27 @@ def parsing():
     
     # gpu allocation
     parser.add_argument("--gpu_num", type = int, default = 0)
-
-
-    parser.add_argument("--batch_size", type = int, default = 64)
-    parser.add_argument("--num_episode", type = int, default = 256)
-    parser.add_argument("--seq_len", type = int, default = 21)
-    parser.add_argument("--pred_len", type = int, default = 1)
     
-    parser.add_argument("--t_init", type = float, default = 1.5)
+    # scenario for training
+    parser.add_argument("--shot_random", type = bool, default = True)
+    parser.add_argument("--t_init", type = float, default = 0.0)
+    parser.add_argument("--t_terminal", type = float, default = 10.0)
+    parser.add_argument("--dt", type = float, default = 0.01)
+    
+    # DDPG training setup
+    parser.add_argument("--batch_size", type = int, default = 64)
+    parser.add_argument("--num_episode", type = int, default = 1024)  
+    parser.add_argument("--lr", type = float, default = 2e-4)
+    parser.add_argument("--gamma", type = float, default = 0.995)
+    parser.add_argument("--min_value", type = float, default = -10.0)
+    parser.add_argument("--max_value", type = float, default = 10.0)
+    parser.add_argument("--tau", type = float, default = 0.01)
+    parser.add_argument("--verbose", type = int, default = 4)
+    
+    # predictor config
+    parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq16_dis4_best.pt")
+    parser.add_argument("--seq_len", type = int, default = 16)
+    parser.add_argument("--pred_len", type = int, default = 4)
     
     args = vars(parser.parse_args())
 
@@ -48,6 +61,7 @@ if __name__ == "__main__":
     
     # parsing
     args = parsing()
+    
     tag = args['tag']
     save_dir = args['save_dir']
     batch_size = args['batch_size']
@@ -55,117 +69,93 @@ if __name__ == "__main__":
     seq_len = args['seq_len']
     pred_len = args['pred_len']
     t_init = args['t_init']
+    lr = args['lr']
+    gamma = args['gamma']
+    min_value = args['min_value']
+    max_value = args['max_value']
+    tau = args['tau']
+    verbose = args['verbose']
         
     # device allocation
     if(torch.cuda.device_count() >= 1):
         device = "cuda:" + str(args["gpu_num"])
     else:
         device = 'cpu'
+        
+    config = Config()
     
-    # 0D parameters
-    cols_0D = [
-        '\\q0', '\\q95', '\\ipmhd', '\\kappa', 
-        '\\tritop', '\\tribot','\\betap','\\betan',
-        '\\li', '\\WTOT_DLM03','\\ne_inter01',
-    ]
+    # 0D parameter
+    cols_0D = config.DEFAULT_COLS_0D
     
     # else diagnostics
-    cols_diag = [
-        '\\ne_tci01', '\\ne_tci02', '\\ne_tci03', '\\ne_tci04', '\\ne_tci05',
-    ]
-
+    cols_diag = config.DEFAULT_COLS_DIAG
+    
     # control value / parameter
-    cols_control = [
-        '\\nb11_pnb','\\nb12_pnb','\\nb13_pnb',
-        '\\RC01', '\\RC02', '\\RC03',
-        '\\VCM01', '\\VCM02', '\\VCM03',
-        '\\EC2_PWR', '\\EC3_PWR', 
-        '\\ECSEC2TZRTN', '\\ECSEC3TZRTN',
-        '\\LV01'
-    ]
-
+    cols_control = config.DEFAULT_COLS_CTRL
+    
     # predictor
-    model = TStransformer(
-        n_features = len(cols_0D + cols_control), 
-        feature_dims = 128, 
-        max_len = seq_len, 
-        n_layers = 4, 
-        n_heads = 8, 
-        dim_feedforward = 512, 
-        dropout = 0.25, 
-        mlp_dim = 64, 
-        pred_len = pred_len,
-        output_dim = len(cols_0D)
+    model = Transformer(
+        n_layers = config.TRANSFORMER_CONF['n_layers'], 
+        n_heads = config.TRANSFORMER_CONF['n_heads'], 
+        dim_feedforward = config.TRANSFORMER_CONF['dim_feedforward'], 
+        dropout = config.TRANSFORMER_CONF['dropout'],        
+        RIN = config.TRANSFORMER_CONF['RIN'],
+        input_0D_dim = len(cols_0D),
+        input_0D_seq_len = seq_len,
+        input_ctrl_dim = len(cols_control),
+        input_ctrl_seq_len = seq_len + pred_len,
+        output_0D_pred_len = pred_len,
+        output_0D_dim = len(cols_0D),
+        feature_0D_dim = config.TRANSFORMER_CONF['feature_0D_dim'],
+        feature_ctrl_dim = config.TRANSFORMER_CONF['feature_ctrl_dim'],
     )
 
     model.to(device)
-    model.load_state_dict(torch.load("./weights/TStransformer_best.pt"))
+    model.load_state_dict(torch.load(args['predictor_weight']))
 
     # reward 
-    targets_dict = {
-        "\\betap" : 3.0,
-        "\\betan" : 4.0,
-        "\\q95" : 4.0,
-        "\\q0" : 1.0
-    }
+    targets_dict = config.DEFAULT_TARGETS
 
     # reward
-    reward_sender = RewardSender(targets_dict, total_cols = cols_0D + cols_control)
+    reward_sender = RewardSender(targets_dict, total_cols = cols_0D)
     
     # environment
-    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len)
+    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, t_terminal = args['t_terminal'], dt = args['dt'])
+    
+    # step 1. real data loaded
+    df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index(drop = True)
+    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index(drop = True)
     
     # initial state generator
-    # step 1. real data loaded
-    df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index()
-    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index()
+    df, scaler_0D, scaler_ctrl = preparing_initial_dataset(df, cols_0D, cols_control, 'Robust')
     
-    # nan interpolation
-    df.interpolate(method = 'linear', limit_direction = 'forward')
-    
-    # columns for use
-    ts_cols = cols_0D + cols_control
-
-    # float type
-    for col in ts_cols:
-        df[col] = df[col].astype(np.float32)
-        
-    df[cols_control] = df[cols_control].fillna(0)
-
-    df[cols_0D] = df[cols_0D].fillna(method = 'ffill')
-
-    scaler = RobustScaler()
-    df[ts_cols] = scaler.fit_transform(df[ts_cols].values)
-
-    init_generator = InitGenerator(df, t_init, cols_0D, cols_control, seq_len, True, None)
+    init_generator = InitGenerator(df, t_init, cols_0D, cols_control, seq_len, pred_len, True, None)
     
     # Replay Buffer
     memory = ReplayBuffer(capacity=100000)
     
     # Actor and Critic Network
     input_dim = len(cols_0D)
-    mlp_dim = 64
     n_actions = len(cols_control)
     
-    policy_network = Actor(input_dim, seq_len, mlp_dim, n_actions)
-    target_policy_network = Actor(input_dim, seq_len, mlp_dim, n_actions)
+    # define OU noise
+    ou_noise = OUNoise(n_actions, pred_len, mu = 0, theta = 0.15, max_sigma = 0.5, min_sigma = 0.1, decay_period=10000)
     
-    value_network = Critic(input_dim, seq_len, mlp_dim, n_actions)
-    target_value_network = Critic(input_dim, seq_len, mlp_dim, n_actions)
+    # policy and value network
+    policy_network = Actor(input_dim, seq_len, pred_len, config.DDPG_CONF['mlp_dim'], n_actions)
+    target_policy_network = Actor(input_dim, seq_len, pred_len, config.DDPG_CONF['mlp_dim'], n_actions)
     
+    value_network = Critic(input_dim, seq_len, pred_len, config.DDPG_CONF['mlp_dim'], n_actions)
+    target_value_network = Critic(input_dim, seq_len, pred_len, config.DDPG_CONF['mlp_dim'], n_actions)
+    
+    # gpu allocation
     policy_network.to(device)
     target_policy_network.to(device)
 
     value_network.to(device)
     target_value_network.to(device)
     
-    lr = 1e-3
-    gamma = 0.995
-    min_value = -1.0
-    max_value = 1.0
-    tau = 0.01
-    verbose = 4
-    
+    # optimizer
     value_optimizer = torch.optim.AdamW(value_network.parameters(), lr = lr)
     policy_optimizer = torch.optim.AdamW(policy_network.parameters(), lr = lr)
 
@@ -178,6 +168,7 @@ if __name__ == "__main__":
     
     episode_durations, episode_rewards = train_ddpg(
         env, 
+        ou_noise,
         init_generator,
         memory,
         policy_network,

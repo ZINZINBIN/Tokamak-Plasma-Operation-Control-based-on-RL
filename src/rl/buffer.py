@@ -5,7 +5,7 @@ from collections import namedtuple, deque
 # transition
 Transition = namedtuple(
     'Transition',
-    ('state', 'action','next_state', 'reward', 'done')
+    ('state', 'action','next_state','reward','done')
 )
 
 # save trajectory from buffer

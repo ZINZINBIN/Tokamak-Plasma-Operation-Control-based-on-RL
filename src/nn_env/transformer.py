@@ -232,6 +232,8 @@ class Transformer(nn.Module):
             x = x * stdev_0D
             x = x + means_0D  
             
+        x = torch.nan_to_num(x, nan = 0, posinf = 1.0, neginf = -1.0)
+        
         return x
 
     def _generate_square_subsequent_mask(self, size : int):

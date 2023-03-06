@@ -10,7 +10,7 @@ warnings.filterwarnings(action = 'ignore')
 
 config = Config()
 
-def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List, dt : float = 1.0 / 210):
+def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List, dt : float = 1.0 / 210, ewm_interval : int = 8):
     
     df_interpolate = pd.DataFrame()
     shot_list = np.unique(df.shot.values).tolist()
@@ -177,7 +177,7 @@ def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List,
 
         for col in cols:
             data = df_shot[col].values.reshape(-1,)
-            interp = interp1d(t, data, kind = 'cubic', fill_value = 'extrapolate')
+            interp = interp1d(t, data, kind = 'linear', fill_value = 'extrapolate')
             data_extend = interp(t_extend).reshape(-1,)
             
             if col == "\\ipmhd":
@@ -186,6 +186,9 @@ def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List,
                 dict_extend[col] = data_extend
 
         df_shot_extend = pd.DataFrame(data = dict_extend)
+        
+        # moving average : EWM
+        df_shot_extend = df_shot_extend.ewm(ewm_interval).mean()
         df_interpolate = pd.concat([df_interpolate, df_shot_extend], axis = 0).reset_index(drop = True)
         
     # Feature engineering
@@ -225,8 +228,9 @@ if __name__ == "__main__":
     
     cols = df.columns[df.notna().any()].drop(['Unnamed: 0','shot','time']).tolist()
     dt = 0.01
+    ewm_interval = 8
 
-    df_extend = ts_interpolate(df, df_disrupt, cols, dt)
+    df_extend = ts_interpolate(df, df_disrupt, cols, dt, ewm_interval)
     df_extend.to_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv", index = False)
     
     print(df_extend.describe())

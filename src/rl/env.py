@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class NeuralEnv(gym.Env):
     metadata = {'render.modes':['human']} # what does it means?
-    def __init__(self, predictor : nn.Module, device : str, reward_sender : RewardSender, seq_len : int, pred_len : int):
+    def __init__(self, predictor : nn.Module, device : str, reward_sender : RewardSender, seq_len : int, pred_len : int, t_terminal : float = 4.0, dt : float = 0.01):
         super().__init__()
         # predictor : output as next state of plasma
         self.predictor = predictor.to(device)
@@ -38,16 +38,18 @@ class NeuralEnv(gym.Env):
         self.init_state = None
         self.init_action = None
         
+        # current state 
+        self.t_released = 0 
         self.state = None
         self.action = None
         
-        self.t_released = 0
-        self.dt = 4 * 1 / 210
-        
-        self.t_terminal = 4
+        # information for virtual operation
+        self.dt = dt # time interval
+        self.t_terminal = t_terminal # terminal time
         
         # input sequence length
         self.seq_len = seq_len
+        
         # output sequence length
         self.pred_len = pred_len    
     
@@ -60,37 +62,38 @@ class NeuralEnv(gym.Env):
         if init_action.ndim == 2:
             init_action = init_action.unsqueeze(0)
         
-        self.init_state = init_state.to(self.device)
-        self.init_action = init_action.to(self.device)
+        self.init_state = init_state
+        self.init_action = init_action
         
-        self.state = init_state.to(self.device)
-        self.action = init_action.to(self.device)
+        self.state = init_state
+        self.action = init_action
         
     def update_state(self, next_state : torch.Tensor):
         state = self.state
-        next_state = next_state.to(self.device)
         
-        if len(next_state.size()) == 2:
+        if next_state.ndim == 2:
             next_state = next_state.unsqueeze(0)
         
         next_state = torch.concat([state, next_state], axis = 1)
         self.state = next_state[:,-self.seq_len:,:]
         
         # time sync
-        self.t_released += self.dt
+        self.t_released += self.dt * self.pred_len
         
     def update_action(self, next_action : torch.Tensor):
         action = self.action
-        next_action = next_action.to(self.device)
         
-        if len(next_action.size()) == 2:
+        if next_action.ndim == 2:
             next_action = next_action.unsqueeze(0)
         
         next_action = torch.concat([action, next_action], axis = 1)
-        self.action = next_action[:,-self.seq_len:,:]
+        self.action = next_action[:,-self.seq_len-self.pred_len:,:]
         
     def get_state(self):
         return self.state
+
+    def get_action(self):
+        return self.action
     
     def reset(self):
         self.done = False
@@ -101,23 +104,21 @@ class NeuralEnv(gym.Env):
         return self.state
 
     def step(self, action : torch.Tensor):
-        state = self.state
+        # get state
+        state = self.get_state()
         
-        if len(state.size()) == 2:
+        if state.ndim == 2:
             state = state.unsqueeze(0)
         
-        if len(action.size()) == 2:
+        if action.ndim == 2:
             action = action.unsqueeze(0)
             
-        action = action.to(self.device)
-        
         # update action
         self.update_action(action)
-        action = self.action
+        action = self.get_action()
             
-        # next input
-        inputs = torch.concat([state, action], axis = 2)
-        next_state = self.predictor(inputs)
+        # next state        
+        next_state = self.predictor(state.to(self.device), action.to(self.device)).detach().cpu()
         reward = self.reward_sender(next_state)
         
         # update done

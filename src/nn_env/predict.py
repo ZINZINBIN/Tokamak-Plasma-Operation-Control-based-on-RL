@@ -129,14 +129,13 @@ def generate_shot_data_from_self(
     
     previous_state = torch.Tensor([])
     next_state = None
-    state_list = None
+    state_list = torch.from_numpy(data_0D.loc[1:seq_len_0D].values)
     
     while(idx < idx_max):
         with torch.no_grad():
             if idx == 0:
                 input_0D = torch.from_numpy(data_0D.loc[idx+1:idx+seq_len_0D].values).unsqueeze(0)
                 input_ctrl = torch.from_numpy(data_ctrl.loc[idx+1:idx+seq_len_ctrl].values).unsqueeze(0)
-                state_list = torch.from_numpy(data_0D.loc[idx+1:idx+seq_len_ctrl].values)
                 
             else:
                 input_0D = previous_state.unsqueeze(0)
@@ -149,7 +148,7 @@ def generate_shot_data_from_self(
         
         # update previous state
         state_list = torch.concat([state_list, next_state.cpu().squeeze(0)], axis = 0)
-        previous_state = state_list[idx:idx+seq_len_0D,:]
+        previous_state = state_list[-seq_len_0D:,:]
         
         # prediction value update
         prediction = next_state.detach().squeeze(0).cpu().numpy()
