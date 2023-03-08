@@ -5,23 +5,23 @@ import pandas as pd
 from src.config import Config
 from src.nn_env.utility import preparing_0D_dataset, get_range_of_output
 from src.nn_env.dataset import DatasetFor0D
-from src.nn_env.transformer import Transformer
-from src.nn_env.train import train
+from src.nn_env.transformer_multi_step import Transformer
+from src.nn_env.train_multi_step import train
 from src.nn_env.loss import CustomLoss
-from src.nn_env.evaluate import evaluate
-from src.nn_env.predict import generate_shot_data_from_real, generate_shot_data_from_self
+from src.nn_env.evaluate_multi_step import evaluate
+from src.nn_env.predict_multi_step import generate_shot_data_from_self
 from torch.utils.data import DataLoader
 
-parser = argparse.ArgumentParser(description="training NN based environment - Transformer")
+parser = argparse.ArgumentParser(description="training NN based environment - Transformer : Multi-step")
 parser.add_argument("--batch_size", type = int, default = 128)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--gpu_num", type = int, default = 3)
-parser.add_argument("--num_epoch", type = int, default = 16)
+parser.add_argument("--num_epoch", type = int, default = 32)
 parser.add_argument("--gamma", type = float, default = 0.95)
 parser.add_argument("--verbose", type = int, default = 4)
 parser.add_argument("--max_norm_grad", type = float, default = 1.0)
 parser.add_argument("--root_dir", type = str, default = "./weights/")
-parser.add_argument("--tag", type = str, default = "Transformer")
+parser.add_argument("--tag", type = str, default = "Transformer_multi_step")
 parser.add_argument("--use_scaler", type = bool, default = True)
 parser.add_argument("--scaler", type = str, default = 'Robust', choices = ['Standard', 'Robust', 'MinMax'])
 parser.add_argument("--seq_len", type = int, default = 20)
@@ -70,9 +70,9 @@ if __name__ == "__main__":
     batch_size = args['batch_size']
     pred_cols = cols_0D
     
-    train_data = DatasetFor0D(ts_train.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
-    valid_data = DatasetFor0D(ts_valid.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
-    test_data = DatasetFor0D(ts_test.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+    train_data = DatasetFor0D(ts_train.copy(deep = True), df_disruption, seq_len, seq_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+    valid_data = DatasetFor0D(ts_valid.copy(deep = True), df_disruption, seq_len, seq_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+    test_data = DatasetFor0D(ts_test.copy(deep = True), df_disruption, seq_len, seq_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
     
     print("train data : ", train_data.__len__())
     print("valid data : ", valid_data.__len__())
@@ -93,13 +93,11 @@ if __name__ == "__main__":
         dropout = config.TRANSFORMER_CONF['dropout'],        
         RIN = config.TRANSFORMER_CONF['RIN'],
         input_0D_dim = len(cols_0D),
-        input_0D_seq_len = seq_len,
         input_ctrl_dim = len(cols_control),
-        input_ctrl_seq_len = seq_len + pred_len,
-        output_0D_pred_len = pred_len,
+        input_seq_len = seq_len,
+        output_pred_len = pred_len,
         output_0D_dim = len(cols_0D),
-        feature_0D_dim = config.TRANSFORMER_CONF['feature_0D_dim'],
-        feature_ctrl_dim = config.TRANSFORMER_CONF['feature_ctrl_dim'],
+        feature_dim = config.TRANSFORMER_CONF['feature_0D_dim'],
         range_info = range_info,
         noise_mean = config.TRANSFORMER_CONF['noise_mean'],
         noise_std = config.TRANSFORMER_CONF['noise_std']
@@ -147,15 +145,17 @@ if __name__ == "__main__":
         device,
     )
     
-    shot_num = ts_test.shot.iloc[0]
-    df_shot = ts_test[ts_test.shot == shot_num].reset_index(drop = True)
+    # shot_num = ts_test.shot.iloc[0]
+    # df_shot = ts_test[ts_test.shot == shot_num].reset_index(drop = True)
+    
+    shot_num = ts_train.shot.iloc[0]
+    df_shot = ts_train[ts_train.shot == shot_num].reset_index(drop = True)
     
     generate_shot_data_from_self(
         model,
         df_shot,
         seq_len,
-        seq_len + pred_len,
-        pred_len,
+        seq_len,
         cols_0D,
         cols_control,
         None,
@@ -163,19 +163,4 @@ if __name__ == "__main__":
         device,
         "shot number : {}".format(shot_num),
         save_dir = os.path.join("./result/", "{}_seq{}_dis{}_without_real_data.png".format(args['tag'], args['seq_len'], args['pred_len']))
-    )
-    
-    generate_shot_data_from_real(
-        model,
-        df_shot,
-        seq_len,
-        seq_len + pred_len,
-        pred_len,
-        cols_0D,
-        cols_control,
-        None,
-        None,
-        device,
-        "shot number : {}".format(shot_num),
-        save_dir = os.path.join("./result/", "{}_seq{}_dis{}_with_real_data.png".format(args['tag'], args['seq_len'], args['pred_len']))
     )

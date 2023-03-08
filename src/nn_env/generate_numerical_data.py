@@ -227,7 +227,7 @@ if __name__ == "__main__":
     print(df.describe())
     
     cols = df.columns[df.notna().any()].drop(['Unnamed: 0','shot','time']).tolist()
-    dt = 0.01
+    dt = 0.05
     ewm_interval = 8
 
     df_extend = ts_interpolate(df, df_disrupt, cols, dt, ewm_interval)

@@ -62,13 +62,11 @@ class Transformer(nn.Module):
         dropout : float = 0.1,        
         RIN : bool = False,
         input_0D_dim : int = 12,
-        input_0D_seq_len : int = 20,
         input_ctrl_dim : int = 14,
-        input_ctrl_seq_len : int = 24,
-        output_0D_pred_len : int = 4,
+        input_seq_len : int = 16,
+        output_pred_len : int = 4,
         output_0D_dim : int = 12,
-        feature_0D_dim : int = 128,
-        feature_ctrl_dim : int = 128,
+        feature_dim : int = 128,
         range_info : Optional[Dict] = None,
         noise_mean : float = 0,
         noise_std : float = 0.81,
@@ -78,75 +76,70 @@ class Transformer(nn.Module):
         
         # input information
         self.input_0D_dim = input_0D_dim
-        self.input_0D_seq_len = input_0D_seq_len
+        self.input_seq_len = input_seq_len
         self.input_ctrl_dim = input_ctrl_dim
-        self.input_ctrl_seq_len = input_ctrl_seq_len
         
         # output information
-        self.output_0D_pred_len = output_0D_pred_len
+        self.output_pred_len = output_pred_len
         self.output_0D_dim = output_0D_dim
         
         # source mask
-        self.src_mask_0D = None
-        self.src_mask_ctrl = None
+        self.src_mask = None
+        self.src_dec_mask = None
+        self.tgt_dec_mask = None
         
         # transformer info
-        self.feature_0D_dim = feature_0D_dim
+        self.feature_dim = feature_dim
         self.n_layers = n_layers
         self.n_heads = n_heads
-        self.feature_ctrl_dim = feature_ctrl_dim
-        
+
         self.RIN = RIN
         
         self.noise = NoiseLayer(mean = noise_mean, std = noise_std)
         
         # 0D data encoder
-        self.encoder_input_0D = nn.Sequential(
-            nn.Linear(in_features=input_0D_dim, out_features=feature_0D_dim // 2),
+        self.encoder_input = nn.Sequential(
+            nn.Linear(in_features=input_0D_dim + input_ctrl_dim, out_features=feature_dim // 2),
             nn.ReLU(),
-            nn.Linear(feature_0D_dim //2, feature_0D_dim)
+            nn.Linear(feature_dim //2, feature_dim)
         )
         
-        self.pos_0D = PositionalEncoding(d_model = feature_0D_dim, max_len = input_0D_seq_len)
+        # positional embedding
+        self.pos = PositionalEncoding(d_model = feature_dim, max_len = input_seq_len)
         
-        self.enc_0D = nn.TransformerEncoderLayer(
-            d_model = feature_0D_dim, 
+        # Encoder layer
+        self.enc = nn.TransformerEncoderLayer(
+            d_model = feature_dim, 
             nhead = n_heads, 
             dropout = dropout,
             dim_feedforward = dim_feedforward,
             activation = GELU()
         )
         
-        self.trans_enc_0D = nn.TransformerEncoder(self.enc_0D, num_layers=n_layers)
+        self.trans_enc = nn.TransformerEncoder(self.enc, num_layers=n_layers)
         
-        # ctrl data encoder
-        self.encoder_input_ctrl = nn.Sequential(
-            nn.Linear(in_features=input_ctrl_dim, out_features=feature_ctrl_dim // 2),
+        # Decoder
+        self.decoder_input = nn.Sequential(
+            nn.Linear(in_features=input_0D_dim + input_ctrl_dim, out_features=feature_dim // 2),
             nn.ReLU(),
-            nn.Linear(feature_ctrl_dim //2, feature_ctrl_dim)
+            nn.Linear(feature_dim //2, feature_dim)
         )
         
-        self.pos_ctrl = PositionalEncoding(d_model = feature_ctrl_dim, max_len = input_ctrl_seq_len)
-        self.enc_ctrl = nn.TransformerEncoderLayer(
-            d_model = feature_ctrl_dim, 
-            nhead = n_heads, 
+        self.dec = nn.TransformerDecoderLayer(
+            d_model = feature_dim, 
+            nhead = n_heads,
             dropout = dropout,
             dim_feedforward = dim_feedforward,
             activation = GELU()
         )
         
-        self.trans_enc_ctrl = nn.TransformerEncoder(self.enc_ctrl, num_layers=n_layers)
-
-        # FC decoder
-        # sequence length reduction
-        self.lc_0D_seq = nn.Linear(input_0D_seq_len, output_0D_pred_len)
-        self.lc_ctrl_seq = nn.Linear(input_ctrl_seq_len, output_0D_pred_len)
+        self.trans_dec = nn.TransformerDecoder(decoder_layer = self.dec, num_layers = n_layers)
         
-        # dimension reduction
+        # dimension reduction for feature dimension
         self.lc_feat= nn.Sequential(
-            nn.Linear(feature_0D_dim + feature_ctrl_dim, (feature_0D_dim + feature_ctrl_dim) // 2),
+            nn.Linear(feature_dim, feature_dim // 2),
             nn.ReLU(),
-            nn.Linear((feature_0D_dim + feature_ctrl_dim) // 2, output_0D_dim),
+            nn.Linear(feature_dim // 2, output_0D_dim),
         )
         
         # Reversible Instance Normalization
@@ -159,6 +152,7 @@ class Transformer(nn.Module):
             
         self.range_info = range_info
         
+        # lower and upper bound for stability
         if range_info:
             self.range_min = torch.Tensor([range_info[key][0] for key in range_info.keys()])
             self.range_max = torch.Tensor([range_info[key][1] for key in range_info.keys()])
@@ -166,7 +160,7 @@ class Transformer(nn.Module):
             self.range_min = None
             self.range_max = None
         
-    def forward(self, x_0D : torch.Tensor, x_ctrl : torch.Tensor):
+    def forward(self, x_0D : torch.Tensor, x_ctrl : torch.Tensor, target_0D : Optional[torch.Tensor] = None, target_ctrl : Optional[torch.Tensor] = None):
         
         b = x_0D.size()[0]
         
@@ -187,63 +181,49 @@ class Transformer(nn.Module):
             x_ctrl /= stdev_ctrl
             x_ctrl = x_ctrl * self.affine_weight_ctrl + self.affine_bias_ctrl
             
-        # path : 0D data
-        # encoding : (N, T, F) -> (N, T, d_model)
-        x_0D = self.encoder_input_0D(x_0D)
-        
-        # (T, N, d_model)
-        x_0D = x_0D.permute(1,0,2)
-        
-        if self.src_mask_0D is None or self.src_mask_0D.size(0) != len(x_0D):
-            device = x_0D.device
-            mask = self._generate_square_subsequent_mask(len(x_0D)).to(device)
-            self.src_mask_0D = mask
-        
-        
-        # positional encoding for time axis : (T, N, d_model)
-        x_0D = self.pos_0D(x_0D)
-        
-        # transformer encoding layer : (T, N, d_model)
-        x_0D = self.trans_enc_0D(x_0D, self.src_mask_0D.to(x_0D.device))
-        
-        # (N, T, d_model)
-        x_0D = x_0D.permute(1,0,2)
-        
-        # path : ctrl data
-        x_ctrl = self.encoder_input_ctrl(x_ctrl)
-        
-        # (T, N, d_model)
-        x_ctrl = x_ctrl.permute(1,0,2)
-        
-        if self.src_mask_ctrl is None or self.src_mask_ctrl.size(0) != len(x_ctrl):
-            device = x_ctrl.device
-            mask = self._generate_square_subsequent_mask(len(x_ctrl)).to(device)
-            self.src_mask_ctrl = mask
-        
-        # positional encoding for time axis : (T, N, d_model)
-        x_ctrl = self.pos_ctrl(x_ctrl)
-        
-        # transformer encoding layer : (T, N, d_model)
-        x_ctrl = self.trans_enc_ctrl(x_ctrl, self.src_mask_ctrl.to(x_ctrl.device))
-        
-        # (N, T, d_model)
-        x_ctrl = x_ctrl.permute(1,0,2)
-        
-        # (N, d_model, T_)
-        x_0D = self.lc_0D_seq(x_0D.permute(0,2,1))
-        # (N, T_, d_model)
-        x_0D = x_0D.permute(0,2,1)
-        
-        # (N, d_model, T_)
-        x_ctrl = self.lc_ctrl_seq(x_ctrl.permute(0,2,1))
-        # (N, T_, d_model)
-        x_ctrl = x_ctrl.permute(0,2,1)
-        
+        # concat : (N, T, F1 + F2)
         x = torch.concat([x_0D, x_ctrl], axis = 2)
         
-        # dim reduction
-        x = self.lc_feat(x)
-    
+        # encoding : (N, T, F) -> (N, T, d_model)
+        x = self.encoder_input(x)
+        
+        # (T, N, d_model)
+        x = x.permute(1,0,2)
+        
+        if self.src_mask is None or self.src_mask.size()[0] != x.size()[0]:
+            device = x.device
+            mask = self._generate_square_subsequent_mask(x.size()[0], x.size()[0]).to(device)
+            self.src_mask = mask
+        
+        # positional encoding for time axis : (T, N, d_model)
+        x = self.pos(x)
+        
+        # transformer encoding layer : (T, N, d_model)
+        x_enc = self.trans_enc(x, self.src_mask.to(x.device))
+        
+        # Decoder process
+        target = torch.concat([target_0D, target_ctrl], axis = 2)
+        x_dec = self.decoder_input(target)
+        x_dec = x_dec.permute(1,0,2)
+        
+        if self.tgt_dec_mask is None or self.src_dec_mask is None or self.tgt_dec_mask.size()[0] != x_dec.size()[0]:
+            device = x_dec.device
+            self.src_dec_mask = self._generate_square_subsequent_mask(x_dec.size()[0], x_enc.size()[0]).to(device)
+            self.tgt_dec_mask = self._generate_square_subsequent_mask(x_dec.size()[0], x_dec.size()[0]).to(device)
+        
+        # x_enc : (T, N, d_model)
+        # x_dec : (T',N, d_model)
+        
+        x_dec = self.trans_dec(
+            tgt = x_dec,
+            memory = x_enc,
+            tgt_mask = self.tgt_dec_mask.to(x_dec.device),
+            memory_mask = self.src_dec_mask.to(x_dec.device)
+        )
+        
+        x_dec = x_dec.permute(1,0,2)
+        x = self.lc_feat(x_dec)
+        
         # RevIN for considering data distribution shift
         if self.RIN:
             x = x - self.affine_bias_0D
@@ -259,12 +239,14 @@ class Transformer(nn.Module):
         
         return x
 
-    def _generate_square_subsequent_mask(self, size : int):
-        mask = (torch.triu(torch.ones(size,size))==1).transpose(0,1)
+    def _generate_square_subsequent_mask(self, dim1 : int, dim2 : int):
+        mask = (torch.triu(torch.ones(dim2, dim1))==1).transpose(0,1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
     def summary(self):
-        sample_0D = torch.zeros((1, self.input_0D_seq_len, self.input_0D_dim))
-        sample_ctrl = torch.zeros((1, self.input_ctrl_seq_len, self.input_ctrl_dim))
-        summary(self, sample_0D, sample_ctrl, batch_size = 1, show_input = True, print_summary=True)
+        sample_0D = torch.zeros((1, self.input_seq_len, self.input_0D_dim))
+        sample_ctrl = torch.zeros((1, self.input_seq_len, self.input_ctrl_dim))
+        sample_tgt_0D = torch.zeros((1, self.output_pred_len, self.input_0D_dim))
+        sample_tgt_ctrl = torch.zeros((1, self.output_pred_len, self.input_ctrl_dim))
+        summary(self, sample_0D, sample_ctrl, sample_tgt_0D, sample_tgt_ctrl, batch_size = 1, show_input = True, print_summary=True)

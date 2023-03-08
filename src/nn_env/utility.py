@@ -41,7 +41,7 @@ def preparing_0D_dataset(
 
     # train / valid / test data split
     from sklearn.model_selection import train_test_split
-    shot_list = np.unique(df.shot.values)
+    shot_list = np.unique(df.shot.values)[0:16]
 
     shot_train, shot_test = train_test_split(shot_list, test_size = 0.2, random_state = 42)
     shot_train, shot_valid = train_test_split(shot_train, test_size = 0.2, random_state = 42)

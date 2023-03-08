@@ -63,12 +63,12 @@ class Config():
         '\\EC2_PWR', '\\EC3_PWR', 
         '\\ECSEC2TZRTN', '\\ECSEC3TZRTN',
         '\\LV01', '\\ipmhd', '\\kappa', 
-        '\\tritop', '\\tribot'
+        '\\tritop', '\\tribot', '\\bcentr'
     ]
     
     # predictor : configuration for nn_env
     TRANSFORMER_CONF = {
-        "n_layers": 2, 
+        "n_layers": 4, 
         "n_heads":8, 
         "dim_feedforward" : 1024, 
         "dropout" : 0.1,        
@@ -76,7 +76,7 @@ class Config():
         "feature_0D_dim" : 128,
         "feature_ctrl_dim": 128,
         "noise_mean" : 0,
-        "noise_std" : 0.5
+        "noise_std" : 1.0
     }
     
     # controller : configuration for DDPG
