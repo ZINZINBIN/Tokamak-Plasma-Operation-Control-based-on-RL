@@ -129,11 +129,13 @@ def generate_shot_data_from_self(
     df_shot = df_shot_origin.copy(deep = True)
     time_x = df_shot['time']
     
+    
     if scaler_0D:
         df_shot[cols_0D] = scaler_0D.transform(df_shot[cols_0D].values)
     
     if scaler_ctrl:
         df_shot[cols_ctrl] = scaler_ctrl.transform(df_shot[cols_ctrl].values)
+    
     
     data_0D = df_shot[cols_0D]
     data_ctrl = df_shot[cols_ctrl]
@@ -187,7 +189,6 @@ def generate_shot_data_from_self(
     fig.tight_layout()
     plt.savefig(save_dir)
 
-    
 # for tensorboard
 def predict_tensorboard(
     model : torch.nn.Module,
@@ -238,11 +239,8 @@ def predict_tensorboard(
     
     model.to(device)
     model.eval() 
-    
-    previous_state = torch.Tensor([])
+
     next_state = None
-    state_list = torch.from_numpy(data_0D.loc[1:seq_len_0D].values)
-    ctrl_list = torch.from_numpy(data_ctrl.loc[1:seq_len_ctrl].values)
     
     input_0D = torch.from_numpy(data_0D.loc[idx+1:idx+seq_len_0D].values).unsqueeze(0)
     input_ctrl = torch.from_numpy(data_ctrl.loc[idx+1:idx+seq_len_ctrl].values).unsqueeze(0)

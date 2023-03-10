@@ -46,7 +46,10 @@ class DatasetFor0D(Dataset):
         interval : int = 10,
         scaler_0D = None,
         scaler_ctrl = None,
+        multi_step : bool = False
         ):
+        
+        self.multi_step = multi_step
         
         # dataframe : time series data and disruption information
         self.ts_data = ts_data
@@ -131,6 +134,9 @@ class DatasetFor0D(Dataset):
 
             idx = 0
             idx_last = len(df_shot.index) - self.seq_len_0D - self.pred_len_0D
+            
+            if idx_last < 10:
+                continue
 
             while(idx < idx_last):
                 row = df_shot.iloc[idx]
@@ -157,45 +163,45 @@ class DatasetFor0D(Dataset):
 
     def __getitem__(self, idx:int):
         
-        # first version : single step training
         
-        input_idx = self.input_indices[idx]
-        target_idx = self.target_indices[idx]
-        
-        data_0D = self.ts_data[self.cols_0D].loc[input_idx+1:input_idx + self.seq_len_0D].values
-        data_ctrl = self.ts_data[self.cols_ctrl].loc[input_idx+1:input_idx + self.seq_len_ctrl].values
-        
-        target = self.ts_data[self.cols_0D].loc[target_idx+1: target_idx + self.pred_len_0D].values
-        
-        data_0D = torch.from_numpy(data_0D).float()
-        data_ctrl = torch.from_numpy(data_ctrl).float()
-        target = torch.from_numpy(target).float()
+        if self.multi_step:
+            # second version : multi-step training 
+            input_idx = self.input_indices[idx]
+            target_idx = self.target_indices[idx]
+            
+            data_0D = self.ts_data[self.cols_0D].loc[input_idx+1:input_idx + self.seq_len_0D].values
+            data_ctrl = self.ts_data[self.cols_ctrl].loc[input_idx+1:input_idx + self.seq_len_ctrl].values
+            
+            target_0D = self.ts_data[self.cols_0D].loc[target_idx: target_idx + self.pred_len_0D-1].values
+            target_ctrl = self.ts_data[self.cols_ctrl].loc[target_idx: target_idx + self.pred_len_0D-1].values
+            
+            label = self.ts_data[self.cols_0D].loc[target_idx+1: target_idx + self.pred_len_0D].values
+            
+            data_0D = torch.from_numpy(data_0D).float()
+            data_ctrl = torch.from_numpy(data_ctrl).float()
 
-        return data_0D, data_ctrl, target
-        
-        '''
-        # second version : multi-step training 
-        input_idx = self.input_indices[idx]
-        target_idx = self.target_indices[idx]
-        
-        data_0D = self.ts_data[self.cols_0D].loc[input_idx+1:input_idx + self.seq_len_0D].values
-        data_ctrl = self.ts_data[self.cols_ctrl].loc[input_idx+1:input_idx + self.seq_len_ctrl].values
-        
-        target_0D = self.ts_data[self.cols_0D].loc[target_idx: target_idx + self.pred_len_0D-1].values
-        target_ctrl = self.ts_data[self.cols_ctrl].loc[target_idx: target_idx + self.pred_len_0D-1].values
-        
-        label = self.ts_data[self.cols_0D].loc[target_idx+1: target_idx + self.pred_len_0D].values
-        
-        data_0D = torch.from_numpy(data_0D).float()
-        data_ctrl = torch.from_numpy(data_ctrl).float()
+            target_0D = torch.from_numpy(target_0D).float()
+            target_ctrl = torch.from_numpy(target_ctrl).float()
+            
+            label = torch.from_numpy(label).float()
 
-        target_0D = torch.from_numpy(target_0D).float()
-        target_ctrl = torch.from_numpy(target_ctrl).float()
+            return data_0D, data_ctrl, target_0D, target_ctrl, label
         
-        label = torch.from_numpy(label).float()
+        else:
+            # first version : single step training
+            input_idx = self.input_indices[idx]
+            target_idx = self.target_indices[idx]
+            
+            data_0D = self.ts_data[self.cols_0D].loc[input_idx+1:input_idx + self.seq_len_0D].values
+            data_ctrl = self.ts_data[self.cols_ctrl].loc[input_idx+1:input_idx + self.seq_len_ctrl].values
+            
+            target = self.ts_data[self.cols_0D].loc[target_idx+1: target_idx + self.pred_len_0D].values
+            
+            data_0D = torch.from_numpy(data_0D).float()
+            data_ctrl = torch.from_numpy(data_ctrl).float()
+            target = torch.from_numpy(target).float()
 
-        return data_0D, data_ctrl, target_0D, target_ctrl, label
-        '''
-        
+            return data_0D, data_ctrl, target
+                
     def __len__(self):
         return len(self.input_indices)

@@ -5,7 +5,7 @@ from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
 from src.nn_env.metric import compute_metrics
 from src.nn_env.evaluate import evaluate
-from src.nn_env.predict import predict_tensorboard
+from src.nn_env.predict import predict_tensorboard, predict_from_self_tensorboard
 from torch.utils.tensorboard import SummaryWriter
 
 def train_per_epoch(
@@ -150,7 +150,7 @@ def train(
                                         }, 
                                         epoch + 1)
                     
-                    fig = predict_tensorboard(model, test_for_check_per_epoch.dataset, device)
+                    fig = predict_from_self_tensorboard(model, test_for_check_per_epoch.dataset, device)
                     
                     # model performance check in tensorboard
                     writer.add_figure('model performance', fig, epoch+1)

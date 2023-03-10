@@ -13,10 +13,10 @@ from src.nn_env.predict_multi_step import generate_shot_data_from_self
 from torch.utils.data import DataLoader
 
 parser = argparse.ArgumentParser(description="training NN based environment - Transformer : Multi-step")
-parser.add_argument("--batch_size", type = int, default = 128)
+parser.add_argument("--batch_size", type = int, default = 256)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--gpu_num", type = int, default = 3)
-parser.add_argument("--num_epoch", type = int, default = 32)
+parser.add_argument("--num_epoch", type = int, default = 128)
 parser.add_argument("--gamma", type = float, default = 0.95)
 parser.add_argument("--verbose", type = int, default = 4)
 parser.add_argument("--max_norm_grad", type = float, default = 1.0)
@@ -25,7 +25,7 @@ parser.add_argument("--tag", type = str, default = "Transformer_multi_step")
 parser.add_argument("--use_scaler", type = bool, default = True)
 parser.add_argument("--scaler", type = str, default = 'Robust', choices = ['Standard', 'Robust', 'MinMax'])
 parser.add_argument("--seq_len", type = int, default = 20)
-parser.add_argument("--pred_len", type = int, default = 10)
+parser.add_argument("--pred_len", type = int, default = 20)
 parser.add_argument("--interval", type = int, default = 4)
 
 args = vars(parser.parse_args())
@@ -70,17 +70,17 @@ if __name__ == "__main__":
     batch_size = args['batch_size']
     pred_cols = cols_0D
     
-    train_data = DatasetFor0D(ts_train.copy(deep = True), df_disruption, seq_len, seq_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
-    valid_data = DatasetFor0D(ts_valid.copy(deep = True), df_disruption, seq_len, seq_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
-    test_data = DatasetFor0D(ts_test.copy(deep = True), df_disruption, seq_len, seq_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+    train_data = DatasetFor0D(ts_train.copy(deep = True), df_disruption, seq_len, seq_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl, True)
+    valid_data = DatasetFor0D(ts_valid.copy(deep = True), df_disruption, seq_len, seq_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl, True)
+    test_data = DatasetFor0D(ts_test.copy(deep = True), df_disruption, seq_len, seq_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl, True)
     
     print("train data : ", train_data.__len__())
     print("valid data : ", valid_data.__len__())
     print("test data : ", test_data.__len__())
 
-    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = 4, shuffle = True)
-    valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 4, shuffle = True)
-    test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 4, shuffle = True)
+    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True)
+    valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True)
+    test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True)
     
     # data range
     range_info = get_range_of_output(train_data.ts_data, cols_0D)
@@ -115,7 +115,8 @@ if __name__ == "__main__":
     save_last_dir = os.path.join(args['root_dir'], "{}_seq{}_dis{}_last.pt".format(args['tag'], args['seq_len'], args['pred_len']))
     tensorboard_dir = os.path.join("./runs/", "tensorboard_{}_seq{}_dis{}".format(args['tag'], args['seq_len'], args['pred_len']))
 
-    loss_fn = CustomLoss() 
+    # loss_fn = CustomLoss() 
+    loss_fn = torch.nn.MSELoss(reduction = 'mean')
     
     train_loss, valid_loss = train(
         train_loader,
@@ -158,8 +159,8 @@ if __name__ == "__main__":
         seq_len,
         cols_0D,
         cols_control,
-        None,
-        None,
+        scaler_0D,
+        scaler_ctrl,
         device,
         "shot number : {}".format(shot_num),
         save_dir = os.path.join("./result/", "{}_seq{}_dis{}_without_real_data.png".format(args['tag'], args['seq_len'], args['pred_len']))

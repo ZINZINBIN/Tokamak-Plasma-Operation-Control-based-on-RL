@@ -143,28 +143,36 @@ class Transformer(nn.Module):
         self.lc_ctrl_seq = nn.Linear(input_ctrl_seq_len, output_0D_pred_len)
         
         # dimension reduction
-        self.lc_feat= nn.Sequential(
-            nn.Linear(feature_0D_dim + feature_ctrl_dim, (feature_0D_dim + feature_ctrl_dim) // 2),
-            nn.ReLU(),
-            nn.Linear((feature_0D_dim + feature_ctrl_dim) // 2, output_0D_dim),
-        )
+        self.lc_feat= nn.Linear(feature_0D_dim + feature_ctrl_dim, output_0D_dim)
         
         # Reversible Instance Normalization
         if self.RIN:
             self.affine_weight_0D = nn.Parameter(torch.ones(1, 1, input_0D_dim))
             self.affine_bias_0D = nn.Parameter(torch.zeros(1, 1, input_0D_dim))
             
-            self.affine_weight_ctrl = nn.Parameter(torch.ones(1, 1, input_ctrl_dim))
-            self.affine_bias_ctrl = nn.Parameter(torch.zeros(1, 1, input_ctrl_dim))
-            
         self.range_info = range_info
         
         if range_info:
-            self.range_min = torch.Tensor([range_info[key][0] for key in range_info.keys()])
-            self.range_max = torch.Tensor([range_info[key][1] for key in range_info.keys()])
+            self.range_min = torch.Tensor([range_info[key][0] * 0.1 for key in range_info.keys()])
+            self.range_max = torch.Tensor([range_info[key][1] * 10.0 for key in range_info.keys()])
         else:
             self.range_min = None
             self.range_max = None
+            
+        # initialize
+        self.init_weights()
+    
+    def init_weights(self):
+        
+        initrange = 0.1    
+        self.lc_feat.bias.data.zero_()
+        self.lc_feat.weight.data.uniform_(-initrange, initrange)
+        
+        self.lc_0D_seq.bias.data.zero_()
+        self.lc_0D_seq.weight.data.uniform_(-initrange, initrange)
+        
+        self.lc_ctrl_seq.bias.data.zero_()
+        self.lc_ctrl_seq.weight.data.uniform_(-initrange, initrange)
         
     def forward(self, x_0D : torch.Tensor, x_ctrl : torch.Tensor):
         
@@ -172,20 +180,14 @@ class Transformer(nn.Module):
         
         # add noise to robust performance
         x_0D = self.noise(x_0D)
-        x_ctrl = self.noise(x_ctrl)
+        # x_ctrl = self.noise(x_ctrl)
         
         if self.RIN:
             means_0D = x_0D.mean(1, keepdim=True).detach()
             x_0D = x_0D - means_0D
-            stdev_0D = torch.sqrt(torch.var(x_0D, dim=1, keepdim=True, unbiased=False) + 1e-5)
+            stdev_0D = torch.sqrt(torch.var(x_0D, dim=1, keepdim=True, unbiased=False) + 1e-3)
             x_0D /= stdev_0D
             x_0D = x_0D * self.affine_weight_0D + self.affine_bias_0D
-            
-            means_ctrl = x_ctrl.mean(1, keepdim=True).detach()
-            x_ctrl = x_ctrl - means_ctrl
-            stdev_ctrl = torch.sqrt(torch.var(x_ctrl, dim=1, keepdim=True, unbiased=False) + 1e-5)
-            x_ctrl /= stdev_ctrl
-            x_ctrl = x_ctrl * self.affine_weight_ctrl + self.affine_bias_ctrl
             
         # path : 0D data
         # encoding : (N, T, F) -> (N, T, d_model)
@@ -231,11 +233,13 @@ class Transformer(nn.Module):
         
         # (N, d_model, T_)
         x_0D = self.lc_0D_seq(x_0D.permute(0,2,1))
+        
         # (N, T_, d_model)
         x_0D = x_0D.permute(0,2,1)
         
         # (N, d_model, T_)
         x_ctrl = self.lc_ctrl_seq(x_ctrl.permute(0,2,1))
+        
         # (N, T_, d_model)
         x_ctrl = x_ctrl.permute(0,2,1)
         
@@ -247,12 +251,13 @@ class Transformer(nn.Module):
         # RevIN for considering data distribution shift
         if self.RIN:
             x = x - self.affine_bias_0D
-            x = x / (self.affine_weight_0D + 1e-10)
+            x = x / (self.affine_weight_0D + 1e-3)
             x = x * stdev_0D
             x = x + means_0D  
         
         # clamping : output range
-        x = torch.clamp(x, min = self.range_min.to(x.device), max = self.range_max.to(x.device))
+        # x = torch.clamp(x, min = self.range_min.to(x.device), max = self.range_max.to(x.device))
+        x = torch.clamp(x, min = -10.0, max = 10.0)
         
         # remove nan value for stability
         x = torch.nan_to_num(x, nan = 0)

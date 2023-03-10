@@ -72,11 +72,27 @@ class Config():
         "n_heads":8, 
         "dim_feedforward" : 1024, 
         "dropout" : 0.1,        
-        "RIN" : True,
+        "RIN" : False,
         "feature_0D_dim" : 128,
         "feature_ctrl_dim": 128,
         "noise_mean" : 0,
-        "noise_std" : 1.0
+        "noise_std" : 1.96
+    }
+    
+    SCINET_CONF = {
+        "hid_size" : 1,
+        "num_levels" : 3,
+        "num_decoder_layer" : 1,
+        "concat_len" : 0,
+        "groups" : 1,
+        "kernel" : 3,
+        "dropout" : 0.1,
+        "single_step_output_One" : 0,
+        "positionalE" : False,
+        "modified" : True,
+        "RIN" : False,
+        "noise_mean" : 0,
+        "noise_std" : 1.96
     }
     
     # controller : configuration for DDPG

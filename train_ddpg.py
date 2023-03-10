@@ -24,8 +24,8 @@ def parsing():
     # scenario for training
     parser.add_argument("--shot_random", type = bool, default = True)
     parser.add_argument("--t_init", type = float, default = 0.0)
-    parser.add_argument("--t_terminal", type = float, default = 10.0)
-    parser.add_argument("--dt", type = float, default = 0.01)
+    parser.add_argument("--t_terminal", type = float, default = 16.0)
+    parser.add_argument("--dt", type = float, default = 0.05)
     
     # DDPG training setup
     parser.add_argument("--batch_size", type = int, default = 64)
@@ -38,9 +38,9 @@ def parsing():
     parser.add_argument("--verbose", type = int, default = 4)
     
     # predictor config
-    parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq16_dis4_best.pt")
-    parser.add_argument("--seq_len", type = int, default = 16)
-    parser.add_argument("--pred_len", type = int, default = 4)
+    parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq10_dis1_best.pt")
+    parser.add_argument("--seq_len", type = int, default = 10)
+    parser.add_argument("--pred_len", type = int, default = 1)
     
     args = vars(parser.parse_args())
 
@@ -85,9 +85,6 @@ if __name__ == "__main__":
     
     # 0D parameter
     cols_0D = config.DEFAULT_COLS_0D
-    
-    # else diagnostics
-    cols_diag = config.DEFAULT_COLS_DIAG
     
     # control value / parameter
     cols_control = config.DEFAULT_COLS_CTRL
