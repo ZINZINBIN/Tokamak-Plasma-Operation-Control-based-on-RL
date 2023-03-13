@@ -2,10 +2,11 @@ from src.rl.evaluate import evaluate_ddpg
 from src.rl.env import NeuralEnv
 from src.nn_env.transformer import Transformer
 from src.rl.rewards import RewardSender
-from src.rl.utility import InitGenerator, preparing_initial_dataset
+from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output
 from src.rl.ddpg import Actor, Critic
 from src.rl.buffer import ReplayBuffer
 from src.config import Config
+from src.rl.video_generator import generate_control_performance
 import torch
 import argparse, os
 import pandas as pd
@@ -25,7 +26,7 @@ def parsing():
     # scenario for training
     parser.add_argument("--shot_random", type = bool, default = False)
     parser.add_argument("--t_init", type = float, default = 0.0)
-    parser.add_argument("--t_terminal", type = float, default = 16.0)
+    parser.add_argument("--t_terminal", type = float, default = 10.0)
     parser.add_argument("--dt", type = float, default = 0.05)
         
     # predictor config
@@ -47,7 +48,6 @@ print("torch device num : ", torch.cuda.device_count())
 torch.cuda.init()
 torch.cuda.empty_cache()
 
-    
 if __name__ == "__main__":
     
     # parsing
@@ -99,9 +99,6 @@ if __name__ == "__main__":
     # reward
     reward_sender = RewardSender(targets_dict, total_cols = cols_0D)
     
-    # environment
-    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, t_terminal = args['t_terminal'], dt = args['dt'])
-    
     # step 1. real data loaded
     df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index(drop = True)
     df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index(drop = True)
@@ -110,6 +107,12 @@ if __name__ == "__main__":
     df, scaler_0D, scaler_ctrl = preparing_initial_dataset(df, cols_0D, cols_control, 'Robust')
     
     init_generator = InitGenerator(df, t_init, cols_0D, cols_control, seq_len, pred_len, True, None)
+    
+    # info for range of action space
+    range_info = get_range_of_output(df, cols_control)
+    
+    # environment
+    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, range_info = range_info, t_terminal = args['t_terminal'], dt = args['dt'])
     
     # Actor and Critic Network
     input_dim = len(cols_0D)
@@ -197,3 +200,18 @@ if __name__ == "__main__":
     ax.set_xlabel('time')
     fig.tight_layout()
     plt.savefig(save_file)
+    
+    # gif file generation
+    title = "ani_shot_{}_operation_control".format(shot_num)
+    save_file = os.path.join(save_dir, "{}.gif".format(title))
+    generate_control_performance(
+        save_file,
+        total_state,
+        total_action,
+        cols_0D,
+        cols_control,
+        targets_dict,
+        "shot_{}_operation_control".format(shot_num),
+        args['dt'],
+        24,
+    )

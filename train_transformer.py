@@ -153,6 +153,7 @@ if __name__ == "__main__":
     shot_num = 20600
     df_shot = ts_test[ts_test.shot == shot_num].reset_index(drop = True)
     
+    # virtual experiment shot 
     generate_shot_data_from_self(
         model,
         df_shot,
@@ -168,6 +169,7 @@ if __name__ == "__main__":
         save_dir = os.path.join("./result/", "{}_seq{}_dis{}_without_real_data.png".format(args['tag'], args['seq_len'], args['pred_len']))
     )
     
+    # feedback from real data
     generate_shot_data_from_real(
         model,
         df_shot,

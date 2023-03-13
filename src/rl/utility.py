@@ -38,6 +38,17 @@ def preparing_initial_dataset(
         
     return df, scaler_0D, scaler_ctrl
 
+# get maximum value and minimum value of action space
+def get_range_of_output(df : pd.DataFrame, cols_ctrl : List):
+    
+    range_info = {}
+
+    for col in cols_ctrl:
+        min_val = df[col].min()
+        max_val = df[col].max()
+        range_info[col] = [min_val, max_val]
+    
+    return range_info
 
 # class for generating the initial state of the plasma and inital control values
 # initial state : (1, seq_len, n_0D_parameters)

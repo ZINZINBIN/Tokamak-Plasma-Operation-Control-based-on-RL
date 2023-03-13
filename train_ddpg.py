@@ -1,9 +1,10 @@
 from src.rl.env import NeuralEnv
 from src.nn_env.transformer import Transformer
 from src.rl.rewards import RewardSender
-from src.rl.utility import InitGenerator, preparing_initial_dataset
+from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output
 from src.rl.ddpg import Actor, Critic, train_ddpg, OUNoise
 from src.rl.buffer import ReplayBuffer
+from src.rl.actions import NormalizedActions
 from src.config import Config
 import torch
 import argparse, os
@@ -115,9 +116,6 @@ if __name__ == "__main__":
     # reward
     reward_sender = RewardSender(targets_dict, total_cols = cols_0D)
     
-    # environment
-    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, t_terminal = args['t_terminal'], dt = args['dt'])
-    
     # step 1. real data loaded
     df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index(drop = True)
     df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index(drop = True)
@@ -126,6 +124,15 @@ if __name__ == "__main__":
     df, scaler_0D, scaler_ctrl = preparing_initial_dataset(df, cols_0D, cols_control, 'Robust')
     
     init_generator = InitGenerator(df, t_init, cols_0D, cols_control, seq_len, pred_len, True, None)
+    
+    # info for output range
+    range_info = get_range_of_output(df, cols_control)
+    
+    # environment
+    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, range_info = range_info, t_terminal = args['t_terminal'], dt = args['dt'])
+    
+    # action rapper
+    env = NormalizedActions(env)
     
     # Replay Buffer
     memory = ReplayBuffer(capacity=100000)

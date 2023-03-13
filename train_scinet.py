@@ -24,9 +24,9 @@ parser.add_argument("--root_dir", type = str, default = "./weights/")
 parser.add_argument("--tag", type = str, default = "SimpleSCINet")
 parser.add_argument("--use_scaler", type = bool, default = True)
 parser.add_argument("--scaler", type = str, default = 'Robust', choices = ['Standard', 'Robust', 'MinMax'])
-parser.add_argument("--seq_len", type = int, default = 16)
-parser.add_argument("--pred_len", type = int, default = 16)
-parser.add_argument("--interval", type = int, default = 2)
+parser.add_argument("--seq_len", type = int, default = 10)
+parser.add_argument("--pred_len", type = int, default = 1)
+parser.add_argument("--interval", type = int, default = 4)
 
 args = vars(parser.parse_args())
 
@@ -139,7 +139,6 @@ if __name__ == "__main__":
         tensorboard_dir = tensorboard_dir,
         test_for_check_per_epoch = test_loader
     )
-    
     
     model.load_state_dict(torch.load(save_best_dir))
 

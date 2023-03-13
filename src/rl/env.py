@@ -17,13 +17,14 @@ from gym import error, spaces
 from gym import utils
 from gym.utils import seeding
 from src.rl.rewards import RewardSender
+from typing import Dict
 import logging
 
 logger = logging.getLogger(__name__)
 
 class NeuralEnv(gym.Env):
     metadata = {'render.modes':['human']} # what does it means?
-    def __init__(self, predictor : nn.Module, device : str, reward_sender : RewardSender, seq_len : int, pred_len : int, t_terminal : float = 4.0, dt : float = 0.01):
+    def __init__(self, predictor : nn.Module, device : str, reward_sender : RewardSender, seq_len : int, pred_len : int, range_info : Dict, t_terminal : float = 4.0, dt : float = 0.01):
         super().__init__()
         # predictor : output as next state of plasma
         self.predictor = predictor.to(device)
@@ -52,6 +53,12 @@ class NeuralEnv(gym.Env):
         
         # output sequence length
         self.pred_len = pred_len    
+        
+        # range information about action space
+        self.action_space = {
+            'low' : [range_info[col][0] for col in range_info.keys()],
+            'upper' : [range_info[col][1] for col in range_info.keys()],
+        }
     
     # update initial condition for plasma operation
     def update_init_state(self, init_state : torch.Tensor, init_action : torch.Tensor):
