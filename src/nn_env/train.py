@@ -5,7 +5,7 @@ from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
 from src.nn_env.metric import compute_metrics
 from src.nn_env.evaluate import evaluate
-from src.nn_env.predict import predict_tensorboard, predict_from_self_tensorboard
+from src.nn_env.predict import predict_tensorboard, predict_from_self_tensorboard, multi_step_prediction
 from torch.utils.tensorboard import SummaryWriter
 
 def train_per_epoch(
@@ -53,6 +53,7 @@ def train_per_epoch(
 
     return train_loss
 
+# this validation process will be depreciated
 def valid_per_epoch(
     valid_loader : DataLoader, 
     model : torch.nn.Module,
@@ -78,8 +79,37 @@ def valid_per_epoch(
         
     valid_loss /= (batch_idx + 1)
 
-    return valid_loss    
+    return valid_loss   
 
+# this version of validation process considers the multi-step prediction performance
+def valid_per_epoch_multi_step(
+    valid_loader : DataLoader, 
+    model : torch.nn.Module,
+    optimizer : torch.optim.Optimizer,
+    loss_fn : torch.nn.Module,
+    device : str,
+    ):
+    
+    model.eval()
+    model.to(device)
+    valid_loss = 0
+    
+    seq_len_0D = model.input_0D_seq_len
+    pred_len_0D = model.output_0D_pred_len
+    
+    for batch_idx, (data_0D, data_ctrl, target) in enumerate(valid_loader):        
+        with torch.no_grad():
+            optimizer.zero_grad()
+            preds = multi_step_prediction(model, data_0D, data_ctrl, seq_len_0D, pred_len_0D)
+            preds = torch.from_numpy(preds).unsqueeze(0)
+            
+            loss = loss_fn(preds.to(device), target.to(device)).detach().cpu()
+            valid_loss += loss.item()
+        
+    valid_loss /= batch_idx + 1
+    
+    return valid_loss   
+    
 def train(
     train_loader : DataLoader, 
     valid_loader : DataLoader,
@@ -95,6 +125,7 @@ def train(
     max_norm_grad : Optional[float] = None,
     tensorboard_dir : Optional[str] = None,
     test_for_check_per_epoch : Optional[DataLoader] = None,
+    multi_step_validation : bool = False,
     ):
 
     train_loss_list = []
@@ -120,14 +151,23 @@ def train(
             device,
             max_norm_grad,
         )
-
-        valid_loss = valid_per_epoch(
-            valid_loader, 
-            model,
-            optimizer,
-            loss_fn,
-            device,
-        )
+        
+        if not multi_step_validation:
+            valid_loss = valid_per_epoch(
+                valid_loader, 
+                model,
+                optimizer,
+                loss_fn,
+                device,
+            )
+        else:
+            valid_loss = valid_per_epoch_multi_step(
+                valid_loader, 
+                model,
+                optimizer,
+                loss_fn,
+                device,
+            )
 
         train_loss_list.append(train_loss)
         valid_loss_list.append(valid_loss)

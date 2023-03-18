@@ -1,6 +1,6 @@
-import numpy as np
-import random
+import random, os, pickle
 from collections import namedtuple, deque
+from typing import Optional
 
 # transition
 Transition = namedtuple(
@@ -19,8 +19,27 @@ class ReplayBuffer(object):
     def __len__(self):
         return len(self.memory)
     
-    def  sample(self, batch_size : int):
+    def sample(self, batch_size : int):
         return random.sample(self.memory, batch_size)
 
     def get(self):
         return self.memory.pop()
+    
+    def save_buffer(self, env_name : str, tag : str = "", save_path : Optional[str] = None):
+        
+        if not os.path.exists('checkpoints/'):
+            os.makedirs('checkpoints/', exist_ok=True)
+
+        if save_path is None:
+            save_path = "checkpoints/buffer_{}_{}".format(env_name, tag)
+            
+        print("Process : saving buffer to {}".format(save_path))
+        
+        with open(save_path, "wb") as f:
+            pickle.dump(self.memory, f)
+        
+    def load_buffer(self, save_path : str):
+        print("Process : loading buffer from {}".format(save_path))
+        
+        with open(save_path, 'rb') as f:
+            self.memory = pickle.load(f)

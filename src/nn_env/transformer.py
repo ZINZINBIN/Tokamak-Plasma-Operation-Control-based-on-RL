@@ -180,12 +180,11 @@ class Transformer(nn.Module):
         
         # add noise to robust performance
         x_0D = self.noise(x_0D)
-        # x_ctrl = self.noise(x_ctrl)
         
         if self.RIN:
             means_0D = x_0D.mean(1, keepdim=True).detach()
             x_0D = x_0D - means_0D
-            stdev_0D = torch.sqrt(torch.var(x_0D, dim=1, keepdim=True, unbiased=False) + 1e-3)
+            stdev_0D = torch.sqrt(torch.var(x_0D, dim=1, keepdim=True, unbiased=False) + 1e-3).detach()
             x_0D /= stdev_0D
             x_0D = x_0D * self.affine_weight_0D + self.affine_bias_0D
             
@@ -251,7 +250,7 @@ class Transformer(nn.Module):
         # RevIN for considering data distribution shift
         if self.RIN:
             x = x - self.affine_bias_0D
-            x = x / (self.affine_weight_0D + 1e-3)
+            x = x / (self.affine_weight_0D + 1e-6)
             x = x * stdev_0D
             x = x + means_0D  
         

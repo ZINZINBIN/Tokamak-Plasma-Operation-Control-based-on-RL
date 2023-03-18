@@ -1,11 +1,11 @@
 from src.rl.ddpg import Actor, Critic
+from src.rl.sac import GaussianPolicy
 import torch
 import argparse, os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import RobustScaler
-from src.nn_env.transformer_revised import Transformer
 
 # torch device state
 print("############### device setup ###################")
@@ -56,3 +56,11 @@ if __name__ == "__main__":
     #     noise_std = 0.81,
     # )
     # model.summary()
+    
+    policy = GaussianPolicy(26, 10, 1, 64, 15, -10, 1)
+    sample_data = torch.zeros((1, 10, 26))
+    
+    action, entropy, _ = policy.sample(sample_data)
+    
+    print("action : ", action.size())
+    print("entropy : ", entropy.size())

@@ -166,7 +166,6 @@ class Transformer(nn.Module):
         
         # add noise to robust performance
         x_0D = self.noise(x_0D)
-        # x_ctrl = self.noise(x_ctrl)
         
         if self.RIN:
             means_0D = x_0D.mean(1, keepdim=True).detach()
@@ -202,6 +201,7 @@ class Transformer(nn.Module):
         x_enc = self.trans_enc(x, self.src_mask.to(x.device))
         
         # Decoder process
+        target_0D = self.noise(target_0D)
         target = torch.concat([target_0D, target_ctrl], axis = 2)
         x_dec = self.decoder_input(target)
         x_dec = x_dec.permute(1,0,2)
@@ -236,7 +236,6 @@ class Transformer(nn.Module):
         
         # remove nan value for stability
         x = torch.nan_to_num(x, nan = 0)
-        
         return x
 
     def _generate_square_subsequent_mask(self, dim1 : int, dim2 : int):

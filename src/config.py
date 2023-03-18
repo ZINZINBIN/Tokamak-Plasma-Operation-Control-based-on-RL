@@ -68,7 +68,7 @@ class Config():
     
     # predictor : configuration for nn_env
     TRANSFORMER_CONF = {
-        "n_layers": 4, 
+        "n_layers": 2, 
         "n_heads":8, 
         "dim_feedforward" : 1024, 
         "dropout" : 0.1,        
@@ -81,7 +81,7 @@ class Config():
     
     SCINET_CONF = {
         "hid_size" : 1,
-        "num_levels" : 3,
+        "num_levels" : 2,
         "num_decoder_layer" : 1,
         "concat_len" : 0,
         "groups" : 1,
@@ -97,6 +97,10 @@ class Config():
     
     # controller : configuration for DDPG
     DDPG_CONF = {
+        "mlp_dim" : 128
+    }
+    
+    SAC_CONF = {
         "mlp_dim" : 128
     }
     

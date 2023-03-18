@@ -567,6 +567,10 @@ class SimpleSCINet(nn.Module):
         
         assert self.input_len % (np.power(2, self.num_levels)) == 0 # evenly divided the input length into two parts. (e.g., 32 -> 16 -> 8 -> 4 for 3 levels)
         
+        # modify sequence length of x_ctrl
+        if x_ctrl.size()[1] != self.input_len:
+            x_ctrl = x_ctrl[:,:self.input_len,:]
+        
         # add noise
         x_0D = self.noise_layer(x_0D)
         x = torch.concat([x_0D, x_ctrl], axis = 2)

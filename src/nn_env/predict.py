@@ -179,6 +179,54 @@ def generate_shot_data_from_self(
     fig.tight_layout()
     plt.savefig(save_dir)
     
+def multi_step_prediction(
+    model : torch.nn.Module,
+    data_0D : torch.Tensor,
+    data_ctrl : torch.Tensor,
+    seq_len_0D : int,
+    pred_len_0D : int,
+    device : str = 'cpu',
+    ):
+    
+    model.to(device)
+    model.eval()
+    
+    previous_state = None
+    next_state = None
+    state_list = data_0D.squeeze(0)
+    
+    idx = 0
+    idx_max = data_ctrl.size()[1] - seq_len_0D - pred_len_0D
+    
+    time_length = seq_len_0D
+    
+    predictions = []
+    
+    while(idx <= idx_max):
+        with torch.no_grad():
+            if idx == 0:
+                input_0D = data_0D
+                input_ctrl = data_ctrl[:,idx:idx+seq_len_0D+pred_len_0D,:]
+            else:
+                input_0D = previous_state.unsqueeze(0)
+                input_ctrl = data_ctrl[:,idx:idx+seq_len_0D+pred_len_0D,:]
+                            
+            next_state = model(input_0D.to(device), input_ctrl.to(device)).detach().cpu().squeeze(0)
+                
+        time_length += pred_len_0D
+        idx = time_length - seq_len_0D
+        
+        # update previous state
+        state_list = torch.concat([state_list, next_state], axis = 0)
+        previous_state = state_list[-seq_len_0D:,:]
+        
+        # prediction value update
+        predictions.append(next_state.numpy())
+            
+    predictions = np.concatenate(predictions, axis = 0)
+    
+    return predictions
+    
 # for tensorboard
 def predict_tensorboard(
     model : torch.nn.Module,
@@ -264,7 +312,7 @@ def predict_tensorboard(
     
     return fig
 
-
+# using self-predicted data 
 def predict_from_self_tensorboard(
     model : torch.nn.Module,
     test_data : DatasetFor0D,
