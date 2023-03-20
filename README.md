@@ -10,9 +10,11 @@
 (1) Efficient data sampling 
 (2) Work well(?) on continuous action space
 - The test shot control with initial information of shot 21747 in KSTAR
+
 <div>
     <p float = 'left'>
-        <img src="/image/shot_21474_operation_0D.png"  width="480" height="360">
+        <img src="/image/shot_21474_operation_0D.png"  width="320" height="320">
+        <img src="/image/shot_21474_operation_control.png"  width="320" height="320">
     </p>
 </div>
 
