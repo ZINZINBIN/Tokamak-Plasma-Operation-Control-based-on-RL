@@ -17,6 +17,11 @@ def R2(gt : np.array, pt : np.array):
     return r2_score(gt, pt)
 
 def compute_metrics(gt : Union[np.ndarray, List], pt : Union[np.ndarray, List], algorithm : Optional[str] = None, is_print : bool = True):
+    
+    if gt.ndim == 3:
+        gt = gt.reshape(-1, gt.shape[2])
+        pt = pt.reshape(-1, pt.shape[2])
+    
     mse = MSE(gt, pt)
     rmse = RMSE(gt, pt)
     mae = MAE(gt, pt)

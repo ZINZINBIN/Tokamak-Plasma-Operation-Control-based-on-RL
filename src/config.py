@@ -106,6 +106,6 @@ class Config():
     
     # control target value
     DEFAULT_TARGETS = {
-        "\\betan" : 3.0,
-        # "\\q95" : 4.0,
+        "\\betan" : 2.5,
+        "\\q95" : 3.0,
     }

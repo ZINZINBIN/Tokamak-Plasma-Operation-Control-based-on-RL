@@ -9,12 +9,12 @@ from src.nn_env.transformer import Transformer
 from src.nn_env.train import train
 from src.nn_env.loss import CustomLoss
 from src.nn_env.forgetting import DFwrapper
-from src.nn_env.evaluate import evaluate
+from src.nn_env.evaluate import evaluate, evaluate_multi_step
 from src.nn_env.predict import generate_shot_data_from_real, generate_shot_data_from_self
 from torch.utils.data import DataLoader
 
-parser = argparse.ArgumentParser(description="training NN based environment - Transformer")
-parser.add_argument("--batch_size", type = int, default = 256)
+parser = argparse.ArgumentParser(description="training NN based environment - Transformer with differentiate forgetting")
+parser.add_argument("--batch_size", type = int, default = 128)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--gpu_num", type = int, default = 3)
 parser.add_argument("--num_epoch", type = int, default = 128)
@@ -29,7 +29,7 @@ parser.add_argument("--seq_len", type = int, default = 10)
 parser.add_argument("--pred_len", type = int, default = 1)
 parser.add_argument("--interval", type = int, default = 3)
 parser.add_argument("--scale", type = float, default = 0.1)
-parser.add_argument("--multi_step_validation", type = bool, default = True)
+parser.add_argument("--multi_step_validation", type = bool, default = False)
 
 args = vars(parser.parse_args())
 
@@ -73,17 +73,26 @@ if __name__ == "__main__":
     batch_size = args['batch_size']
     pred_cols = cols_0D
     
+    # while training, only single-step prediction is used
     train_data = DatasetFor0D(ts_train.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
-    # valid_data = DatasetFor0D(ts_valid.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
-    valid_data = DatasetForMultiStepPred(ts_valid.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
-    test_data = DatasetFor0D(ts_test.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+    
+    # Meanwhile, validation and test process will use both single-step and multi-step prediction
+    if args['multi_step_validation']:
+        valid_data = DatasetForMultiStepPred(ts_valid.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, seq_len * 4, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+    else:
+        valid_data = DatasetFor0D(ts_valid.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+    
+    if args['multi_step_validation']:
+        test_data = DatasetForMultiStepPred(ts_test.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, seq_len * 4, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+    else:
+        test_data = DatasetFor0D(ts_test.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
     
     print("train data : ", train_data.__len__())
     print("valid data : ", valid_data.__len__())
     print("test data : ", test_data.__len__())
 
     train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True)
-    valid_loader = DataLoader(valid_data, batch_size = 1, num_workers = 1, shuffle = True, pin_memory = False)
+    valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = False)
     test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True)
     
     # data range
@@ -153,13 +162,22 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(save_best_dir))
 
     # evaluation process
-    test_loss, mse, rmse, mae, r2 = evaluate(
-        test_loader,
-        model,
-        optimizer,
-        loss_fn,
-        device,
-    )
+    if args['multi_step_validation']:
+        test_loss, mse, rmse, mae, r2 = evaluate_multi_step(
+            test_loader,
+            model,
+            optimizer,
+            loss_fn,
+            device,
+        )
+    else:
+        test_loss, mse, rmse, mae, r2 = evaluate(
+            test_loader,
+            model,
+            optimizer,
+            loss_fn,
+            device,
+        )
     
     shot_num = ts_test.shot.iloc[-1]
     df_shot = ts_test[ts_test.shot == shot_num].reset_index(drop = True)

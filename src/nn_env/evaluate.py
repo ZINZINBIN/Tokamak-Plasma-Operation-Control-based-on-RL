@@ -40,6 +40,7 @@ def evaluate(
     return test_loss, mse, rmse, mae, r2
 
 # this version of evaluation process considers the multi-step prediction performance
+# batch unit evaluation process for multi-step prediction
 def evaluate_multi_step(
     test_loader : DataLoader, 
     model : torch.nn.Module,
@@ -65,12 +66,12 @@ def evaluate_multi_step(
         with torch.no_grad():
             optimizer.zero_grad()
             preds = multi_step_prediction(model, data_0D, data_ctrl, seq_len_0D, pred_len_0D)
-            preds = torch.from_numpy(preds).unsqueeze(0)
+            preds = torch.from_numpy(preds)
             loss = loss_fn(preds.to(device), target.to(device))
             test_loss += loss.item()
             
-            gts = target.squeeze(0).numpy()
-            pts = preds.squeeze(0).numpy()
+            gts = target.numpy()
+            pts = preds.numpy()
             mse, rmse, mae, r2 = compute_metrics(gts,pts,None,is_print)
             
             total_rmse += rmse

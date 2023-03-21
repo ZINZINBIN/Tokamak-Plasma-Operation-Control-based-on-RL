@@ -179,6 +179,7 @@ def generate_shot_data_from_self(
     fig.tight_layout()
     plt.savefig(save_dir)
     
+# batch unit multi step prediction for validation process
 def multi_step_prediction(
     model : torch.nn.Module,
     data_0D : torch.Tensor,
@@ -193,7 +194,7 @@ def multi_step_prediction(
     
     previous_state = None
     next_state = None
-    state_list = data_0D.squeeze(0)
+    state_list = data_0D
     
     idx = 0
     idx_max = data_ctrl.size()[1] - seq_len_0D - pred_len_0D
@@ -208,22 +209,22 @@ def multi_step_prediction(
                 input_0D = data_0D
                 input_ctrl = data_ctrl[:,idx:idx+seq_len_0D+pred_len_0D,:]
             else:
-                input_0D = previous_state.unsqueeze(0)
+                input_0D = previous_state
                 input_ctrl = data_ctrl[:,idx:idx+seq_len_0D+pred_len_0D,:]
                             
-            next_state = model(input_0D.to(device), input_ctrl.to(device)).detach().cpu().squeeze(0)
+            next_state = model(input_0D.to(device), input_ctrl.to(device)).detach().cpu()
                 
         time_length += pred_len_0D
         idx = time_length - seq_len_0D
         
         # update previous state
-        state_list = torch.concat([state_list, next_state], axis = 0)
-        previous_state = state_list[-seq_len_0D:,:]
+        state_list = torch.concat([state_list, next_state], axis = 1)
+        previous_state = state_list[:,-seq_len_0D:,:]
         
         # prediction value update
         predictions.append(next_state.numpy())
             
-    predictions = np.concatenate(predictions, axis = 0)
+    predictions = np.concatenate(predictions, axis = 1)
     
     return predictions
     
@@ -236,8 +237,9 @@ def predict_tensorboard(
     
     shot_list = np.unique(test_data.ts_data.shot.values)
     
-    seq_len_0D = test_data.seq_len_0D
-    pred_len_0D = test_data.pred_len_0D
+    seq_len_0D = model.input_0D_seq_len
+    pred_len_0D = model.output_0D_pred_len
+    
     seq_len_ctrl = test_data.seq_len_ctrl
     
     is_shot_valid = False
@@ -321,8 +323,8 @@ def predict_from_self_tensorboard(
     
     shot_list = np.unique(test_data.ts_data.shot.values)
     
-    seq_len_0D = test_data.seq_len_0D
-    pred_len_0D = test_data.pred_len_0D
+    seq_len_0D = model.input_0D_seq_len
+    pred_len_0D = model.output_0D_pred_len
     seq_len_ctrl = test_data.seq_len_ctrl
     
     is_shot_valid = False

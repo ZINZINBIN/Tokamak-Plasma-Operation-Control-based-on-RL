@@ -4,7 +4,7 @@ import numpy as np
 from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
 from src.nn_env.metric import compute_metrics
-from src.nn_env.evaluate import evaluate
+from src.nn_env.evaluate import evaluate, evaluate_multi_step
 from src.nn_env.predict import predict_tensorboard, predict_from_self_tensorboard, multi_step_prediction
 from torch.utils.tensorboard import SummaryWriter
 
@@ -101,8 +101,7 @@ def valid_per_epoch_multi_step(
         with torch.no_grad():
             optimizer.zero_grad()
             preds = multi_step_prediction(model, data_0D, data_ctrl, seq_len_0D, pred_len_0D)
-            preds = torch.from_numpy(preds).unsqueeze(0)
-            
+            preds = torch.from_numpy(preds)
             loss = loss_fn(preds.to(device), target.to(device)).detach().cpu()
             valid_loss += loss.item()
         
@@ -179,7 +178,11 @@ def train(
                 if test_for_check_per_epoch:
                     model.eval()
                     # evaluate metric in tensorboard
-                    test_loss, mse, rmse, mae, r2 = evaluate(test_for_check_per_epoch, model, optimizer, loss_fn, device, False)
+                    if not multi_step_prediction:
+                        test_loss, mse, rmse, mae, r2 = evaluate(test_for_check_per_epoch, model, optimizer, loss_fn, device, False)
+                    else:
+                        test_loss, mse, rmse, mae, r2 = evaluate_multi_step(test_for_check_per_epoch, model, optimizer, loss_fn, device, False)
+                    
                     writer.add_scalars('test', 
                                         {
                                             'loss' : test_loss,

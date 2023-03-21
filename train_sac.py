@@ -1,7 +1,7 @@
 from src.rl.env import NeuralEnv
 from src.nn_env.transformer import Transformer
 from src.rl.rewards import RewardSender
-from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output
+from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output, plot_rl_status
 from src.rl.sac import GaussianPolicy, TwinnedQNetwork, train_sac
 from src.rl.buffer import ReplayBuffer
 from src.rl.actions import NormalizedActions
@@ -9,8 +9,9 @@ from src.config import Config
 import torch
 import argparse, os
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings(action = 'ignore')
 
 def parsing():
     parser = argparse.ArgumentParser(description="training sac algorithms for tokamak plasma control")
@@ -25,12 +26,12 @@ def parsing():
     # scenario for training
     parser.add_argument("--shot_random", type = bool, default = True)
     parser.add_argument("--t_init", type = float, default = 0.0)
-    parser.add_argument("--t_terminal", type = float, default = 16.0)
+    parser.add_argument("--t_terminal", type = float, default = 10.0)
     parser.add_argument("--dt", type = float, default = 0.05)
     
     # DDPG training setup
-    parser.add_argument("--batch_size", type = int, default = 64)
-    parser.add_argument("--num_episode", type = int, default = 1024)  
+    parser.add_argument("--batch_size", type = int, default = 128)
+    parser.add_argument("--num_episode", type = int, default = 2048)  
     parser.add_argument("--lr", type = float, default = 2e-4)
     parser.add_argument("--gamma", type = float, default = 0.995)
     parser.add_argument("--min_value", type = float, default = -10.0)
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     env = NormalizedActions(env)
     
     # Replay Buffer
-    memory = ReplayBuffer(capacity=100000)
+    memory = ReplayBuffer(capacity=1000000)
     
     # policy and critic network
     input_dim = len(cols_0D)
@@ -153,8 +154,6 @@ if __name__ == "__main__":
     policy_network.to(device)
     value_network.to(device)
     target_value_network.to(device)
-    # log_alpha.to(device)
-    # target_entropy.to(device)
     
     # optimizer
     q1_optimizer = torch.optim.AdamW(value_network.Q1.parameters(), lr = lr)
@@ -170,7 +169,7 @@ if __name__ == "__main__":
     save_best = os.path.join("./weights/", "{}_best.pt".format(tag))
     save_last = os.path.join("./weights/", "{}_last.pt".format(tag))
     
-    episode_durations, episode_rewards = train_sac(
+    target_value_result, episode_reward = train_sac(
         env, 
         init_generator,
         memory,
@@ -193,19 +192,8 @@ if __name__ == "__main__":
         num_episode,
         verbose,
         save_best,
-        save_last
+        save_last,
+        scaler_0D
     )
     
-    plt.subplot(1,2,1)
-    plt.plot(range(1, num_episode + 1), episode_durations, 'r--', label = 'episode duration')
-    plt.xlabel("Episode")
-    plt.ylabel("Duration")
-    plt.legend()
-
-    plt.subplot(1,2,2)
-    plt.plot(range(1, num_episode + 1), episode_rewards, 'b--', label = 'episode reward')
-    plt.xlabel("Episode")
-    plt.ylabel("Reward")
-    plt.legend()
-
-    plt.savefig("./result/SAC_episode_reward.png")
+    plot_rl_status(target_value_result, episode_reward, tag, config.COL2STR, "./result/SAC_episode_reward.png")

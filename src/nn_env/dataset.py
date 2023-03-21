@@ -123,7 +123,7 @@ class DatasetFor0D(Dataset):
         # Index generation
         for shot in tqdm(self.shot_list, desc = "Dataset Indices generation..."):
             
-            if shot not in df_disruption.shot:
+            if shot not in df_disruption.shot.values:
                 tftsrt = 1.5
             else:
                 tftsrt = df_disruption[df_disruption.shot == shot].tftsrt.values[0]
@@ -216,7 +216,7 @@ class DatasetForMultiStepPred(Dataset):
         disrupt_data : pd.DataFrame,
         seq_len_0D : int = 20,
         seq_len_ctrl : int = 24,
-        pred_len_0D : int = 4,
+        pred_len_0D : int = 16,
         cols_0D : List = DEFAULT_0D_COLS,
         cols_ctrl : List = DEFAULT_CONTROL_COLS,
         interval : int = 10,
@@ -235,6 +235,7 @@ class DatasetForMultiStepPred(Dataset):
         self.cols_0D = cols_0D
         self.cols_ctrl = cols_ctrl
         
+        # maximum prediction length
         self.pred_len_0D = pred_len_0D
         self.interval = interval
         
@@ -267,11 +268,17 @@ class DatasetForMultiStepPred(Dataset):
             df_shot = self.ts_data[self.ts_data.shot == shot]
             null_check = df_shot[self.cols_0D + self.cols_ctrl].isna().sum()
             
+            # null limit
             for c in null_check:
                 if c > 0.5 * len(df_shot):
                     shot_ignore.append(shot)
                     break
-          
+            
+            # length limit
+            if len(df_shot) < 2 * self.seq_len_0D + self.pred_len_0D * 2:
+                shot_ignore.append(shot)
+                break
+        
         # update shot list with ignoring the null data
         shot_list_new = [shot_num for shot_num in self.shot_list if shot_num not in shot_ignore]
         self.shot_list = shot_list_new
@@ -296,7 +303,7 @@ class DatasetForMultiStepPred(Dataset):
         # Index generation
         for shot in tqdm(self.shot_list, desc = "Dataset Indices generation..."):
             
-            if shot not in df_disruption.shot:
+            if shot not in df_disruption.shot.values:
                 tftsrt = 1.5
             else:
                 tftsrt = df_disruption[df_disruption.shot == shot].tftsrt.values[0]
@@ -337,8 +344,8 @@ class DatasetForMultiStepPred(Dataset):
         target_idx = self.target_indices[idx]
         
         data_0D = self.ts_data[self.cols_0D].loc[input_idx:input_idx + self.seq_len_0D-1].values
-        data_ctrl = self.ts_data[self.cols_ctrl].loc[input_idx:].values
-        target = self.ts_data[self.cols_0D].loc[target_idx:].values
+        data_ctrl = self.ts_data[self.cols_ctrl].loc[input_idx:input_idx + self.seq_len_0D + self.pred_len_0D].values
+        target = self.ts_data[self.cols_0D].loc[target_idx:target_idx + self.pred_len_0D].values
         
         data_0D = torch.from_numpy(data_0D).float()
         data_ctrl = torch.from_numpy(data_ctrl).float()

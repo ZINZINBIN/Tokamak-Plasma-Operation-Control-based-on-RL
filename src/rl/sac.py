@@ -300,6 +300,7 @@ def train_sac(
     verbose : int = 8,
     save_best : Optional[str] = None,
     save_last : Optional[str] = None,
+    scaler_0D = None
     ):
     
     T_MAX = 1024
@@ -308,12 +309,23 @@ def train_sac(
         device = "cpu"
 
     episode_durations = []
-    reward_list = []
+    min_reward_list = []
+    max_reward_list = []
+    mean_reward_list = []
+    
+    target_value_result = {}
+    
+    for key in env.reward_sender.targets_cols:
+        target_value_result[key] = {
+            "min" : [],
+            "max" : [],
+            "mean": [],
+        }
     
     best_reward = 0
     best_episode = 0
     
-    for i_episode in range(num_episode):
+    for i_episode in tqdm(range(num_episode), desc = "SAC algorithm training process"):
         
         start_time = time.time()
         
@@ -323,9 +335,11 @@ def train_sac(
         
         # reset ou noise and current state from env
         state = env.reset()
-        mean_reward = []
+        
+        reward_list = []
+        state_list = []
 
-        for t in tqdm(range(T_MAX), desc = " Episode:{} | sampling process".format(i_episode+1)):
+        for t in range(T_MAX):
             
             # compute action
             policy_network.eval()
@@ -334,7 +348,7 @@ def train_sac(
                         
             _, reward, done, _ = env.step(action)
 
-            mean_reward.append(reward.detach().cpu().numpy())
+            reward_list.append(reward.detach().cpu().numpy())
             reward = torch.tensor([reward])
             
             if not done:
@@ -368,17 +382,37 @@ def train_sac(
                 tau
             )
             
+            # update state list
+            if state is not None:
+                state_list.append(state[:,-1,:].unsqueeze(0).numpy())
+
             if done or t > T_MAX:
                 episode_durations.append(t+1)
-                mean_reward = np.mean(mean_reward)
+                
+                max_reward = np.max(reward_list)
+                min_reward = np.min(reward_list)
+                mean_reward = np.mean(reward_list)
+                
+                state_list = np.squeeze(np.concatenate(state_list, axis = 1), axis = 0)
+                
+                if scaler_0D:
+                    state_list = scaler_0D.inverse_transform(state_list)
+                
+                for idx, key in zip(env.reward_sender.target_cols_indices, env.reward_sender.targets_cols):
+                    target_value_result[key]['min'].append(np.min(state_list[:,idx]))
+                    target_value_result[key]['max'].append(np.max(state_list[:,idx]))
+                    target_value_result[key]['mean'].append(np.mean(state_list[:,idx]))
+                
                 break
             
         end_time = time.time()
-
+        
         if i_episode % verbose == 0:
-            print("# episode : {} | duration : {} | mean-reward : {:.2f} | run time : {:.2f} | done : {}".format(i_episode+1, t + 1, mean_reward, end_time - start_time, done))
+            print(r"| episode:{} | duration:{} | reward - mean: {:.2f}, min: {:.2f}, max: {:.2f} | run time : {:.2f} | done : {}".format(i_episode+1, t + 1, mean_reward, min_reward, max_reward, end_time - start_time, done))
 
-        reward_list.append(mean_reward) 
+        min_reward_list.append(min_reward)
+        max_reward_list.append(max_reward)
+        mean_reward_list.append(mean_reward)
 
         # memory cache delete
         gc.collect()
@@ -394,10 +428,16 @@ def train_sac(
             best_episode = i_episode
             torch.save(policy_network.state_dict(), save_best)
 
-    print("training policy network and target network done....!")
+    print("RL training process clear....!")
     env.close()
+    
+    episode_reward = {
+        "min" : min_reward_list,
+        "max" : max_reward_list,
+        "mean" : mean_reward_list
+    }
 
-    return episode_durations, reward_list
+    return target_value_result, episode_reward
 
 
 def evaluate_sac(

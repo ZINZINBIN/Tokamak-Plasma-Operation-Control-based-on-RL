@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 import torch
-from typing import List, Optional, Literal
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+from typing import List, Optional, Literal, Dict
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 
 def preparing_initial_dataset(
@@ -96,3 +98,49 @@ class InitGenerator:
         init_action = torch.from_numpy(init_action).unsqueeze(0)
             
         return init_state, init_action
+    
+# print the result of the RL training
+def plot_rl_status(target_value_result : Dict, episode_reward : Dict, tag : str, cols2str : Optional[Dict] = None, save_dir : Optional[str] = None):
+    
+    fig = plt.figure(figsize = (12,6))
+    fig.suptitle("{} Target values and reward per episode".format(tag))
+    
+    gs = GridSpec(nrows = len(target_value_result.keys()), ncols = 2)
+
+    n_episode = None
+    
+    for idx, key in enumerate(target_value_result.keys()):
+        ax = fig.add_subplot(gs[idx,0])
+        target_per_episode = target_value_result[key]
+        upper = target_per_episode['max']
+        lower = target_per_episode['min']
+        mean = target_per_episode['mean']
+        
+        n_episode = range(1, len(mean) + 1, 1)
+        
+        clr = plt.cm.Purples(0.9)
+        ax.set_facecolor(plt.cm.Blues(0.2))
+        ax.plot(n_episode, mean, label = 'target', color = clr)
+        ax.fill_between(n_episode, lower, upper, alpha = 0.3, edgecolor = clr, facecolor = clr)
+        
+        y_name = cols2str[key] if cols2str else key
+        x_name = 'episode'
+        ax.set_ylabel(y_name)
+    
+    mean = episode_reward['mean']
+    upper = episode_reward['max']
+    lower = episode_reward['min']
+    
+    ax = fig.add_subplot(gs[:,1])
+    
+    clr = plt.cm.Purples(0.9)
+    ax.set_facecolor(plt.cm.Blues(0.2))
+    ax.plot(n_episode, mean, label = 'reward', color = clr)
+    ax.fill_between(n_episode, lower, upper, alpha = 0.3, edgecolor = clr, facecolor = clr)
+    ax.set_xlabel("episode")
+    ax.set_ylabel("mean reward")
+    
+    fig.tight_layout()
+    
+    if save_dir:
+        plt.savefig(save_dir)

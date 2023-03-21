@@ -163,7 +163,7 @@ if __name__ == "__main__":
     total_action = scaler_ctrl.inverse_transform(total_action)
 
     # 0D parameter plot
-    title = "shot_{}_operation_0D".format(shot_num)
+    title = "DDPG_shot_{}_operation_0D".format(shot_num)
     save_file = os.path.join(save_dir, "{}.png".format(title))
     fig, axes = plt.subplots(len(cols_0D), 1, figsize = (16,12), sharex=True, facecolor = 'white')
     plt.suptitle(title)
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     plt.savefig(save_file)
     
     # control value plot
-    title = "shot_{}_operation_control".format(shot_num)
+    title = "DDPG_shot_{}_operation_control".format(shot_num)
     save_file = os.path.join(save_dir, "{}.png".format(title))
     fig, axes = plt.subplots(len(cols_control)//2, 2, figsize = (16,10), sharex=True, facecolor = 'white')
     plt.suptitle(title)
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     plt.savefig(save_file)
     
     # gif file generation
-    title = "ani_shot_{}_operation_control".format(shot_num)
+    title = "DDPG_ani_shot_{}_operation_control".format(shot_num)
     save_file = os.path.join(save_dir, "{}.gif".format(title))
     generate_control_performance(
         save_file,
