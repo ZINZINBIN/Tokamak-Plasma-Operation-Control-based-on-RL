@@ -18,6 +18,7 @@ class RewardSender:
         self.targets_dict = targets_dict
         self.targets_cols = list(targets_dict.keys())
         self.targets_value = list(targets_dict.values())
+        self.total_cols = total_cols
         self._extract_target_index(total_cols)
 
     def __call__(self, new_state : torch.Tensor):

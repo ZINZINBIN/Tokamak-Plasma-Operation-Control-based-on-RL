@@ -13,6 +13,7 @@ import gym
 import os, subprocess, time, signal, gc
 import torch
 import torch.nn as nn
+import pandas as pd
 from gym import error, spaces
 from gym import utils
 from gym.utils import seeding
@@ -24,7 +25,19 @@ logger = logging.getLogger(__name__)
 
 class NeuralEnv(gym.Env):
     metadata = {'render.modes':['human']} # what does it means?
-    def __init__(self, predictor : nn.Module, device : str, reward_sender : RewardSender, seq_len : int, pred_len : int, range_info : Dict, t_terminal : float = 4.0, dt : float = 0.01):
+    def __init__(
+        self, 
+        predictor : nn.Module, 
+        device : str, 
+        reward_sender : RewardSender, 
+        seq_len : int, 
+        pred_len : int, 
+        range_info : Dict, 
+        t_terminal : float = 4.0, 
+        dt : float = 0.01, 
+        cols_control = None,
+        action_as_ctrl_diff : bool = False,
+        ):
         super().__init__()
         # predictor : output as next state of plasma
         self.predictor = predictor.to(device)
@@ -59,6 +72,18 @@ class NeuralEnv(gym.Env):
             'low' : [range_info[col][0] for col in range_info.keys()],
             'upper' : [range_info[col][1] for col in range_info.keys()],
         }
+        
+        # original shot info : used for playing policy network
+        self.original_shot = None
+        
+        # columns info
+        self.cols_control = cols_control
+        
+        # setup : choose action as an difference of control parameter
+        self.action_as_ctrl_diff = action_as_ctrl_diff
+        
+    def load_shot_info(self, df : pd.DataFrame):
+        self.original_shot = df
     
     # update initial condition for plasma operation
     def update_init_state(self, init_state : torch.Tensor, init_action : torch.Tensor):
@@ -92,6 +117,9 @@ class NeuralEnv(gym.Env):
         
         if next_action.ndim == 2:
             next_action = next_action.unsqueeze(0)
+            
+        if self.action_as_ctrl_diff:
+            next_action += action[:,-1,:].unsqueeze(1)
         
         next_action = torch.concat([action, next_action], axis = 1)
         self.action = next_action[:,-self.seq_len-self.pred_len:,:]

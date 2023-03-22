@@ -95,17 +95,40 @@ class Config():
         "noise_std" : 1.96
     }
     
-    # controller : configuration for DDPG
+    # DDPG configuration
     DDPG_CONF = {
         "mlp_dim" : 128
     }
     
+    # SAC configuration
     SAC_CONF = {
         "mlp_dim" : 128
     }
     
+    # information of range for action input difference 
+    CTRL_DIFF_RANGE = {
+        '\\nb11_pnb':[-0.5, 0.5],
+        '\\nb12_pnb':[-0.5, 0.5],
+        '\\nb13_pnb':[-0.5, 0.5],
+        '\\RC01':[-4.0, 4.0], 
+        '\\RC02':[-4.0, 4.0], 
+        '\\RC03':[-4.0, 4.0],
+        '\\VCM01':[-10.0, 10.0], 
+        '\\VCM02':[-10.0, 10.0], 
+        '\\VCM03':[-5.0, 5.0],
+        '\\EC2_PWR':[-10.0, 10.0], 
+        '\\EC3_PWR':[-10.0, 10.0], 
+        '\\ECSEC2TZRTN':[-10.0, 10.0], 
+        '\\ECSEC3TZRTN':[-10.0, 10.0],
+        '\\LV01':[-5.0, 5.0], 
+        '\\ipmhd':[-5.0, 5.0], 
+        '\\kappa':[-1.0, 1.0], 
+        '\\tritop':[-1.0, 1.0], 
+        '\\tribot':[-1.0, 1.0], 
+        '\\bcentr':[-4.0, 4.0]
+    }
+    
     # control target value
     DEFAULT_TARGETS = {
-        "\\betan" : 2.5,
-        "\\q95" : 3.0,
+        "\\betan" : 3.0,
     }

@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
 import torch
+import os
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from typing import List, Optional, Literal, Dict
+from typing import List, Optional, Literal, Dict, Union
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
+from src.rl.env import NeuralEnv
 
 def preparing_initial_dataset(
     df : pd.DataFrame,
@@ -144,3 +146,148 @@ def plot_rl_status(target_value_result : Dict, episode_reward : Dict, tag : str,
     
     if save_dir:
         plt.savefig(save_dir)
+        
+def plot_virtual_operation(
+    env : NeuralEnv,
+    state_list : List[np.array], 
+    action_list : List[np.array], 
+    reward_list : List[np.array],
+    seq_len : int, 
+    pred_len : int, 
+    shot_num : int,
+    targets_dict : Dict,
+    col2str : Dict,
+    scaler_0D : Optional[Union[StandardScaler, MinMaxScaler, RobustScaler]]= None,
+    scaler_ctrl : Optional[Union[StandardScaler, MinMaxScaler, RobustScaler]]= None,
+    tag : str = "",
+    save_dir : str = "",
+    ):
+    
+    total_state = None
+    total_action = None
+    
+    for state, action in zip(state_list, action_list):
+        if total_state is None:
+            total_state = state.reshape(seq_len,-1)
+            total_action = action.reshape(seq_len + pred_len,-1)
+        else:
+            total_state = np.concatenate((total_state, state[-pred_len:,:].reshape(pred_len,-1)), axis= 0)
+            total_action = np.concatenate((total_action, action[:,:].reshape(pred_len,-1)), axis= 0)
+
+    # re-scaling : considering the physical unit and scale of the system
+    total_state = scaler_0D.inverse_transform(total_state)
+    total_action = scaler_ctrl.inverse_transform(total_action)
+
+    # 0D parameter plot
+    title = "{}_shot_{}_operation_0D".format(tag, shot_num)
+    save_file = os.path.join(save_dir, "{}.png".format(title))
+    
+    fig = plt.figure(figsize = (12,6), facecolor="white")
+    fig.suptitle(title)
+    
+    total_cols = env.reward_sender.total_cols
+    target_cols = env.reward_sender.targets_cols
+    target_cols_indice = env.reward_sender.target_cols_indices
+    cols_control = env.cols_control
+    
+    dt = env.dt
+    df_shot = env.original_shot
+    
+    # rescaling the real experimental value
+    df_shot[total_cols] = scaler_0D.inverse_transform(df_shot[total_cols].values)
+    df_shot[cols_control] = scaler_ctrl.inverse_transform(df_shot[cols_control].values)
+    
+    gs = GridSpec(nrows = len(total_cols), ncols = 2)
+
+    for i, col in enumerate(total_cols):
+        
+        ax = fig.add_subplot(gs[i,0])
+        hist = total_state[:,i]
+        
+        # background color setting
+        clr = plt.cm.Purples(0.9)
+        ax.set_facecolor(plt.cm.Blues(0.2))
+        
+        # target line
+        if col in target_cols:
+            ax.axhline(targets_dict[col], xmin = 0, xmax = 1, linewidth = 4, color = 'y')
+        
+        # original data
+        hist_real = df_shot[col].values
+        t_axis = [dt * j for j in range(min(len(hist), len(hist_real)))]
+        ax.plot(t_axis, hist_real[:len(t_axis)], 'k', label = "{}-real".format(col2str[col]))
+        
+        # RL control data
+        ax.plot(t_axis, hist[:len(t_axis)], 'r', label = "{}-controlled".format(col2str[col]))
+            
+        # axis line for separating control regime
+        t_control = seq_len * dt
+        ax.axvline(t_control, ymin = 0, ymax = 1, linewidth = 2, color = 'b')
+        
+        # label and legend
+        if i == len(total_cols) - 1:
+            ax.set_xlabel("time(s)")
+        else:
+            plt.setp(ax, xticklabels=[])
+            
+        ax.set_ylabel(col2str[col])
+        ax.legend(loc = "upper right")
+        
+    # reward
+    ax = fig.add_subplot(gs[:,1])
+    t_axis = [dt * (i+1) for i in range(len(reward_list))]
+    
+    clr = plt.cm.Purples(0.9)
+    ax.set_facecolor(plt.cm.Blues(0.2))
+    ax.plot(t_axis, reward_list, label = 'reward', color = clr)
+    
+    ax.set_xlabel('time')
+    ax.set_ylabel("reward")
+    ax.legend(loc = 'upper right')
+    fig.tight_layout()
+    plt.savefig(save_file)
+    
+    # control value plot
+    title = "{}_shot_{}_operation_control".format(tag, shot_num)
+    save_file = os.path.join(save_dir, "{}.png".format(title))
+    
+    fig, axes = plt.subplots(len(cols_control)//2, 2, figsize = (16,10), sharex=True, facecolor = 'white')
+    plt.suptitle(title)
+    
+    for idx, (ax, col) in enumerate(zip(axes.ravel(), cols_control)):
+        
+        hist = total_action[:,idx]
+        
+        # background color setting
+        clr = plt.cm.Purples(0.9)
+        ax.set_facecolor(plt.cm.Blues(0.2))
+        
+        # original data
+        hist_real = df_shot[col].values
+        t_axis = [dt * j for j in range(min(len(hist), len(hist_real)))]
+        ax.plot(t_axis, hist_real[:len(t_axis)], 'k', label = "{}-real".format(col2str[col]))
+        
+        # RL control data
+        ax.plot(t_axis, hist[:len(t_axis)], 'r', label = "{}-controlled".format(col2str[col]))
+        
+        # target line
+        if col in target_cols:
+            ax.axhline(targets_dict[col], xmin = 0, xmax = 1, linewidth = 4, color = 'y')
+            
+        # axis line for separating control regime
+        t_control = seq_len * dt
+        ax.axvline(t_control, ymin = 0, ymax = 1, linewidth = 2, color = 'b')
+        
+        # label and legend
+        if idx >= len(cols_control) - 2:
+            ax.set_xlabel("time(s)")
+        else:
+            plt.setp(ax, xticklabels=[])
+            
+        ax.set_ylabel(col2str[col])
+        ax.legend(loc = "upper right")
+        
+    fig.tight_layout()
+    plt.savefig(save_file)
+    
+    return total_state, total_action

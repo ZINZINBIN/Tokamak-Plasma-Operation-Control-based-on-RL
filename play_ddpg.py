@@ -1,10 +1,10 @@
-from src.rl.evaluate import evaluate_ddpg
 from src.rl.env import NeuralEnv
 from src.nn_env.transformer import Transformer
 from src.rl.rewards import RewardSender
-from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output
-from src.rl.ddpg import Actor, Critic
+from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output, plot_virtual_operation
+from src.rl.ddpg import Actor, Critic, evaluate_ddpg
 from src.rl.buffer import ReplayBuffer
+from src.rl.actions import NormalizedActions
 from src.config import Config
 from src.rl.video_generator import generate_control_performance
 import torch
@@ -12,6 +12,9 @@ import argparse, os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings(action = 'ignore')
 
 def parsing():
     parser = argparse.ArgumentParser(description="Playing ddpg algorithms for tokamak plasma control")
@@ -24,6 +27,7 @@ def parsing():
     parser.add_argument("--gpu_num", type = int, default = 0)
     
     # scenario for training
+    parser.add_argument("--shot_num", type = int, default = 21747)
     parser.add_argument("--shot_random", type = bool, default = False)
     parser.add_argument("--t_init", type = float, default = 0.0)
     parser.add_argument("--t_terminal", type = float, default = 10.0)
@@ -106,13 +110,16 @@ if __name__ == "__main__":
     # initial state generator
     df, scaler_0D, scaler_ctrl = preparing_initial_dataset(df, cols_0D, cols_control, 'Robust')
     
-    init_generator = InitGenerator(df, t_init, cols_0D, cols_control, seq_len, pred_len, True, None)
+    init_generator = InitGenerator(df, t_init, cols_0D, cols_control, seq_len, pred_len, args['shot_random'], None)
     
     # info for range of action space
     range_info = get_range_of_output(df, cols_control)
     
     # environment
-    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, range_info = range_info, t_terminal = args['t_terminal'], dt = args['dt'])
+    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, range_info = range_info, t_terminal = args['t_terminal'], dt = args['dt'], cols_control=config.DEFAULT_COLS_CTRL)
+    
+    # action rapper
+    env = NormalizedActions(env)
     
     # Actor and Critic Network
     input_dim = len(cols_0D)
@@ -131,7 +138,10 @@ if __name__ == "__main__":
     policy_network.load_state_dict(torch.load(save_best))
     
     # Tokamak plasma operation by DDPG algorithm
-    shot_num = 21474
+    shot_num = args['shot_num']
+    
+    # load real shot information
+    env.load_shot_info(df[df.shot == shot_num].copy(deep = True))
     
     print("############### Tokamak plasma operation by DDPG algorithm ###################")
     
@@ -146,60 +156,23 @@ if __name__ == "__main__":
         device,
         shot_num
     )
+    
+    total_state, total_action = plot_virtual_operation(
+        env,
+        state_list,
+        action_list,
+        reward_list,
+        seq_len,
+        pred_len,
+        shot_num,
+        targets_dict,
+        config.COL2STR,
+        scaler_0D,
+        scaler_ctrl,
+        tag,
+        save_dir
+    )
 
-    total_state = None
-    total_action = None
-    
-    for state, action in zip(state_list, action_list):
-        if total_state is None:
-            total_state = state.reshape(seq_len,-1)
-            total_action = action.reshape(seq_len + pred_len,-1)
-        else:
-            total_state = np.concatenate((total_state, state[-pred_len:,:].reshape(pred_len,-1)), axis= 0)
-            total_action = np.concatenate((total_action, action[:,:].reshape(pred_len,-1)), axis= 0)
-
-    # re-scaling : considering the physical unit and scale of the system
-    total_state = scaler_0D.inverse_transform(total_state)
-    total_action = scaler_ctrl.inverse_transform(total_action)
-
-    # 0D parameter plot
-    title = "DDPG_shot_{}_operation_0D".format(shot_num)
-    save_file = os.path.join(save_dir, "{}.png".format(title))
-    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (16,12), sharex=True, facecolor = 'white')
-    plt.suptitle(title)
-    
-    for i, (ax, col) in enumerate(zip(axes.ravel(), cols_0D)):
-        if col in list(targets_dict.keys()):
-            hist = total_state[:,i]
-            ax.plot(hist, 'k', label = "{}-NN".format(col))
-            ax.axhline(targets_dict[col], xmin = 0, xmax = 1)
-            ax.set_ylabel(config.COL2STR[col])
-            ax.legend(loc = "upper right")
-        else:
-            hist = total_state[:,i]
-            ax.plot(hist, 'k', label = "{}-NN".format(col))
-            ax.set_ylabel(config.COL2STR[col])
-            ax.legend(loc = "upper right")
-            
-    ax.set_xlabel('time')
-    fig.tight_layout()
-    plt.savefig(save_file)
-    
-    # control value plot
-    title = "DDPG_shot_{}_operation_control".format(shot_num)
-    save_file = os.path.join(save_dir, "{}.png".format(title))
-    fig, axes = plt.subplots(len(cols_control)//2, 2, figsize = (16,10), sharex=True, facecolor = 'white')
-    plt.suptitle(title)
-    
-    for i, (ax, col) in enumerate(zip(axes.ravel(), cols_control)):
-        hist = total_action[:,i]
-        ax.plot(hist, 'k', label = "{}".format(col))
-        ax.set_ylabel(config.COL2STR[col])
-        ax.legend(loc = "upper right")
-            
-    ax.set_xlabel('time')
-    fig.tight_layout()
-    plt.savefig(save_file)
     
     # gif file generation
     title = "DDPG_ani_shot_{}_operation_control".format(shot_num)

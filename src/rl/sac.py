@@ -81,7 +81,7 @@ class GaussianPolicy(nn.Module):
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
         
-        linear_input_dim =  self.encoder.feature_dim
+        linear_input_dim = self.encoder.feature_dim
 
         self.mlp_mean = nn.Sequential(
             nn.Linear(linear_input_dim, mlp_dim),
@@ -465,7 +465,7 @@ def evaluate_sac(
     init_state, init_action = init_generator.get_state()
     env.update_init_state(init_state, init_action)
     
-    # reset ou noise and current state from env
+    # reset current state from env
     state = env.reset()
     state_list.append(env.get_state().squeeze(0))
     action_list.append(env.get_action().squeeze(0))
@@ -476,22 +476,22 @@ def evaluate_sac(
         action = action.detach().cpu()             
         _, reward, done, _ = env.step(action)
 
-        if state.ndim == 3:
-            state = state.squeeze(0)
-        
-        if action.ndim == 3:
-            action = action.squeeze(0)
-        
-        reward_list.append(reward.detach().cpu().numpy())
-        state_list.append(state.detach().cpu().numpy())
-        action_list.append(action.detach().cpu().numpy())
-        
         if not done:
             next_state = env.get_state()
             state = next_state
         else:
             next_state = None
             break
+        
+        if state.ndim == 3:
+            state = state.squeeze(0)
+        
+        if action.ndim == 3:
+            action = action.squeeze(0)
+    
+        reward_list.append(reward.detach().cpu().numpy())
+        state_list.append(state.detach().cpu().numpy())
+        action_list.append(action.detach().cpu().numpy())
 
     # memory cache delete
     gc.collect()

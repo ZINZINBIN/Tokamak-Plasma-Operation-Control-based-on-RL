@@ -60,6 +60,13 @@
                           --predictor_weight {directory of saved weight file} --seq_len {input sequence length}
                           --pred_len {output sequence length}
     ```
+## Result
+<div>
+    <p float = 'left'>
+        <img src="/image/SAC_shot_21747_operation_0D.png"  width="320" height="320">
+        <img src="/image/SAC_episode_reward.png"  width="320" height="320">
+    </p>
+</div>
 
 ## Detail
 ### model / algorithm
