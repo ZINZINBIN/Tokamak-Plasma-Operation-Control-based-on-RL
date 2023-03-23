@@ -13,8 +13,8 @@
 
 <div>
     <p float = 'left'>
-        <img src="/image/shot_21474_operation_0D.png"  width="320" height="320">
-        <img src="/image/shot_21474_operation_control.png"  width="320" height="320">
+        <img src="/image/shot_21474_operation_0D.png"  width="360" height="320">
+        <img src="/image/shot_21474_operation_control.png"  width="360" height="320">
     </p>
 </div>
 
@@ -22,7 +22,7 @@
 - Below is the overall scheme for our research
 <div>
     <p float = 'left'>
-        <img src="/image/scheme.png"  width="480" height="360">
+        <img src="/image/scheme.png"  width="640" height="400">
     </p>
 </div>
 
@@ -61,10 +61,22 @@
                           --pred_len {output sequence length}
     ```
 ## Result
+- The best performance of the virtual tokamak operation is obtained from SAC algorithm.
+- The below picture describes the result of the training procedure with respect to the reward for each episode.
 <div>
     <p float = 'left'>
-        <img src="/image/SAC_shot_21747_operation_0D.png"  width="320" height="320">
-        <img src="/image/SAC_episode_reward.png"  width="320" height="320">
+        <img src="/image/SAC_episode_reward.png"  width="640" height="400">
+    </p>
+</div>
+
+- And we play SAC algorithm with initial condition for KSTAR shot # 21747.
+- We can observe the improved operation under the virtual KSTAR environment via RL control.
+<div>
+    <p float = 'left'>
+        <img src="/image/SAC_shot_21747_operation_0D.png"  width="640" height="400">
+    </p>
+    <p float = 'left'>
+        <img src="/image/SAC_shot_21747_operation_control.png"  width="640" height="400">
     </p>
 </div>
 
