@@ -44,6 +44,9 @@ class Encoder(nn.Module):
         
     def forward(self, x : torch.Tensor):
         
+        # normalization
+        x = F.normalize(x, dim = 0)
+        
         # x : (B, T, D)
         if x.ndim == 2:
             x = x.unsqueeze(0)

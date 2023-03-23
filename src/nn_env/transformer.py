@@ -272,3 +272,4 @@ class Transformer(nn.Module):
         sample_0D = torch.zeros((1, self.input_0D_seq_len, self.input_0D_dim))
         sample_ctrl = torch.zeros((1, self.input_ctrl_seq_len, self.input_ctrl_dim))
         summary(self, sample_0D, sample_ctrl, batch_size = 1, show_input = True, print_summary=True)
+        

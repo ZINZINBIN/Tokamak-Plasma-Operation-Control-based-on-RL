@@ -279,7 +279,7 @@ def plot_virtual_operation(
         ax.axvline(t_control, ymin = 0, ymax = 1, linewidth = 2, color = 'b')
         
         # label and legend
-        if idx >= len(cols_control) - 2:
+        if idx >= len(axes.ravel()) - 2:
             ax.set_xlabel("time(s)")
         else:
             plt.setp(ax, xticklabels=[])

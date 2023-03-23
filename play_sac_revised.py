@@ -1,10 +1,11 @@
 from src.rl.env import NeuralEnv
 from src.nn_env.transformer import Transformer
+from src.nn_env.forgetting import DFwrapper
 from src.rl.rewards import RewardSender
 from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output, plot_virtual_operation
 from src.rl.sac import GaussianPolicy, evaluate_sac
 from src.rl.buffer import ReplayBuffer
-from src.rl.actions import NormalizedActions
+from src.rl.actions import NormalizedActions, ClippingActions
 from src.config import Config
 from src.rl.video_generator import generate_control_performance
 import torch
@@ -20,7 +21,7 @@ def parsing():
     parser = argparse.ArgumentParser(description="Playing SAC algorithms for tokamak plasma control")
     
     # tag and result directory
-    parser.add_argument("--tag", type = str, default = "SAC")
+    parser.add_argument("--tag", type = str, default = "SAC_diff")
     parser.add_argument("--save_dir", type = str, default = "./result")
     
     # gpu allocation
@@ -35,6 +36,8 @@ def parsing():
     
     # predictor config
     parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq10_dis1_best.pt")
+    parser.add_argument("--use_DF", type = bool, default = False)
+    parser.add_argument('--scale_DF', type = float, default = 0.1)
     parser.add_argument("--seq_len", type = int, default = 10)
     parser.add_argument("--pred_len", type = int, default = 1)
     
@@ -94,6 +97,9 @@ if __name__ == "__main__":
         feature_ctrl_dim = config.TRANSFORMER_CONF['feature_ctrl_dim'],
     )
 
+    if args['use_DF']:
+        model = DFwrapper(model, args['scale_DF'])
+
     model.to(device)
     model.load_state_dict(torch.load(args['predictor_weight']))
 
@@ -113,13 +119,15 @@ if __name__ == "__main__":
     init_generator = InitGenerator(df, t_init, cols_0D, cols_control, seq_len, pred_len, args['shot_random'], None)
     
     # info for range of action space
-    range_info = config.CTRL_DIFF_RANGE
+    range_info = get_range_of_output(df, cols_control)
+    rate_range_info = config.CTRL_DIFF_RANGE
     
     # environment
-    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, range_info = range_info, t_terminal = args['t_terminal'], dt = args['dt'], cols_control=config.DEFAULT_COLS_CTRL, action_as_ctrl_diff=True)
+    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, range_info = range_info, t_terminal = args['t_terminal'], dt = args['dt'], cols_control=config.DEFAULT_COLS_CTRL, limit_ctrl_rate=True, rate_range_info=rate_range_info)
     
     # action rapper
-    env = NormalizedActions(env)
+    # env = NormalizedActions(env)
+    env = ClippingActions(env)
     
     # Actor and Critic Network
     input_dim = len(cols_0D)
@@ -172,9 +180,8 @@ if __name__ == "__main__":
         save_dir
     )
     
-    
     # gif file generation
-    title = "SAC_ani_shot_{}_operation_control".format(shot_num)
+    title = "{}_ani_shot_{}_operation_control".format(args['tag'], shot_num)
     save_file = os.path.join(save_dir, "{}.gif".format(title))
     generate_control_performance(
         save_file,
@@ -183,7 +190,7 @@ if __name__ == "__main__":
         cols_0D,
         cols_control,
         targets_dict,
-        "shot_{}_operation_control".format(shot_num),
+        "{}_shot_{}_operation_control".format(args['tag'], shot_num),
         args['dt'],
         24,
     )

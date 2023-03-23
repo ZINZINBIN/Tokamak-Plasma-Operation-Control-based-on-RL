@@ -48,6 +48,9 @@ class Encoder(nn.Module):
         
     def forward(self, x : torch.Tensor):
         
+        # normalization
+        x = F.normalize(x, dim = 0)
+        
         # x : (B, T, D)
         if x.ndim == 2:
             x = x.unsqueeze(0)
@@ -110,7 +113,7 @@ class GaussianPolicy(nn.Module):
         
         return mu, log_std
     
-    def sample(self, x : torch.Tensor):
+    def sample(self, x : torch.Tensor): 
         mu, log_std = self.forward(x)
         std = log_std.exp()
         

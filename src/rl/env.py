@@ -18,7 +18,7 @@ from gym import error, spaces
 from gym import utils
 from gym.utils import seeding
 from src.rl.rewards import RewardSender
-from typing import Dict
+from typing import Dict, Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,8 +36,10 @@ class NeuralEnv(gym.Env):
         t_terminal : float = 4.0, 
         dt : float = 0.01, 
         cols_control = None,
-        action_as_ctrl_diff : bool = False,
+        limit_ctrl_rate : bool = False,
+        rate_range_info : Optional[Dict] = None,
         ):
+        
         super().__init__()
         # predictor : output as next state of plasma
         self.predictor = predictor.to(device)
@@ -54,8 +56,8 @@ class NeuralEnv(gym.Env):
         
         # current state 
         self.t_released = 0 
-        self.state = None
-        self.action = None
+        self.current_state = None
+        self.current_action = None
         
         # information for virtual operation
         self.dt = dt # time interval
@@ -79,8 +81,12 @@ class NeuralEnv(gym.Env):
         # columns info
         self.cols_control = cols_control
         
-        # setup : choose action as an difference of control parameter
-        self.action_as_ctrl_diff = action_as_ctrl_diff
+        # control rate limit
+        self.limit_ctrl_rate = limit_ctrl_rate
+        
+        if limit_ctrl_rate:
+            self.action_space['rate-low'] = [rate_range_info[col][0] for col in rate_range_info.keys()]
+            self.action_space['rate-upper'] = [rate_range_info[col][1] for col in rate_range_info.keys()]
         
     def load_shot_info(self, df : pd.DataFrame):
         self.original_shot = df
@@ -97,46 +103,43 @@ class NeuralEnv(gym.Env):
         self.init_state = init_state
         self.init_action = init_action
         
-        self.state = init_state
-        self.action = init_action
+        self.current_state = init_state
+        self.current_action = init_action
         
     def update_state(self, next_state : torch.Tensor):
-        state = self.state
+        state = self.current_state
         
         if next_state.ndim == 2:
             next_state = next_state.unsqueeze(0)
         
         next_state = torch.concat([state, next_state], axis = 1)
-        self.state = next_state[:,-self.seq_len:,:]
+        self.current_state = next_state[:,-self.seq_len:,:]
         
         # time sync
         self.t_released += self.dt * self.pred_len
         
     def update_action(self, next_action : torch.Tensor):
-        action = self.action
+        action = self.current_action
         
         if next_action.ndim == 2:
             next_action = next_action.unsqueeze(0)
-            
-        if self.action_as_ctrl_diff:
-            next_action += action[:,-1,:].unsqueeze(1)
         
         next_action = torch.concat([action, next_action], axis = 1)
-        self.action = next_action[:,-self.seq_len-self.pred_len:,:]
+        self.current_action = next_action[:,-self.seq_len-self.pred_len:,:]
         
     def get_state(self):
-        return self.state
+        return self.current_state
 
     def get_action(self):
-        return self.action
+        return self.current_action
     
     def reset(self):
         self.done = False
-        self.state = self.init_state
-        self.action = self.init_action
+        self.current_state = self.init_state
+        self.current_action = self.init_action
         self.t_released = 0
         
-        return self.state
+        return self.current_state
 
     def step(self, action : torch.Tensor):
         # get state
@@ -178,18 +181,18 @@ class NeuralEnv(gym.Env):
     def close(self):
         
         # gpu -> cpu
-        self.state.cpu()
+        self.current_state.cpu()
         self.init_state.cpu()
         
-        self.action.cpu()
+        self.current_action.cpu()
         self.init_action.cpu()
         
         self.predictor.cpu()
         
-        self.state = None
+        self.current_state = None
         self.init_state = None
         
-        self.action = None
+        self.current_action = None
         self.init_action = None
         
         # cpu cache memory clear

@@ -119,7 +119,7 @@ if __name__ == "__main__":
         noise_std = config.TRANSFORMER_CONF['noise_std']
     )
     
-    model = DFwrapper(model, len(cols_0D), args['scale'])
+    model = DFwrapper(model, args['scale'])
     model.summary()
     model.to(device)
 

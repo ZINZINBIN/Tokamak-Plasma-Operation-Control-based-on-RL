@@ -1,27 +1,43 @@
 import torch
 import torch.nn as nn
+from typing import Union, Optional
+from src.nn_env.transformer import Transformer
 
-class DFwrapper(nn.Module):
-    def __init__(self, model : nn.Module, input_dim : int, scale : float = 0.1):
+class DFwrapper:
+    def __init__(self, model : Union[nn.Module, Transformer], scale : float = 0.1):
         super().__init__()
         self.scale = scale
-        self.input_dims = input_dim
+        self.input_dim = model.input_0D_dim
         self.input_0D_seq_len = model.input_0D_seq_len
         self.output_0D_pred_len = model.output_0D_pred_len
         self.model = model
-        self.forgetting = None
-        self.eta = nn.Parameter(torch.ones(input_dim), requires_grad=False)
+        
+        self.exp_eta = None
+        self.exp_theta = None
+        
+        self.eta = nn.Parameter(torch.ones(model.input_0D_dim), requires_grad=False)
+        self.theta = nn.Parameter(torch.ones(model.input_ctrl_dim), requires_grad=False)
     
-    def generate_forgetting_matrix(self, x : torch.Tensor):
+    def generate_forgetting_matrix(self, x : torch.Tensor, y : Optional[torch.Tensor] = None):
         seq = torch.arange(x.size()[1]).flip(0).expand(x.size()[0], x.size()[2], x.size()[1]).permute(0,2,1)
-        self.forgetting = torch.exp(seq.to(x.device) * self.scale * self.eta.to(x.device) * (-1))
+        self.exp_eta = torch.exp(seq.to(x.device) * self.scale * self.eta.to(x.device) * (-1))
+        
+        if y is not None:
+            seq = torch.arange(y.size()[1]).flip(0).expand(y.size()[0], y.size()[2], y.size()[1]).permute(0,2,1)
+            self.exp_theta = torch.exp(seq.to(y.device) * self.scale * self.theta.to(y.device) * (-1))
         
     def forward(self, x_0D : torch.Tensor, x_ctrl : torch.Tensor):
-        if self.forgetting is None or self.forgetting.size() != x_0D.size():
-            self.generate_forgetting_matrix(x_0D)
-        x_0D *= self.forgetting.to(x_0D.device)
+        if self.exp_eta is None or self.exp_eta.size() != x_0D.size():
+            self.generate_forgetting_matrix(x_0D, x_ctrl)
+            
+        x_0D *= self.exp_eta.to(x_0D.device)
+        x_ctrl *= self.exp_theta.to(x_ctrl.device)
+        
         x = self.model(x_0D, x_ctrl)
         return x
     
-    def summary(self):
-        self.model.summary()
+    def __call__(self, x_0D : torch.Tensor, x_ctrl : torch.Tensor):
+        return self.forward(x_0D, x_ctrl)
+        
+    def __getattr__(self, name):
+        return getattr(self.model, name)

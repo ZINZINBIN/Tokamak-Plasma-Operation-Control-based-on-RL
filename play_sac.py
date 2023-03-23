@@ -1,17 +1,16 @@
 from src.rl.env import NeuralEnv
 from src.nn_env.transformer import Transformer
+from src.nn_env.forgetting import DFwrapper
 from src.rl.rewards import RewardSender
 from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output, plot_virtual_operation
 from src.rl.sac import GaussianPolicy, evaluate_sac
 from src.rl.buffer import ReplayBuffer
-from src.rl.actions import NormalizedActions
+from src.rl.actions import NormalizedActions, ClippingActions
 from src.config import Config
 from src.rl.video_generator import generate_control_performance
 import torch
 import argparse, os
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings(action = 'ignore')
@@ -35,6 +34,8 @@ def parsing():
     
     # predictor config
     parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq10_dis1_best.pt")
+    parser.add_argument("--use_DF", type = bool, default = False)
+    parser.add_argument('--scale_DF', type = float, default = 0.1)
     parser.add_argument("--seq_len", type = int, default = 10)
     parser.add_argument("--pred_len", type = int, default = 1)
     
@@ -93,6 +94,9 @@ if __name__ == "__main__":
         feature_0D_dim = config.TRANSFORMER_CONF['feature_0D_dim'],
         feature_ctrl_dim = config.TRANSFORMER_CONF['feature_ctrl_dim'],
     )
+    
+    if args['use_DF']:
+        model = DFwrapper(model, args['scale_DF'])
 
     model.to(device)
     model.load_state_dict(torch.load(args['predictor_weight']))
@@ -119,7 +123,7 @@ if __name__ == "__main__":
     env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, range_info = range_info, t_terminal = args['t_terminal'], dt = args['dt'], cols_control=config.DEFAULT_COLS_CTRL)
     
     # action rapper
-    env = NormalizedActions(env)
+    # env = NormalizedActions(env)
     
     # Actor and Critic Network
     input_dim = len(cols_0D)
