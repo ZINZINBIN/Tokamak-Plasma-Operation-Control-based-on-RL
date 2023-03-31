@@ -60,6 +60,20 @@
                           --predictor_weight {directory of saved weight file} --seq_len {input sequence length}
                           --pred_len {output sequence length}
     ```
+- Training policy network : SAC algorithm
+    ```
+    python3 train_sac.py  --gpu_num {gpu number} --num_epoch {number of epoch}
+                          --shot_random {bool} --t_init {initial time}
+                          --t_terminal {terminal time} --dt {time interval}
+                          --tag {tag name} --save_dir {directory for saving result}
+                          --batch_size {batch size} --num_episode {number of episode}
+                          --lr {learning rate} --gamma {decay constant}
+                          --min_value {minimum value for action} --max_value {maximum value for action}
+                          --tau {constant for updating policy} --verbose {verbose}
+                          --predictor_weight {directory of saved weight file} --seq_len {input sequence length}
+                          --pred_len {output sequence length}
+    ```
+
 ## Result
 - The best performance of the virtual tokamak operation is obtained from SAC algorithm.
 - The below picture describes the result of the training procedure with respect to the reward for each episode.
@@ -85,11 +99,14 @@
 - SCINet : https://arxiv.org/abs/2106.09305
 - Transformer : https://arxiv.org/abs/1706.03762
 - DDPG : https://arxiv.org/abs/1509.02971
+- SAC : https://arxiv.org/abs/1812.05905
 
 ### Dataset
-- iKSTAR 
+- iKSTAR
+- over 4000 experiments are used
 
 ## Reference
 - Deep Neural Network-Based Surrogate Model for Optimal Component Sizing of Power Converters Using Deep Reinforcement Learning(https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9841555)
 - Feedforward beta control in the KSTAR tokamak by deep reinforcement learning, Jaemin Seo et al : https://iopscience.iop.org/article/10.1088/1741-4326/ac121b/meta
 - Magnetic control of tokamak plasmas through deep reinforcement learning, Jonas Degrave, Federico Felici et al : https://iopscience.iop.org/article/10.1088/1741-4326/ac121b/meta
+- Development of an operation trajectory design algorithm for control of multiple 0D parameters using deep reinforcement learning, Jaemin Seo et al : https://iopscience.iop.org/article/10.1088/1741-4326/ac79be/meta 

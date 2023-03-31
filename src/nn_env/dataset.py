@@ -38,12 +38,12 @@ class DatasetFor0D(Dataset):
         self, 
         ts_data : pd.DataFrame, 
         disrupt_data : pd.DataFrame,
-        seq_len_0D : int = 20,
-        seq_len_ctrl : int = 24,
-        pred_len_0D : int = 4,
+        seq_len_0D : int = 10,
+        seq_len_ctrl : int = 11,
+        pred_len_0D : int = 1,
         cols_0D : List = DEFAULT_0D_COLS,
         cols_ctrl : List = DEFAULT_CONTROL_COLS,
-        interval : int = 10,
+        interval : int = 3,
         scaler_0D = None,
         scaler_ctrl = None,
         multi_step : bool = False
@@ -124,9 +124,10 @@ class DatasetFor0D(Dataset):
         for shot in tqdm(self.shot_list, desc = "Dataset Indices generation..."):
             
             if shot not in df_disruption.shot.values:
-                tftsrt = 1.5
+                tftsrt = 1.25
             else:
-                tftsrt = df_disruption[df_disruption.shot == shot].tftsrt.values[0]
+                # tftsrt = df_disruption[df_disruption.shot == shot].tftsrt.values[0]
+                tftsrt = df_disruption[df_disruption.shot == shot].t_flattop_start.values[0]
             
             df_shot = self.ts_data[self.ts_data.shot == shot]
             input_indices = []
@@ -163,7 +164,6 @@ class DatasetFor0D(Dataset):
 
     def __getitem__(self, idx:int):
         
-        
         if self.multi_step:
             # second version : multi-step training 
             input_idx = self.input_indices[idx]
@@ -192,10 +192,10 @@ class DatasetFor0D(Dataset):
             input_idx = self.input_indices[idx]
             target_idx = self.target_indices[idx]
             
-            data_0D = self.ts_data[self.cols_0D].loc[input_idx+1:input_idx + self.seq_len_0D].values
-            data_ctrl = self.ts_data[self.cols_ctrl].loc[input_idx+1:input_idx + self.seq_len_ctrl].values
+            data_0D = self.ts_data[self.cols_0D].loc[input_idx:input_idx + self.seq_len_0D-1].values
+            data_ctrl = self.ts_data[self.cols_ctrl].loc[input_idx:input_idx + self.seq_len_ctrl-1].values
             
-            target = self.ts_data[self.cols_0D].loc[target_idx+1: target_idx + self.pred_len_0D].values
+            target = self.ts_data[self.cols_0D].loc[target_idx:target_idx + self.pred_len_0D-1].values
             
             data_0D = torch.from_numpy(data_0D).float()
             data_ctrl = torch.from_numpy(data_ctrl).float()
@@ -304,9 +304,10 @@ class DatasetForMultiStepPred(Dataset):
         for shot in tqdm(self.shot_list, desc = "Dataset Indices generation..."):
             
             if shot not in df_disruption.shot.values:
-                tftsrt = 1.5
+                tftsrt = 1.25
             else:
-                tftsrt = df_disruption[df_disruption.shot == shot].tftsrt.values[0]
+                # tftsrt = df_disruption[df_disruption.shot == shot].tftsrt.values[0]
+                tftsrt = df_disruption[df_disruption.shot == shot].t_flattop_start.values[0]
                 
             df_shot = self.ts_data[self.ts_data.shot == shot]
                 

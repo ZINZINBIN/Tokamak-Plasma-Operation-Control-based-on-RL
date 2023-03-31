@@ -108,8 +108,10 @@ if __name__ == "__main__":
     reward_sender = RewardSender(targets_dict, total_cols = cols_0D)
     
     # step 1. real data loaded
-    df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index(drop = True)
-    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index(drop = True)
+    # df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index(drop = True)
+    # df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index(drop = True)
+    df = pd.read_csv("./dataset/KSTAR_rl_control_ts_data_extend.csv").reset_index()
+    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List_2022.csv", encoding='euc-kr').reset_index()
     
     # initial state generator
     df, scaler_0D, scaler_ctrl = preparing_initial_dataset(df, cols_0D, cols_control, 'Robust')

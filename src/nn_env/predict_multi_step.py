@@ -80,21 +80,33 @@ def generate_shot_data_from_self(
         
     predictions = model(input_0D.to(device), input_ctrl.to(device), target_0D.to(device), target_ctrl.to(device)).view(-1,len(cols_0D)).detach().cpu().numpy()
 
+    time_x_init = time_x.loc[1:seq_len_0D+1].values
+    actual_init = data_0D[cols_0D].loc[1:seq_len_0D+1].values
+    
+    t0 = time_x.loc[seq_len_0D+1]
+
     time_x = time_x.loc[seq_len_0D: seq_len_0D + len(predictions)].values
     actual = data_0D[cols_0D].loc[seq_len_0D: seq_len_0D + len(predictions)].values
     
     if scaler_0D:
+        actual_init = scaler_0D.inverse_transform(actual_init)
         predictions = scaler_0D.inverse_transform(predictions)
         actual = scaler_0D.inverse_transform(actual)
     
-    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (16,10), sharex=True, facecolor = 'white')
+    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (10,6), sharex=True, facecolor = 'white')
     plt.suptitle(title)
     
     for i, (ax, col) in enumerate(zip(axes.ravel(), cols_0D)):
+        # initial condition
+        ax.plot(time_x_init, actual_init[:,i],'k')
+        
+        # pred vs actual
         ax.plot(time_x, actual[:,i], 'k', label = "actual")
         ax.plot(time_x, predictions[:,i], 'b', label = "pred")
         ax.set_ylabel(col2str[col])
         ax.legend(loc = "upper right")
+        
+        ax.axvline(t0, ymin = 0, ymax = 1, linewidth = 2, color = 'r')
 
     fig.tight_layout()
     plt.savefig(save_dir)

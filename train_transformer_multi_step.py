@@ -7,13 +7,13 @@ from src.nn_env.utility import preparing_0D_dataset, get_range_of_output
 from src.nn_env.dataset import DatasetFor0D
 from src.nn_env.transformer_multi_step import Transformer
 from src.nn_env.train_multi_step import train
-from src.nn_env.loss import CustomLoss
+from src.nn_env.loss import CustomLoss, DILATE
 from src.nn_env.evaluate_multi_step import evaluate
 from src.nn_env.predict_multi_step import generate_shot_data_from_self
 from torch.utils.data import DataLoader
 
 parser = argparse.ArgumentParser(description="training NN based environment - Transformer : Multi-step")
-parser.add_argument("--batch_size", type = int, default = 256)
+parser.add_argument("--batch_size", type = int, default = 128)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--gpu_num", type = int, default = 3)
 parser.add_argument("--num_epoch", type = int, default = 128)
@@ -25,8 +25,8 @@ parser.add_argument("--tag", type = str, default = "Transformer_multi_step")
 parser.add_argument("--use_scaler", type = bool, default = True)
 parser.add_argument("--scaler", type = str, default = 'Robust', choices = ['Standard', 'Robust', 'MinMax'])
 parser.add_argument("--seq_len", type = int, default = 10)
-parser.add_argument("--pred_len", type = int, default = 10)
-parser.add_argument("--interval", type = int, default = 4)
+parser.add_argument("--pred_len", type = int, default = 10*3)
+parser.add_argument("--interval", type = int, default = 3)
 
 args = vars(parser.parse_args())
 
@@ -115,9 +115,10 @@ if __name__ == "__main__":
     save_last_dir = os.path.join(args['root_dir'], "{}_seq{}_dis{}_last.pt".format(args['tag'], args['seq_len'], args['pred_len']))
     tensorboard_dir = os.path.join("./runs/", "tensorboard_{}_seq{}_dis{}".format(args['tag'], args['seq_len'], args['pred_len']))
 
-    # loss_fn = CustomLoss() 
-    loss_fn = torch.nn.MSELoss(reduction = 'mean')
+    # loss_fn = torch.nn.MSELoss(reduction = 'mean')
+    loss_fn = DILATE()
     
+    '''
     train_loss, valid_loss = train(
         train_loader,
         valid_loader,
@@ -134,6 +135,7 @@ if __name__ == "__main__":
         tensorboard_dir = tensorboard_dir,
         test_for_check_per_epoch = test_loader
     )
+    '''
     
     model.load_state_dict(torch.load(save_best_dir))
 

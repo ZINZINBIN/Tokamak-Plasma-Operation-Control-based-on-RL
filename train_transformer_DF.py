@@ -12,9 +12,12 @@ from src.nn_env.forgetting import DFwrapper
 from src.nn_env.evaluate import evaluate, evaluate_multi_step
 from src.nn_env.predict import generate_shot_data_from_real, generate_shot_data_from_self
 from torch.utils.data import DataLoader
+import warnings
+
+warnings.filterwarnings(action = 'ignore')
 
 parser = argparse.ArgumentParser(description="training NN based environment - Transformer with differentiate forgetting")
-parser.add_argument("--batch_size", type = int, default = 128)
+parser.add_argument("--batch_size", type = int, default = 512)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--gpu_num", type = int, default = 3)
 parser.add_argument("--num_epoch", type = int, default = 128)
@@ -52,9 +55,12 @@ if __name__ == "__main__":
     
     config = Config()
 
-    df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index()
-    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index()
+    # df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index()
+    # df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index()
 
+    df = pd.read_csv("./dataset/KSTAR_rl_control_ts_data_extend.csv").reset_index()
+    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List_2022.csv", encoding='euc-kr').reset_index()
+    
     # nan interpolation
     df.interpolate(method = 'linear', limit_direction = 'forward')
 
@@ -91,12 +97,12 @@ if __name__ == "__main__":
     print("valid data : ", valid_data.__len__())
     print("test data : ", test_data.__len__())
 
-    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True)
-    valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = False)
-    test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True)
+    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True, persistent_workers = True)
+    valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True, persistent_workers = True)
+    test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = 4, shuffle = True, pin_memory = True, persistent_workers = True)
     
     # data range
-    ts_data = pd.concat([train_data.ts_data, valid_data.ts_data], axis = 1)
+    ts_data = pd.concat([train_data.ts_data, valid_data.ts_data, test_data.ts_data], axis = 1)
     range_info = get_range_of_output(ts_data, cols_0D)
     
     # transformer model argument

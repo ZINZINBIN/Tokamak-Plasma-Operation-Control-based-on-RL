@@ -28,50 +28,48 @@ class Config():
         '\\EC3_PWR' : 'EC3_PWR', 
         '\\ECSEC2TZRTN' : 'ECS-EC2-TZRTN', 
         '\\ECSEC3TZRTN' : 'ECS-EC3-TZRTN',
-        '\\LV01' : 'LV01'
+        '\\EC1_PWR': 'EC1_PWR', 
+        '\\EC4_PWR' : 'EC4_PWR', 
+        '\\ECSEC1TZRTN' : 'ECS-EC1-TZRTN', 
+        '\\ECSEC4TZRTN' : 'ECS-EC4-TZRTN',
+        '\\LV01' : 'LV01',
+        '\\bcentr' : 'Bc',
+        '\\rsurf':'R',
+        '\\aminor':'a',
     }
     
     ## columns for use
     # 0D parameters
-    '''
-    DEFAULT_COLS_0D = [
-        '\\q95', '\\ipmhd', '\\kappa', 
-        '\\tritop', '\\tribot','\\betap','\\betan',
-        '\\li', '\\WTOT_DLM03', '\\ne_inter01',
-        '\\TS_NE_CORE_AVG', '\\TS_TE_CORE_AVG'
-    ]
-    '''
-    
-    DEFAULT_COLS_0D = ['\\q95','\\betap','\\betan','\\li', '\\q0']
+    DEFAULT_COLS_0D = ['\\q95','\\betan','\\li', '\\q0']
     
     # control parameter
-    '''
     DEFAULT_COLS_CTRL = [
-        '\\nb11_pnb','\\nb12_pnb','\\nb13_pnb',
-        '\\RC01', '\\RC02', '\\RC03',
-        '\\VCM01', '\\VCM02', '\\VCM03',
-        '\\EC2_PWR', '\\EC3_PWR', 
-        '\\ECSEC2TZRTN', '\\ECSEC3TZRTN',
-        '\\LV01'
-    ]
-    '''
-    
-    DEFAULT_COLS_CTRL = [
-        '\\nb11_pnb','\\nb12_pnb','\\nb13_pnb',
-        '\\RC01', '\\RC02', '\\RC03',
-        '\\VCM01', '\\VCM02', '\\VCM03',
-        '\\EC2_PWR', '\\EC3_PWR', 
-        '\\ECSEC2TZRTN', '\\ECSEC3TZRTN',
-        '\\LV01', '\\ipmhd', '\\kappa', 
-        '\\tritop', '\\tribot', '\\bcentr'
+        '\\nb11_pnb',
+        '\\nb12_pnb',
+        '\\nb13_pnb',
+        # '\\EC1_PWR', 
+        '\\EC2_PWR', 
+        '\\EC3_PWR',
+        '\\EC4_PWR', 
+        # '\\ECSEC1TZRTN', 
+        '\\ECSEC2TZRTN', 
+        '\\ECSEC3TZRTN',
+        '\\ECSEC4TZRTN',
+        '\\ipmhd', 
+        '\\kappa', 
+        '\\tritop', 
+        '\\tribot', 
+        '\\bcentr',
+        '\\rsurf',
+        '\\aminor',
     ]
     
     # predictor : configuration for nn_env
     TRANSFORMER_CONF = {
-        "n_layers": 2, 
+        "n_layers": 4, 
         "n_heads":8, 
         "dim_feedforward" : 1024, 
-        "dropout" : 0.1,        
+        "dropout" : 0.2,        
         "RIN" : False,
         "feature_0D_dim" : 128,
         "feature_ctrl_dim": 128,

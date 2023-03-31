@@ -200,7 +200,6 @@ class Transformer(nn.Module):
             mask = self._generate_square_subsequent_mask(len(x_0D)).to(device)
             self.src_mask_0D = mask
         
-        
         # positional encoding for time axis : (T, N, d_model)
         x_0D = self.pos_0D(x_0D)
         

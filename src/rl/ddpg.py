@@ -7,8 +7,9 @@ import numpy as np
 import gc, time
 from itertools import count
 from tqdm.auto import tqdm
-from typing import Optional, List, Literal, Dict
+from typing import Optional, List, Literal, Dict, Union
 from src.rl.buffer import Transition, ReplayBuffer
+from src.rl.PER import PER
 from src.rl.utility import InitGenerator
 from src.rl.env import NeuralEnv
 
@@ -217,8 +218,12 @@ def update_policy(
     value_loss = criterion(q_values, bellman_q_values)
 
     value_optimizer.zero_grad()
-    # value_loss.backward(retain_graph = True)
     value_loss.backward()    
+    
+    # gradient clipping for value_network
+    for param in value_network.parameters():
+        param.grad.data.clamp_(-1,1) 
+        
     value_optimizer.step()
 
     # update policy network 
@@ -228,16 +233,130 @@ def update_policy(
     policy_loss = -policy_loss.mean()
 
     policy_optimizer.zero_grad()
-    # policy_loss.backward(retain_graph = True)
     policy_loss.backward()
-    policy_optimizer.step()
-
-    # gradient clipping for value_network and policy_network
+    
+    # gradient clipping for policy_network
     for param in policy_network.parameters():
         param.grad.data.clamp_(-1,1) 
     
+    policy_optimizer.step()
+    
+    # target network soft tau update
+    for target_param, param in zip(target_value_network.parameters(), value_network.parameters()):
+        target_param.data.copy_(
+            target_param.data * (1.0 - tau) + param.data * tau
+        )
+
+    for target_param, param in zip(target_policy_network.parameters(), policy_network.parameters()):
+        target_param.data.copy_(
+            target_param.data * (1.0 - tau) + param.data * tau
+        )
+
+    return value_loss.item(), policy_loss.item()
+
+# PER version update function
+def update_policy_PER(
+    memory : PER, 
+    policy_network : nn.Module, 
+    value_network : nn.Module, 
+    target_policy_network : nn.Module,
+    target_value_network : nn.Module,
+    value_optimizer : torch.optim.Optimizer,
+    policy_optimizer : torch.optim.Optimizer,
+    criterion :Optional[nn.Module] = None,
+    batch_size : int = 128, 
+    gamma : float = 0.99, 
+    device : Optional[str] = "cpu",
+    min_value : float = -np.inf,
+    max_value : float = np.inf,
+    tau : float = 1e-2
+    ):
+
+    policy_network.train()
+    value_network.train()
+    
+    target_policy_network.eval()
+    target_value_network.eval()
+
+    if memory.tree.n_entries < batch_size:
+        return None, None
+
+    if device is None:
+        device = "cpu"
+    
+    if criterion is None:
+        criterion = nn.SmoothL1Loss(reduction='mean') # Huber Loss for critic network
+    
+    transitions, indice, is_weight = memory.sample(batch_size)
+    is_weight = torch.FloatTensor(is_weight).to(device)
+
+    batch = Transition(*zip(*transitions))
+
+    # 최종 상태가 아닌 경우의 mask
+    non_final_mask = torch.tensor(
+        tuple(
+            map(lambda s : s is not None, batch.next_state)
+        ),
+        device = device,
+        dtype = torch.bool
+    )
+    
+    # exception : if all next state are None which means that all states are final, then ignore this samples
+    if non_final_mask.sum() == batch_size:
+        return None, None
+    
+    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(device)
+
+    state_batch = torch.cat(batch.state).to(device)
+    action_batch = torch.cat(batch.action).to(device)
+    reward_batch = torch.cat(batch.reward).to(device)
+
+    state_batch_ = state_batch.detach().clone()
+
+    # update value network
+    # Q = r + r'* Q'(s_{t+1}, J(a|s_{t+1}))
+    # Loss[y - Q] -> update value network
+    value_network.train()
+    next_q_values = torch.zeros((batch_size,1), device = device)
+    next_q_values[non_final_mask] = target_value_network(non_final_next_states, target_policy_network(non_final_next_states).detach()).detach()
+    
+    bellman_q_values = reward_batch.unsqueeze(1) + gamma * next_q_values
+    bellman_q_values = torch.clamp(bellman_q_values, min_value, max_value).detach()
+    
+    q_values = value_network(state_batch, action_batch)
+    
+    prios = bellman_q_values.clone().detach() - q_values.clone().detach()
+    prios = np.abs(prios.cpu().numpy())
+    
+    for batch_idx, idx in enumerate(indice):
+        memory.update(idx, prios[batch_idx])
+    
+    value_loss = criterion(q_values, bellman_q_values) * is_weight
+    value_loss = value_loss.mean()
+
+    value_optimizer.zero_grad()
+    value_loss.backward()    
+    
+    # gradient clipping for value_network
     for param in value_network.parameters():
         param.grad.data.clamp_(-1,1) 
+        
+    value_optimizer.step()
+
+    # update policy network 
+    # sum of Q-value -> grad Q(s,a) * grad J(a|s) -> update policy
+    value_network.eval()
+    policy_loss = value_network(state_batch_, policy_network(state_batch_))
+    policy_loss = -policy_loss.mean()
+
+    policy_optimizer.zero_grad()
+    policy_loss.backward()
+    
+    # gradient clipping for policy_network
+    for param in policy_network.parameters():
+        param.grad.data.clamp_(-1,1) 
+    
+    policy_optimizer.step()
 
     # target network soft tau update
     for target_param, param in zip(target_value_network.parameters(), value_network.parameters()):
@@ -253,11 +372,13 @@ def update_policy(
     return value_loss.item(), policy_loss.item()
 
 
+
+
 def train_ddpg(
     env : NeuralEnv,
     ou_noise : OUNoise,
     init_generator : InitGenerator,
-    memory : ReplayBuffer, 
+    memory : Union[ReplayBuffer, PER], 
     policy_network : nn.Module, 
     value_network : nn.Module, 
     target_policy_network : nn.Module,
@@ -349,22 +470,40 @@ def train_ddpg(
             # evolve state of OU Noise
             ou_noise.evolve_state()
 
-            value_loss, policy_loss = update_policy(
-                memory,
-                policy_network,
-                value_network,
-                target_policy_network,
-                target_value_network,
-                value_optimizer,
-                policy_optimizer,
-                value_loss_fn,
-                batch_size,
-                gamma,
-                device,
-                min_value,
-                max_value,
-                tau
-            )
+            if isinstance(memory, ReplayBuffer):
+                value_loss, policy_loss = update_policy(
+                    memory,
+                    policy_network,
+                    value_network,
+                    target_policy_network,
+                    target_value_network,
+                    value_optimizer,
+                    policy_optimizer,
+                    value_loss_fn,
+                    batch_size,
+                    gamma,
+                    device,
+                    min_value,
+                    max_value,
+                    tau
+                )
+            elif isinstance(memory, PER):
+                value_loss, policy_loss = update_policy_PER(
+                    memory,
+                    policy_network,
+                    value_network,
+                    target_policy_network,
+                    target_value_network,
+                    value_optimizer,
+                    policy_optimizer,
+                    value_loss_fn,
+                    batch_size,
+                    gamma,
+                    device,
+                    min_value,
+                    max_value,
+                    tau
+                )
             
             # update state list
             if state is not None:

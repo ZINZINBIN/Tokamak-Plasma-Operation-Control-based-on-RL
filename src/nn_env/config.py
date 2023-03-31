@@ -1,22 +1,44 @@
 class Config():
     
-    DEFAULT_0D_COLS = [
-        '\\q0','\\q95', '\\ipmhd', '\\kappa', 
-        '\\tritop', '\\tribot','\\betap','\\betan',
-        '\\li', '\\WTOT_DLM03', '\\ne_inter01'
+    ## columns for use
+    # 0D parameters
+    cols_efit = [
+        '\\q0',
+        '\\q95', 
+        '\\ipmhd', 
+        '\\kappa', 
+        '\\tritop', 
+        '\\tribot',
+        '\\betap',
+        '\\betan',
+        '\\li', 
+        '\\bcentr',
+        '\\rsurf',
+        '\\aminor',
+    ]
+    
+    # control parameter
+    cols_heating = [
+        '\\nb11_pnb',
+        '\\nb12_pnb',
+        '\\nb13_pnb',
+        '\\EC1_PWR', 
+        '\\EC2_PWR', 
+        '\\EC3_PWR',
+        '\\EC4_PWR', 
+        '\\ECSEC1TZRTN', 
+        '\\ECSEC2TZRTN', 
+        '\\ECSEC3TZRTN',
+        '\\ECSEC4TZRTN',
     ]
 
-    DEFAULT_DIAG = [
-        '\\ne_inter01', '\\ne_tci01', '\\ne_tci02', '\\ne_tci03', '\\ne_tci04', '\\ne_tci05',
-    ]
-
-    DEFAULT_CONTROL_COLS = [
-        '\\nb11_pnb','\\nb12_pnb','\\nb13_pnb',
-        '\\RC01', '\\RC02', '\\RC03',
-        '\\VCM01', '\\VCM02', '\\VCM03',
-        '\\EC2_PWR', '\\EC3_PWR', 
-        '\\ECSEC2TZRTN', '\\ECSEC3TZRTN',
-        '\\LV01'
+    cols_diagnose = [
+        '\\ne_inter01', 
+        '\\ne_tci01', 
+        '\\ne_tci02', 
+        '\\ne_tci03', 
+        '\\ne_tci04', 
+        '\\ne_tci05',
     ]
     
     TS_TE_CORE_COLS = ['\\TS_CORE1:CORE1_TE', '\\TS_CORE2:CORE2_TE', '\\TS_CORE3:CORE3_TE', '\\TS_CORE4:CORE4_TE', '\\TS_CORE5:CORE5_TE', '\\TS_CORE6:CORE6_TE', '\\TS_CORE7:CORE7_TE', '\\TS_CORE8:CORE8_TE', '\\TS_CORE9:CORE9_TE', '\\TS_CORE10:CORE10_TE', '\\TS_CORE11:CORE11_TE', '\\TS_CORE12:CORE12_TE', '\\TS_CORE13:CORE13_TE', '\\TS_CORE14:CORE14_TE']

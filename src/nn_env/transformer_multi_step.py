@@ -213,7 +213,6 @@ class Transformer(nn.Module):
         
         # x_enc : (T, N, d_model)
         # x_dec : (T',N, d_model)
-        
         x_dec = self.trans_dec(
             tgt = x_dec,
             memory = x_enc,

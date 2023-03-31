@@ -10,8 +10,9 @@ from torch.distributions import Normal
 import numpy as np
 import gc, time
 from tqdm.auto import tqdm
-from typing import Optional, List, Literal, Dict
+from typing import Optional, List, Literal, Dict, Union
 from src.rl.buffer import Transition, ReplayBuffer
+from src.rl.PER import PER
 from src.rl.utility import InitGenerator
 from itertools import count
 from src.rl.env import NeuralEnv
@@ -201,8 +202,6 @@ def update_policy(
     transitions = memory.sample(batch_size)
     batch = Transition(*zip(*transitions))
     
-    # Implementation : PER case
-
     # masking the next state tensor for non-final state
     non_final_mask = torch.tensor(
         tuple(
@@ -279,10 +278,141 @@ def update_policy(
 
     return q1_loss.item(), q2_loss.item(), policy_loss.item()
 
+# update policy using PER 
+def update_policy_PER(
+    memory : PER, 
+    policy_network : GaussianPolicy, 
+    q_network : TwinnedQNetwork, 
+    target_q_network : TwinnedQNetwork,
+    target_entropy : torch.Tensor,
+    log_alpha : Optional[torch.Tensor],
+    policy_optimizer : torch.optim.Optimizer,
+    q1_optimizer : torch.optim.Optimizer,
+    q2_optimizer : torch.optim.Optimizer,
+    alpha_optimizer : Optional[torch.optim.Optimizer],
+    criterion :nn.Module,
+    batch_size : int = 128, 
+    gamma : float = 0.99, 
+    device : Optional[str] = "cpu",
+    min_value : float = -np.inf,
+    max_value : float = np.inf,
+    tau : float = 1e-2
+    ):
+    
+    # policy and q network => parameter update : True
+    policy_network.train()
+    q_network.train()
+    
+    # target network => parameter update : False
+    target_q_network.eval()
+    
+    if memory.tree.n_entries < batch_size:
+        return None, None, None
+
+    if device is None:
+        device = "cpu"
+    
+    # sampling from prioritized replay buffer
+    transitions, indice, is_weight = memory.sample(batch_size)
+    is_weight = torch.FloatTensor(is_weight).to(device)
+    
+    batch = Transition(*zip(*transitions))
+    
+    # masking the next state tensor for non-final state
+    non_final_mask = torch.tensor(
+        tuple(
+            map(lambda s : s is not None, batch.next_state)
+        ),
+        device = device,
+        dtype = torch.bool
+    )
+    
+    # exception : if all next state are None which means that all states are final, then ignore this samples
+    if non_final_mask.sum() == batch_size:
+        return None, None, None
+    
+    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(device)
+
+    state_batch = torch.cat(batch.state).to(device)
+    action_batch = torch.cat(batch.action).to(device)
+    reward_batch = torch.cat(batch.reward).to(device)
+    
+    alpha = log_alpha.exp()
+
+    # step 1. update Q-network parameters
+    # Q = r + r'* Q'(s_{t+1}, J(a|s_{t+1}))
+    # J = Loss[(Q - (r + r'*Q(s_{t+1}, a_{t+1})))^2]
+    q1, q2 = q_network(state_batch, action_batch)
+    
+    with torch.no_grad():
+        next_action_batch, next_entropy, _ = policy_network.sample(non_final_next_states)
+        next_q1, next_q2 = target_q_network(non_final_next_states, next_action_batch)
+        
+        next_q = torch.zeros((batch_size,1), device = device)
+        next_q[non_final_mask] = torch.min(next_q1, next_q2) + alpha.to(device) * next_entropy
+    
+    bellman_q_values = reward_batch.unsqueeze(1) + gamma * next_q
+    bellman_q_values = torch.clamp(bellman_q_values, min_value, max_value)
+    
+    # step 1-1. priorities computation for PER
+    prios = bellman_q_values.clone().detach() - torch.min(q1.clone().detach(), q2.clone().detach())
+    prios = np.abs(prios.cpu().numpy())
+    
+    # update PER
+    for batch_idx, idx in enumerate(indice):
+        memory.update(idx, prios[batch_idx])
+    
+    # Q-network optimization
+    q1_loss = criterion(q1, bellman_q_values) * is_weight
+    q1_loss = q1_loss.mean()
+    q1_optimizer.zero_grad()
+    q1_loss.backward()
+    
+    for param in q_network.Q1.parameters():
+        param.grad.data.clamp_(-1,1) 
+            
+    q1_optimizer.step()
+    
+    q2_loss = criterion(q2, bellman_q_values) * is_weight
+    q2_loss = q2_loss.mean()
+    q2_optimizer.zero_grad()
+    q2_loss.backward()
+    
+    for param in q_network.Q2.parameters():
+        param.grad.data.clamp_(-1,1) 
+        
+    q2_optimizer.step()
+    
+    # step 2. update policy weights
+    action_batch_sampled, entropy, _ = policy_network.sample(state_batch)
+    q1, q2 = q_network(state_batch, action_batch)
+    q = torch.min(q1, action_batch_sampled)
+    
+    policy_loss = torch.mean(q + entropy * alpha.to(device)) * (-1)
+    policy_optimizer.zero_grad()
+    policy_loss.backward()
+    
+    for param in policy_network.parameters():
+        param.grad.data.clamp_(-1,1) 
+        
+    policy_optimizer.step()
+    
+    # step 3. adjust temperature
+    entropy_loss = (-1) * torch.mean(log_alpha.to(device) * (target_entropy.to(device) - entropy).detach())
+    alpha_optimizer.zero_grad()
+    entropy_loss.backward()
+    alpha_optimizer.step()
+    
+    # step 4. update target network parameter
+    for target_param, param in zip(target_q_network.parameters(), q_network.parameters()):
+        target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
+
+    return q1_loss.item(), q2_loss.item(), policy_loss.item()
+
 def train_sac(
     env : NeuralEnv,
     init_generator : InitGenerator,
-    memory : ReplayBuffer, 
+    memory : Union[ReplayBuffer, PER], 
     policy_network : GaussianPolicy, 
     q_network : TwinnedQNetwork, 
     target_q_network : TwinnedQNetwork,
@@ -365,25 +495,47 @@ def train_sac(
             # update state
             state = next_state
             
-            q1_loss, q2_loss, policy_loss = update_policy(
-                memory, 
-                policy_network, 
-                q_network, 
-                target_q_network,
-                target_entropy,
-                log_alpha,
-                policy_optimizer,
-                q1_optimizer,
-                q2_optimizer,
-                alpha_optimizer,
-                criterion,
-                batch_size, 
-                gamma, 
-                device,
-                min_value,
-                max_value,
-                tau
-            )
+            if isinstance(memory, ReplayBuffer):
+                q1_loss, q2_loss, policy_loss = update_policy(
+                    memory, 
+                    policy_network, 
+                    q_network, 
+                    target_q_network,
+                    target_entropy,
+                    log_alpha,
+                    policy_optimizer,
+                    q1_optimizer,
+                    q2_optimizer,
+                    alpha_optimizer,
+                    criterion,
+                    batch_size, 
+                    gamma, 
+                    device,
+                    min_value,
+                    max_value,
+                    tau
+                )
+            elif isinstance(memory, PER):
+                q1_loss, q2_loss, policy_loss = update_policy_PER(
+                    memory, 
+                    policy_network, 
+                    q_network, 
+                    target_q_network,
+                    target_entropy,
+                    log_alpha,
+                    policy_optimizer,
+                    q1_optimizer,
+                    q2_optimizer,
+                    alpha_optimizer,
+                    criterion,
+                    batch_size, 
+                    gamma, 
+                    device,
+                    min_value,
+                    max_value,
+                    tau
+                )
+                
             
             # update state list
             if state is not None:

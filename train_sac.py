@@ -5,6 +5,7 @@ from src.rl.rewards import RewardSender
 from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output, plot_rl_status
 from src.rl.sac import GaussianPolicy, TwinnedQNetwork, train_sac
 from src.rl.buffer import ReplayBuffer
+from src.rl.PER import PER
 from src.rl.actions import NormalizedActions
 from src.config import Config
 import torch
@@ -30,15 +31,16 @@ def parsing():
     parser.add_argument("--t_terminal", type = float, default = 10.0)
     parser.add_argument("--dt", type = float, default = 0.05)
     
-    # DDPG training setup
+    # SAC training setup
     parser.add_argument("--batch_size", type = int, default = 128)
-    parser.add_argument("--num_episode", type = int, default = 2048)  
+    parser.add_argument("--num_episode", type = int, default = 5000)  
     parser.add_argument("--lr", type = float, default = 2e-4)
     parser.add_argument("--gamma", type = float, default = 0.995)
     parser.add_argument("--min_value", type = float, default = -10.0)
     parser.add_argument("--max_value", type = float, default = 10.0)
     parser.add_argument("--tau", type = float, default = 0.01)
     parser.add_argument("--verbose", type = int, default = 4)
+    parser.add_argument("--use_PER", type = bool, default = False)
     
     # predictor config
     parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq10_dis1_best.pt")
@@ -79,6 +81,10 @@ if __name__ == "__main__":
     max_value = args['max_value']
     tau = args['tau']
     verbose = args['verbose']
+    
+    # tag correction
+    if args['use_PER']:
+        tag = "{}_PER".format(tag)
         
     # device allocation
     if(torch.cuda.device_count() >= 1):
@@ -113,6 +119,7 @@ if __name__ == "__main__":
     
     if args['use_DF']:
         model = DFwrapper(model, args['scale_DF'])
+        tag = "{}_DF".format(tag)
 
     model.to(device)
     model.load_state_dict(torch.load(args['predictor_weight']))
@@ -124,8 +131,11 @@ if __name__ == "__main__":
     reward_sender = RewardSender(targets_dict, total_cols = cols_0D)
     
     # step 1. real data loaded
-    df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index(drop = True)
-    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index(drop = True)
+    # df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index(drop = True)
+    # df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index(drop = True)
+    
+    df = pd.read_csv("./dataset/KSTAR_rl_control_ts_data_extend.csv").reset_index()
+    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List_2022.csv", encoding='euc-kr').reset_index()
     
     # initial state generator
     df, scaler_0D, scaler_ctrl = preparing_initial_dataset(df, cols_0D, cols_control, 'Robust')
@@ -142,7 +152,10 @@ if __name__ == "__main__":
     # env = NormalizedActions(env)
     
     # Replay Buffer
-    memory = ReplayBuffer(capacity=1000000)
+    if args['use_PER']:
+        memory = PER(capacity=20000)
+    else:
+        memory = ReplayBuffer(capacity=1000000)
     
     # policy and critic network
     input_dim = len(cols_0D)
@@ -168,7 +181,10 @@ if __name__ == "__main__":
     alpha_optimizer = torch.optim.AdamW([log_alpha], lr = lr)
     
     # loss function for critic network
-    value_loss_fn = torch.nn.SmoothL1Loss(reduction = 'mean')
+    if args['use_PER']:
+        value_loss_fn = torch.nn.SmoothL1Loss(reduction = 'none')
+    else:
+        value_loss_fn = torch.nn.SmoothL1Loss(reduction = 'mean')
     
     # optimization
     print("############### SAC Training Process ###################")

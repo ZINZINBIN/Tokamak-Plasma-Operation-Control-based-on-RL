@@ -30,7 +30,7 @@ def parsing():
     parser.add_argument("--t_terminal", type = float, default = 10.0)
     parser.add_argument("--dt", type = float, default = 0.05)
     
-    # DDPG training setup
+    # SAC training setup
     parser.add_argument("--batch_size", type = int, default = 128)
     parser.add_argument("--num_episode", type = int, default = 2048)  
     parser.add_argument("--lr", type = float, default = 2e-4)

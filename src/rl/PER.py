@@ -17,9 +17,9 @@ class PER(object):
     
     # initial values
     e = 0.01
-    a = 0.5
-    beta = 0.25
-    beta_increment_per_sampling = 0.01    
+    a = 0.6
+    beta = 0.4
+    beta_increment_per_sampling = 0.001    
     
     def __init__(self, capacity : int):
         self.tree = SumTree(capacity)
@@ -27,14 +27,12 @@ class PER(object):
     
     def _get_priority(self, err):
         return (np.abs(err) + self.e) ** self.a
-    
-    def add(self, err, sample):
-        p = self._get_priority(err)
-        self.tree.add(p, sample)
-    
-    def push(self, err, *args):
-        self.add(err, Transition(*args))
-    
+            
+    def push(self, *args):
+        prios = self.tree.max() if self.tree.n_entries > 0 else 1.0
+        sample = Transition(*args)
+        self.tree.add(prios, sample)
+        
     def sample(self, batch_size : int):
         batch = []
         indice = []
@@ -47,8 +45,15 @@ class PER(object):
             a = segment * i
             b = segment * (i+1)
             
-            s = random.uniform(a,b)
-            (idx, p, data) = self.tree.get(s)
+            # To prevent that PER samples from uninitialized memory
+            # in this case, data should become all 0 so that the optmization process will occur error!
+            # Thus, we have to filter the integer data 
+            while True:
+                s = random.uniform(a,b)
+                (idx, p, data) = self.tree.get(s)
+                
+                if not isinstance(data, int):
+                    break
             
             priorities.append(p)
             batch.append(data)
@@ -57,6 +62,7 @@ class PER(object):
         sampling_probs = priorities / self.tree.total()
         is_weight = np.power(self.tree.n_entries * sampling_probs, -self.beta)
         is_weight /= is_weight.max()
+        
         return batch, indice, is_weight
 
     def update(self, idx : int, err):

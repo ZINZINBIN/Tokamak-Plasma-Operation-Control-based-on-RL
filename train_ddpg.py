@@ -5,6 +5,7 @@ from src.rl.rewards import RewardSender
 from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_of_output, plot_rl_status
 from src.rl.ddpg import Actor, Critic, train_ddpg, OUNoise
 from src.rl.buffer import ReplayBuffer
+from src.rl.PER import PER
 from src.rl.actions import NormalizedActions
 from src.config import Config
 import torch
@@ -35,10 +36,11 @@ def parsing():
     parser.add_argument("--num_episode", type = int, default = 2048)  
     parser.add_argument("--lr", type = float, default = 2e-4)
     parser.add_argument("--gamma", type = float, default = 0.995)
-    parser.add_argument("--min_value", type = float, default = -10.0)
-    parser.add_argument("--max_value", type = float, default = 10.0)
+    parser.add_argument("--min_value", type = float, default = -5.0)
+    parser.add_argument("--max_value", type = float, default = 5.0)
     parser.add_argument("--tau", type = float, default = 0.01)
     parser.add_argument("--verbose", type = int, default = 4)
+    parser.add_argument("--use_PER", type = bool, default = False)
     
     # predictor config
     parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq10_dis1_best.pt")
@@ -86,6 +88,10 @@ if __name__ == "__main__":
     else:
         device = 'cpu'
         
+    # tag correction
+    if args['use_PER']:
+        tag = "{}_PER".format(tag)
+        
     config = Config()
     
     # 0D parameter
@@ -124,8 +130,11 @@ if __name__ == "__main__":
     reward_sender = RewardSender(targets_dict, total_cols = cols_0D)
     
     # step 1. real data loaded
-    df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index(drop = True)
-    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index(drop = True)
+    # df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index(drop = True)
+    # df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index(drop = True)
+    
+    df = pd.read_csv("./dataset/KSTAR_rl_control_ts_data_extend.csv").reset_index()
+    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List_2022.csv", encoding='euc-kr').reset_index()
     
     # initial state generator
     df, scaler_0D, scaler_ctrl = preparing_initial_dataset(df, cols_0D, cols_control, 'Robust')
@@ -142,7 +151,10 @@ if __name__ == "__main__":
     # env = NormalizedActions(env)
     
     # Replay Buffer
-    memory = ReplayBuffer(capacity=1000000)
+    if args['use_PER']:
+        memory = PER(capacity=50000)
+    else:
+        memory = ReplayBuffer(capacity=1000000)
     
     # Actor and Critic Network
     input_dim = len(cols_0D)
@@ -169,8 +181,12 @@ if __name__ == "__main__":
     value_optimizer = torch.optim.AdamW(value_network.parameters(), lr = lr)
     policy_optimizer = torch.optim.AdamW(policy_network.parameters(), lr = lr)
 
-    value_loss_fn = torch.nn.SmoothL1Loss(reduction = 'mean')
-    
+    # loss function for critic network
+    if args['use_PER']:
+        value_loss_fn = torch.nn.SmoothL1Loss(reduction = 'none')
+    else:
+        value_loss_fn = torch.nn.SmoothL1Loss(reduction = 'mean')
+        
     # optimization
     print("############### DDPG Training Process ###################")
     save_best = os.path.join("./weights/", "{}_best.pt".format(tag))

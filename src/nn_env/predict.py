@@ -160,10 +160,14 @@ def generate_shot_data_from_self(
             
     predictions = np.concatenate(predictions, axis = 0)
     
-    time_x = time_x.loc[seq_len_0D + 1: seq_len_0D + len(predictions)].values
+    x_axis_init = time_x.loc[1: seq_len_0D+1].values
+    actual_init = data_0D[cols_0D].loc[1:seq_len_0D+1].values
+    
+    x_axis = time_x.loc[seq_len_0D + 1: seq_len_0D + len(predictions)].values
     actual = data_0D[cols_0D].loc[seq_len_0D + 1 : seq_len_0D + len(predictions)].values
     
     if scaler_0D:
+        actual_init = scaler_0D.inverse_transform(actual_init)
         predictions = scaler_0D.inverse_transform(predictions)
         actual = scaler_0D.inverse_transform(actual)
     
@@ -171,10 +175,17 @@ def generate_shot_data_from_self(
     plt.suptitle(title)
     
     for i, (ax, col) in enumerate(zip(axes.ravel(), cols_0D)):
-        ax.plot(time_x, actual[:,i], 'k', label = "actual")
-        ax.plot(time_x, predictions[:,i], 'b', label = "pred")
+        # initial
+        ax.plot(x_axis_init, actual_init[:,i], 'k')
+        
+        # pred vs actual         
+        ax.plot(x_axis, actual[:,i], 'k', label = "actual")
+        ax.plot(x_axis, predictions[:,i], 'b', label = "pred")
         ax.set_ylabel(col2str[col])
         ax.legend(loc = "upper right")
+        
+        # vertical line
+        ax.axvline(time_x.loc[seq_len_0D+1], ymin = 0, ymax = 1, linewidth = 2, color = 'r')
 
     fig.tight_layout()
     plt.savefig(save_dir)
