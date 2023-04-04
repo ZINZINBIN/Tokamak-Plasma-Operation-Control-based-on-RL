@@ -1,4 +1,4 @@
-from src.rl.env import NeuralEnv
+from src.rl.env import NeuralEnv, StochasticNeuralEnv
 from src.nn_env.transformer import Transformer
 from src.nn_env.forgetting import DFwrapper
 from src.rl.rewards import RewardSender
@@ -41,6 +41,15 @@ def parsing():
     parser.add_argument("--tau", type = float, default = 0.01)
     parser.add_argument("--verbose", type = int, default = 4)
     parser.add_argument("--use_PER", type = bool, default = False)
+    
+    # environment setup
+    parser.add_argument("--stochastic", type = bool, default = False)
+    parser.add_argument("--env_noise_scale_0D", type = float, default = 0.1)
+    parser.add_argument("--env_noise_scale_ctrl", type = float, default = 0.1)
+    parser.add_argument("--env_noise_mean_0D", type = float, default = 0)
+    parser.add_argument("--env_noise_mean_ctrl", type = float, default = 0)
+    parser.add_argument("--env_noise_std_0D", type = float, default = 1.0)
+    parser.add_argument("--env_noise_std_ctrl", type = float, default = 1.0)
     
     # predictor config
     parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq10_dis1_best.pt")
@@ -145,8 +154,19 @@ if __name__ == "__main__":
     range_info = get_range_of_output(df, cols_control)
     
     # environment
-    env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, range_info = range_info, t_terminal = args['t_terminal'], dt = args['dt'])
-    
+    if args['stochastic']:
+        tag = "{}_stochastic".format(tag)
+        env = StochasticNeuralEnv(
+            predictor=model, device = device, reward_sender = reward_sender, 
+            seq_len = seq_len, pred_len = pred_len, range_info = range_info, 
+            t_terminal = args['t_terminal'], dt = args['dt'],
+            noise_mean_0D=args['env_noise_mean_0D'], noise_mean_ctrl=args['env_noise_mean_ctrl'],
+            noise_std_0D=args['env_noise_std_0D'], noise_std_ctrl=args['env_noise_std_ctrl'],
+            scale_0D=args['env_noise_scale_0D'], scale_ctrl=args['env_noise_scale_ctrl']
+            )
+    else:
+        env = NeuralEnv(predictor=model, device = device, reward_sender = reward_sender, seq_len = seq_len, pred_len = pred_len, range_info = range_info, t_terminal = args['t_terminal'], dt = args['dt'])
+
     # action wrapper
     # env = NormalizedActions(env)
     
