@@ -5,10 +5,9 @@ import pandas as pd
 from src.config import Config
 from src.nn_env.utility import preparing_0D_dataset, get_range_of_output
 from src.nn_env.dataset import DatasetFor0D, DatasetForMultiStepPred
-from src.nn_env.transformer import Transformer
+from src.nn_env.NStransformer import NStransformer
 from src.nn_env.train import train
 from src.nn_env.loss import CustomLoss
-from src.nn_env.forgetting import DFwrapper
 from src.nn_env.evaluate import evaluate, evaluate_multi_step
 from src.nn_env.predict import generate_shot_data_from_real, generate_shot_data_from_self
 from torch.utils.data import DataLoader
@@ -16,7 +15,7 @@ import warnings
 
 warnings.filterwarnings(action = 'ignore')
 
-parser = argparse.ArgumentParser(description="training NN based environment - Transformer with differentiate forgetting")
+parser = argparse.ArgumentParser(description="training NN based environment - Non-stationary Transformer")
 parser.add_argument("--batch_size", type = int, default = 512)
 parser.add_argument("--lr", type = float, default = 2e-4)
 parser.add_argument("--gpu_num", type = int, default = 3)
@@ -25,13 +24,12 @@ parser.add_argument("--gamma", type = float, default = 0.95)
 parser.add_argument("--verbose", type = int, default = 4)
 parser.add_argument("--max_norm_grad", type = float, default = 1.0)
 parser.add_argument("--root_dir", type = str, default = "./weights/")
-parser.add_argument("--tag", type = str, default = "Transformer_DF")
+parser.add_argument("--tag", type = str, default = "Transformer_NS")
 parser.add_argument("--use_scaler", type = bool, default = True)
 parser.add_argument("--scaler", type = str, default = 'Robust', choices = ['Standard', 'Robust', 'MinMax'])
 parser.add_argument("--seq_len", type = int, default = 10)
 parser.add_argument("--pred_len", type = int, default = 1)
 parser.add_argument("--interval", type = int, default = 3)
-parser.add_argument("--scale", type = float, default = 0.1)
 parser.add_argument("--multi_step_validation", type = bool, default = False)
 
 args = vars(parser.parse_args())
@@ -103,12 +101,11 @@ if __name__ == "__main__":
     range_info = get_range_of_output(ts_data, cols_0D)
     
     # transformer model argument
-    model = Transformer(
+    model = NStransformer(
         n_layers = config.TRANSFORMER_CONF['n_layers'], 
         n_heads = config.TRANSFORMER_CONF['n_heads'], 
         dim_feedforward = config.TRANSFORMER_CONF['dim_feedforward'], 
         dropout = config.TRANSFORMER_CONF['dropout'],        
-        RIN = config.TRANSFORMER_CONF['RIN'],
         input_0D_dim = len(cols_0D),
         input_0D_seq_len = seq_len,
         input_ctrl_dim = len(cols_control),
@@ -121,8 +118,7 @@ if __name__ == "__main__":
         noise_mean = config.TRANSFORMER_CONF['noise_mean'],
         noise_std = config.TRANSFORMER_CONF['noise_std']
     )
-    
-    model = DFwrapper(model, args['scale'])
+
     model.summary()
     model.to(device)
 
@@ -141,7 +137,6 @@ if __name__ == "__main__":
     tensorboard_dir = os.path.join("./runs/", "tensorboard_{}".format(tag))
 
     loss_fn = torch.nn.MSELoss(reduction = 'mean')
-    
     
     print("\n##### training process #####\n")
     train_loss, valid_loss = train(

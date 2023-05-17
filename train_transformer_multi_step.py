@@ -7,7 +7,6 @@ from src.nn_env.utility import preparing_0D_dataset, get_range_of_output
 from src.nn_env.dataset import DatasetFor0D
 from src.nn_env.transformer_multi_step import Transformer
 from src.nn_env.train_multi_step import train
-from src.nn_env.loss import CustomLoss, DILATE
 from src.nn_env.evaluate_multi_step import evaluate
 from src.nn_env.predict_multi_step import generate_shot_data_from_self
 from torch.utils.data import DataLoader
@@ -115,10 +114,9 @@ if __name__ == "__main__":
     save_last_dir = os.path.join(args['root_dir'], "{}_seq{}_dis{}_last.pt".format(args['tag'], args['seq_len'], args['pred_len']))
     tensorboard_dir = os.path.join("./runs/", "tensorboard_{}_seq{}_dis{}".format(args['tag'], args['seq_len'], args['pred_len']))
 
-    # loss_fn = torch.nn.MSELoss(reduction = 'mean')
-    loss_fn = DILATE()
+    loss_fn = torch.nn.MSELoss(reduction = 'mean')
     
-    '''
+    
     train_loss, valid_loss = train(
         train_loader,
         valid_loader,
@@ -135,7 +133,6 @@ if __name__ == "__main__":
         tensorboard_dir = tensorboard_dir,
         test_for_check_per_epoch = test_loader
     )
-    '''
     
     model.load_state_dict(torch.load(save_best_dir))
 

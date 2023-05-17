@@ -1,10 +1,20 @@
+''' Wrapper for differentiable forgetting algorithm
+    Model adaptation to distribution shift via weighted empirical risk minimization using differentiable Bi-Level optimization
+    
+    Paper: Time series prediction under distribution shift using differentiable forgetting
+    Training process : model parameter optimization with fixed hyperparameter
+    Validation process : Hyperprameter optimization 
+    
+    For validation process, we have to update the hyperparameter using sum of one-step prediction loss
+    However, in training process, we have to compute weighted empirical risk minimization
+'''
 import torch
 import torch.nn as nn
 from typing import Union, Optional
 from src.nn_env.transformer import Transformer
 
 class DFwrapper:
-    def __init__(self, model : Union[nn.Module, Transformer], scale : float = 0.1):
+    def __init__(self, model : Union[nn.Module, Transformer], scale : float = 0.1, trainable : bool = False):
         super().__init__()
         self.scale = scale
         self.input_dim = model.input_0D_dim
@@ -15,8 +25,14 @@ class DFwrapper:
         self.exp_eta = None
         self.exp_theta = None
         
-        self.eta = nn.Parameter(torch.ones(model.input_0D_dim), requires_grad=False)
-        self.theta = nn.Parameter(torch.ones(model.input_ctrl_dim), requires_grad=False)
+        self.trainable = trainable
+        
+        if trainable: 
+            self.eta = nn.Parameter(torch.ones(model.input_0D_dim), requires_grad=True)
+            self.theta = nn.Parameter(torch.ones(model.input_ctrl_dim), requires_grad=True)
+        else:
+            self.eta = nn.Parameter(torch.ones(model.input_0D_dim), requires_grad=False)
+            self.theta = nn.Parameter(torch.ones(model.input_ctrl_dim), requires_grad=False)
     
     def generate_forgetting_matrix(self, x : torch.Tensor, y : Optional[torch.Tensor] = None):
         seq = torch.arange(x.size()[1]).flip(0).expand(x.size()[0], x.size()[2], x.size()[1]).permute(0,2,1)

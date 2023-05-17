@@ -53,9 +53,6 @@ if __name__ == "__main__":
     
     config = Config()
 
-    # df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index()
-    # df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index()
-
     df = pd.read_csv("./dataset/KSTAR_rl_control_ts_data_extend.csv").reset_index()
     df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List_2022.csv", encoding='euc-kr').reset_index()
     
@@ -140,7 +137,6 @@ if __name__ == "__main__":
     save_last_dir = os.path.join(args['root_dir'], "{}_last.pt".format(tag))
     tensorboard_dir = os.path.join("./runs/", "tensorboard_{}".format(tag))
 
-    # loss_fn = CustomLoss() 
     loss_fn = torch.nn.MSELoss(reduction = 'mean')
     
     print("\n##### training process #####\n")
@@ -183,6 +179,7 @@ if __name__ == "__main__":
         )
     
     shot_num = ts_test.shot.iloc[-1]
+    shot_num = 30399
     df_shot = ts_test[ts_test.shot == shot_num].reset_index(drop = True)
     
     # virtual experiment shot 

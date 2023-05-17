@@ -72,7 +72,7 @@ def evaluate_multi_step(
             
             gts = target.numpy()
             pts = preds.numpy()
-            mse, rmse, mae, r2 = compute_metrics(gts,pts,None,is_print)
+            mse, rmse, mae, r2 = compute_metrics(gts,pts,None, False)
             
             total_rmse += rmse
             total_mse += mse
@@ -84,5 +84,8 @@ def evaluate_multi_step(
     total_mse /= batch_idx + 1
     total_mae /= batch_idx + 1
     total_r2 /= batch_idx + 1
+    
+    if is_print:
+        print("| mse : {:.3f} | rmse : {:.3f} | mae : {:.3f} | r2-score : {:.3f}".format(total_mse, total_rmse, total_mae, total_r2))
     
     return test_loss, total_mse, total_rmse, total_mae, total_r2

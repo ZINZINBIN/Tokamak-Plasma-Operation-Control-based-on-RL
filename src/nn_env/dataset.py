@@ -98,7 +98,7 @@ class DatasetFor0D(Dataset):
                 if c > 0.5 * len(df_shot):
                     shot_ignore.append(shot)
                     break
-          
+        
         # update shot list with ignoring the null data
         shot_list_new = [shot_num for shot_num in self.shot_list if shot_num not in shot_ignore]
         self.shot_list = shot_list_new

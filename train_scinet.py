@@ -49,9 +49,9 @@ if __name__ == "__main__":
     
     config = Config()
 
-    df = pd.read_csv("./dataset/KSTAR_Disruption_ts_data_extend.csv").reset_index()
-    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List.csv", encoding='euc-kr').reset_index()
-
+    df = pd.read_csv("./dataset/KSTAR_rl_control_ts_data_extend.csv").reset_index()
+    df_disruption = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List_2022.csv", encoding='euc-kr').reset_index()
+    
     # nan interpolation
     df.interpolate(method = 'linear', limit_direction = 'forward')
 
@@ -152,6 +152,7 @@ if __name__ == "__main__":
     )
     
     shot_num = ts_test.shot.iloc[-1]
+    shot_num = 21747
     df_shot = ts_test[ts_test.shot == shot_num].reset_index(drop = True)
     
     generate_shot_data_from_self(

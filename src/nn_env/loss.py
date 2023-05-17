@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from numba import jit
+# from numba import jit
 from typing import Optional
 from torch.autograd import Function 
 
@@ -15,15 +15,17 @@ class CustomLoss(nn.Module):
         loss = loss.view(-1,).sum()
         return loss
 
+# the code below is Dynamic Time Warping method aimed for time series forecasting
+'''
 # Soft Dynamic Time Warping
 def pairwise_distances(x, y=None):
-    '''
-    Input: x is a Nxd matrix
-           y is an optional Mxd matirx
-    Output: dist is a NxM matrix where dist[i,j] is the square norm between x[i,:] and y[j,:]
-            if y is not given then use 'y=x'.
-    i.e. dist[i,j] = ||x[i,:]-y[j,:]||^2
-    '''
+
+    # Input: x is a Nxd matrix
+    #        y is an optional Mxd matirx
+    # Output: dist is a NxM matrix where dist[i,j] is the square norm between x[i,:] and y[j,:]
+    #         if y is not given then use 'y=x'.
+    # i.e. dist[i,j] = ||x[i,:]-y[j,:]||^2
+
     x_norm = (x**2).sum(1).view(-1, 1)
     if y is not None:
         y_t = torch.transpose(y, 0, 1)
@@ -265,3 +267,4 @@ class DILATE(nn.Module):
         mse_loss = self.mse(pts, gts)
     
         return mse_loss + loss * 0.1
+'''
