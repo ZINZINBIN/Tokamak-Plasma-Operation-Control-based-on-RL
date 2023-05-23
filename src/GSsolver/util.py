@@ -1,5 +1,7 @@
 import torch
+import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import RectBivariateSpline, interp2d
 from matplotlib import colors, cm
 from matplotlib.pyplot import Axes
 from src.GSsolver.KSTAR_setup import limiter_shape
@@ -14,6 +16,22 @@ def draw_KSTAR_limiter(ax:Axes):
     ax.set_xlabel('R[m]')
     ax.set_ylabel('Z[m]')
     return ax
+
+def modify_resolution(psi : np.ndarray, R : np.ndarray, Z : np.ndarray, n_grid : int = 128):
+    if n_grid % 2 == 0:
+        n_grid += 1
+    
+    if min(R.shape[0], R.shape[1]) > n_grid:
+        return ValueError("argument n_grid should be greater than the current grid number")
+    
+    interp_fn = interp2d(R,Z,psi)
+    
+    R_new = np.linspace(R.min(), R.max(), n_grid, endpoint = True)
+    Z_new = np.linspace(Z.min(), Z.max(), n_grid, endpoint = True)
+    
+    RR, ZZ = np.meshgrid(R_new, Z_new)
+    PSI = interp_fn(R_new,Z_new).reshape(n_grid, n_grid)
+    return RR,ZZ,PSI
 
 # plot predicted flux, 2D current profile and 1D profile of pressure, current and safety-factor
 def plot_profile(model : AbstractPINN, x_param : torch.Tensor, x_PFCs : torch.Tensor, device : str = "cpu", save_dir : str = "./result/PINN_profile.png"):

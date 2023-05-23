@@ -11,9 +11,13 @@ class PINNDataset(Dataset):
         self.df = df
         self.cols_0D = cols_0D
         self.cols_PFC = cols_PFC
+
+        self.paths = df['path'].values
+        self.params = df[cols_0D].values
+        self.PFCs = df[cols_PFC].values
         
     def __getitem__(self, idx : int):
-        path = self.df['path'].values[idx]
+        path = self.paths[idx]
         
         # psi from efit
         target = np.load(path)['psi']
@@ -25,9 +29,13 @@ class PINNDataset(Dataset):
         x_PFC = self.df[self.cols_PFC].values[idx].reshape(-1,)
         x_PFC = torch.from_numpy(x_PFC).float()
         
+        Ip = self.df['\\ipmhd'].values[idx].reshape(-1,)
+        Ip = torch.from_numpy(Ip).float()
+        
         data = {
             "params":x_param,
             "PFCs" : x_PFC,
+            "Ip" : Ip
         }
         
         return data, target

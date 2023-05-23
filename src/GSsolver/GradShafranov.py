@@ -4,19 +4,27 @@ import torch, math
 from torch.autograd import Function
 import torch.nn.functional as F
 from typing import Union, List, Dict
+from src.GSsolver.KSTAR_setup import limiter_shape
 import math
 
-'''
-class GreenFunction(Function):
-    @staticmethod
-    def forward(ctx, R0 : torch.Tensor, Z0:torch.Tensor, R:torch.Tensor, Z:torch.Tensor):
-        R0, Z0, R, Z = R0.detach(), Z0.detach(), R.detach(), Z.detach()
-        k = np.sqrt(4 * R0.numpy() * R.numpy() / ((R.numpy() + R0.numpy()) ** 2 + (Z.numpy() - Z0.numpy()) ** 2))
-        ellipK = special.ellipk(k)
-        ellipE = special.ellipe(k)
-        g = np.sqrt(R0.numpy() * R.numpy()) / 2 / math.pi / k * ((2-k**2) * ellipK - 2 * ellipE)
-        return g
-'''
+def compute_k(R0 : torch.Tensor, Z0:torch.Tensor, R:torch.Tensor, Z:torch.Tensor):
+    k = np.sqrt(4 * R0 * R / ((R + R0) ** 2 + (Z - Z0) ** 2))
+    k = np.clip(k, 1e-10, 1 - 1e-10)
+    return k
+
+def compute_ellipK_derivative(k, ellipK, ellipE):
+    return ellipE / k / (1-k*k) - ellipK / k
+
+def compute_ellipE_derivative(k, ellipK, ellipE):
+    return (ellipE - ellipK) / k
+
+def compute_Green_function(R0 : torch.Tensor, Z0:torch.Tensor, R:torch.Tensor, Z:torch.Tensor):
+    k = compute_k(R0, Z0, R, Z)
+    ellipK = special.ellipk(k)
+    ellipE = special.ellipe(k)
+    g = 0.5 / math.pi / k * ((2-k**2) * ellipK - 2 * ellipE) * 4 * math.pi * 10 **(-7)
+    g *= np.sqrt(R0 * R)
+    return g
 
 def gradient(u : torch.Tensor, x : torch.Tensor):
     u_x = torch.autograd.grad(u, x, grad_outputs = torch.ones_like(u), retain_graph = True, create_graph=True)[0]
@@ -104,7 +112,7 @@ def eliptic_operator(psi:torch.Tensor, R : torch.Tensor, Z : torch.Tensor):
 
 # Grad-Shafranov equation as a loss function
 def compute_grad_shafranov_loss(psi : torch.Tensor, R : torch.Tensor, Z : torch.Tensor, Jphi : torch.Tensor):
-    loss = eliptic_operator(psi, R, Z) + R * Jphi * 4 * math.pi * 10 ** (-7)
+    loss = eliptic_operator(psi, R, Z) + R * Jphi
     loss = torch.norm(loss)
     return loss
 
@@ -123,3 +131,36 @@ def compute_grad2(psi : torch.Tensor, R : torch.Tensor, Z : torch.Tensor):
     grad = psi_r ** 2 + psi_z ** 2
     grad = torch.sqrt(grad)
     return grad
+
+def compute_KSTAR_limiter_mask(RR, ZZ):
+    
+    def convert_coord_index(RR, ZZ, points_arr):
+        indices_arr = []
+        for point in points_arr:
+            x, y = point
+
+            idx_x, idx_y = 0, 0
+            nx,ny = RR.shape
+            
+            for idx in range(nx-1):
+                if RR[0,idx] <= x and RR[0,idx+1] > x:
+                    idx_x = idx
+                    break
+            
+            for idx in range(ny-1):
+                if ZZ[idx,0] <= y and ZZ[idx+1,0] > y:
+                    idx_y = idx
+                    break
+            
+            indices_arr.append([idx_x, idx_y])
+        return np.array(indices_arr)
+    
+    from skimage.draw import polygon
+    mask = np.ones_like(RR) * 5e-2
+    contour = convert_coord_index(RR, ZZ, limiter_shape)
+
+    # Create an empty image to store the masked array
+    rr, cc = polygon(contour[:, 0], contour[:, 1], mask.shape)
+    mask[cc, rr] = 1
+
+    return mask

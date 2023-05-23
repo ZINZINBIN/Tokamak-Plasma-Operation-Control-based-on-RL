@@ -1,10 +1,16 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import pandas as pd
+from torch.utils.data import DataLoader
+from sklearn.model_selection import train_test_split
 from matplotlib.gridspec import GridSpec
 from src.GSsolver.model import PINN
 from src.GSsolver.GradShafranov import compute_plasma_region
 from src.GSsolver.util import draw_KSTAR_limiter, modify_resolution
+from src.GSsolver.train import train
+from src.GSsolver.loss import SSIM
+from src.GSsolver.dataset import PINNDataset
 
 # torch device state
 print("torch device avaliable : ", torch.cuda.is_available())
@@ -17,58 +23,28 @@ torch.cuda.empty_cache()
 
 # device allocation
 if(torch.cuda.device_count() >= 1):
-    device = "cuda:{}".format(1)
+    device = "cuda:{}".format(0)
 else:
     device = 'cpu'
     
-# SSIM loss
-class SSIM(nn.Module):
-    """Layer to compute the SSIM loss between a pair of images
-    """
-    def __init__(self):
-        super(SSIM, self).__init__()
-        self.mu_x_pool   = nn.AvgPool2d(3, 1)
-        self.mu_y_pool   = nn.AvgPool2d(3, 1)
-        self.sig_x_pool  = nn.AvgPool2d(3, 1)
-        self.sig_y_pool  = nn.AvgPool2d(3, 1)
-        self.sig_xy_pool = nn.AvgPool2d(3, 1)
-
-        # 입력 경계의 반사를 사용하여 상/하/좌/우에 입력 텐서를 추가로 채웁니다.
-        self.refl = nn.ReflectionPad2d(1)
-
-        self.C1 = 0.01 ** 2
-        self.C2 = 0.03 ** 2
-
-    def forward(self, x, y):
-        # shape : (xh, xw) -> (xh + 2, xw + 2)
-        x = self.refl(x) 
-        # shape : (yh, yw) -> (yh + 2, yw + 2)
-        y = self.refl(y)
-
-        mu_x = self.mu_x_pool(x)
-        mu_y = self.mu_y_pool(y)
-
-        sigma_x  = self.sig_x_pool(x ** 2) - mu_x ** 2
-        sigma_y  = self.sig_y_pool(y ** 2) - mu_y ** 2
-        sigma_xy = self.sig_xy_pool(x * y) - mu_x * mu_y
-
-        SSIM_n = (2 * mu_x * mu_y + self.C1) * (2 * sigma_xy + self.C2)
-        SSIM_d = (mu_x ** 2 + mu_y ** 2 + self.C1) * (sigma_x + sigma_y + self.C2)
-        
-        # Loss function
-        return torch.clamp((1 - SSIM_n / SSIM_d) / 2, 0, 1).sum()
+cols_PFC = ['\PCPF1U', '\PCPF2U', '\PCPF3U', '\PCPF3L', '\PCPF4U','\PCPF4L', '\PCPF5U', '\PCPF5L', '\PCPF6U', '\PCPF6L', '\PCPF7U']
+cols_0D = ['\\ipmhd', '\\q95','\\betap', '\li',]
     
 if __name__ == "__main__":
-    sample_data = np.load("./src/GSsolver/toy_dataset/g028911_004060.npz")
     
-    psi = sample_data['psi']
+    df = pd.read_csv("./dataset/KSTAR_rl_GS_solver.csv")
+    df_train, df_valid = train_test_split(df, test_size = 0.3)
+    train_data = PINNDataset(df_train, cols_0D, cols_PFC)
+    valid_data = PINNDataset(df_valid, cols_0D, cols_PFC)
+    
+    train_loader = DataLoader(train_data, batch_size = 32, num_workers=4, pin_memory=True, drop_last=True, shuffle = True)
+    valid_loader = DataLoader(valid_data, batch_size = 32, num_workers=4, pin_memory=True, drop_last=True, shuffle = True)
+    
+    sample_data = np.load("./src/GSsolver/toy_dataset/g028911_004060.npz")
     R = sample_data['R']
     Z = sample_data['Z']
+    psi = sample_data['psi']
     
-    print("psi : ", psi.shape)
-    print("R : ", R.shape)
-    print("Z : ", Z.shape)
-
     ip = (-1) * 800828
     q95 = 3.330114
     kappa = 1.75662
@@ -79,9 +55,7 @@ if __name__ == "__main__":
     li = 0.841751
     
     PCPF1U = 4282.0
-    PFPF1L = 0
     PCPF2U = 4543.6
-    PFPF2L = 0
     PCPF3U = (-1) * 5441.8
     PFPF3L = (-1) * 5539.4
     PCPF4U = (-1) * 9353.0
@@ -91,14 +65,11 @@ if __name__ == "__main__":
     PCPF6U = 4374.0
     PFPF6L = 5211.4
     PCPF7U = 2316.8
-    PFPF7L = 0
     
     x_param = torch.Tensor([ip, betap, q95, li])
     x_PFCs = torch.Tensor([
         PCPF1U,
-        PFPF1L,
         PCPF2U,
-        PFPF2L,
         PCPF3U,
         PFPF3L,
         PCPF4U,
@@ -107,9 +78,15 @@ if __name__ == "__main__":
         PFPF5L,
         PCPF6U,
         PFPF6L,
-        PCPF7U,
-        PFPF7L
+        PCPF7U
     ])
+    
+    # input data
+    x_param = x_param.unsqueeze(0)
+    x_PFCs = x_PFCs.unsqueeze(0)
+    
+    # target data
+    target = torch.from_numpy(psi).unsqueeze(0).float()
     
     # setup
     alpha_m = 2.0
@@ -118,70 +95,49 @@ if __name__ == "__main__":
     beta_n = 1.0
     lamda = 1e-1
     beta = 0.5
-    Rc = 0.5 * (R.min() + R.max())
+    Rc = 1.8
     
     params_dim = 4
-    n_PFCs = 14
-    hidden_dim = 128
+    n_PFCs = 11
+    hidden_dim = 64
     
     # model load
     model = PINN(R,Z,Rc, params_dim, n_PFCs, hidden_dim, alpha_m, alpha_n, beta_m, beta_n, lamda, beta, 65, 65, False, 1e6)
     model.to(device)
 
-    # input data
-    x_param = x_param.unsqueeze(0)
-    x_PFCs = x_PFCs.unsqueeze(0)
-    
-    # target data
-    target = torch.from_numpy(psi).unsqueeze(0).float()
-    
     # loss function
-    loss_mse = torch.nn.MSELoss(reduction='sum')
+    loss_mse = torch.nn.MSELoss(reduction='mean')
     loss_mask = torch.nn.MSELoss(reduction = 'mean')
     loss_ssim = SSIM()
     
     # optimizer
-    optimizer = torch.optim.AdamW(params = model.parameters(), lr = 1e-3)
+    optimizer = torch.optim.RMSprop(params = model.parameters(), lr = 1e-2)
+    
+    # scheduler
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size = 8, gamma = 0.995)
+    
+    # weights for loss
+    weights = {
+        "GS_loss" : 0.1,
+        "Constraint_loss" : 0.1 
+    }
     
     model.train()
-    best_loss = np.inf
     
-    for epoch in range(1024):
-        optimizer.zero_grad()
-        psi_p = model(x_param.to(device), x_PFCs.to(device))
-        
-        mse = loss_mse(psi_p, target.to(device))
-        gs_loss = model.compute_GS_loss(psi_p)
-        constraint_loss = model.compute_constraint_loss(psi_p, ip)
-        
-        # boundary loss
-        # bc_loss = model.compute_boundary_loss(psi_p, x_PFCs.to(device))
-        
-        loss = gs_loss + mse + constraint_loss
-        
-        ipmhd = model.compute_plasma_current(psi_p)
-        ssim = loss_ssim(psi_p.detach(), target.to(device))
-        
-        # backward process
-        if not torch.isnan(loss):
-            loss.backward()
-            optimizer.step()
-        
-        # parameter range fixed
-        with torch.no_grad():
-            model.lamda.clamp_(1e-2, 1e2)
-            model.Ip_scale.clamp_(1e2, 1e12)
-            model.beta.clamp_(0.01, 0.99)
-        
-        if epoch % 128 ==0:
-            print("# epoch: {:04d} | mse: {:.3f} | constraint: {:.3f} | gs loss: {:.3f} | SSIM : {:.3f} | ip:{:6.3f} | ip-efit:{:6.3f}".format(
-                epoch, mse.cpu().item(), constraint_loss.cpu().item(), gs_loss.cpu().item(), ssim.cpu().item(), ipmhd.detach().cpu().item(), ip
-            ))
-
-        if mse.detach().cpu().item() < best_loss:
-           torch.save(model.state_dict(), "./PINN_best.pt")
-           best_loss = mse.detach().cpu().item()
-    
+    train(
+        train_loader,
+        valid_loader,
+        model,
+        optimizer,
+        scheduler,
+        device,
+        1024,
+        verbose = 32,
+        save_best_dir="./PINN_best.pt",
+        save_last_dir="./PINN_last.pt",
+        max_norm_grad=1.0,
+        weights=weights
+    )
     
     model.eval()
     model.load_state_dict(torch.load("./PINN_best.pt"))

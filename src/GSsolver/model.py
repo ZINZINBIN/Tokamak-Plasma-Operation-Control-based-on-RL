@@ -6,6 +6,7 @@ from scipy.integrate import romb, quad, simpson
 from scipy.interpolate import interp1d
 from src.GSsolver.GradShafranov import *
 from skimage import measure
+from src.GSsolver.KSTAR_setup import PF_coils
 
 class AbstractPINN(nn.Module):
     def __init__(self):
@@ -84,11 +85,9 @@ class Encoder(nn.Module):
         return sample_data.size()[1]
         
     def forward(self, x : torch.Tensor):
-        x_origin = x
         x = self.norm(x)
         x = self.conv_layer(x.unsqueeze(1))
         x = self.regressor(x.view(x.size()[0], -1))
-        x = torch.clip(x, min = x_origin.min(), max = x_origin.max())
         return x
     
 class Normalization(nn.Module):
@@ -101,9 +100,9 @@ class Normalization(nn.Module):
         self.bndry_regressor = Encoder(nx,ny)
         
     def forward(self, x : torch.Tensor):
-        x_a = self.axis_regressor(x)
-        x_b = self.bndry_regressor(x)
-        x = torch.clip((x - x_a) / (x_b - x_a), min = -2.0, max = 2.0)
+        x_a = self.axis_regressor(x).clamp(x.min().item(), 0)
+        x_b = self.bndry_regressor(x).clamp(0, x.max().item() * 0.75)
+        x = torch.clamp((x - x_a.unsqueeze(-1)) / (x_b.unsqueeze(-1) - x_a.unsqueeze(-1)), min = 0, max = 1.5)
         return x
     
     def predict_critical_value(self, x : torch.Tensor):
@@ -121,10 +120,10 @@ class PINN(AbstractPINN):
         params_dim : int,
         n_PFCs :int,
         hidden_dim : int, 
-        alpha_m : float = 1.0, 
-        alpha_n : float = 2.0,
-        beta_m : float = 1.0,
-        beta_n : float = 2.0,
+        alpha_m : float = 2.0, 
+        alpha_n : float = 1.0,
+        beta_m : float = 2.0,
+        beta_n : float = 1.0,
         lamda : float = 1.0,
         beta : float = 0.5,
         nx : int = 65,
@@ -160,48 +159,69 @@ class PINN(AbstractPINN):
         self.beta_n = nn.Parameter(torch.Tensor([beta_n]), requires_grad=adjust_params_trainable)
         
         # adjusted parameters for current profile
-        self.lamda = nn.Parameter(torch.Tensor([lamda]), requires_grad=adjust_params_trainable)
-        self.beta = nn.Parameter(torch.Tensor([beta]), requires_grad=adjust_params_trainable)
+        self.lamda = nn.Parameter(torch.Tensor([lamda]), requires_grad=True)
+        self.beta = nn.Parameter(torch.Tensor([beta]), requires_grad=True)
         
         self.Ip_scale = nn.Parameter(torch.Tensor([Ip_scale]), requires_grad=True)
-        
         self.Rc = Rc
         
         # output dimension
         self.nx = nx
         self.ny = ny
         
+        # constraint : limiter
+        limiter_mask = compute_KSTAR_limiter_mask(R, Z)
+        self.limiter_mask = torch.from_numpy(limiter_mask).unsqueeze(0)
+        
         # Encoder : embedd input data to the latent vector space
         self.encoder_pos = nn.Sequential(
             nn.Linear(2 * nx * ny, hidden_dim),
-            nn.ReLU()
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.01),
         )
         
         self.encoder_params = nn.Sequential(
             nn.Linear(params_dim, hidden_dim),
-            nn.ReLU(),
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.01),
         )
         
         self.encoder_PFCs = nn.Sequential(
             nn.Linear(n_PFCs, hidden_dim),
-            nn.ReLU()
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.01),
         )
         self.connector = nn.Sequential(
             nn.Linear(hidden_dim * 3, hidden_dim),
-            nn.ReLU(),
+            nn.LayerNorm(hidden_dim),
+            nn.LeakyReLU(0.01),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LeakyReLU(0.01),
         )
         
         # Decoder : predict the psi from the encoded vectors
         self.decoder = nn.Sequential(
             nn.Linear(hidden_dim , hidden_dim),
             nn.LayerNorm(hidden_dim),
-            nn.ReLU(),
+            nn.LeakyReLU(0.01),
             nn.Linear(hidden_dim, nx * ny),
         )
         
         # normalization
         # self.norms = nn.LayerNorm((nx,ny))
         self.norms = Normalization(nx,ny)
+        
+        # boundary loss
+        self.bndry_indices = np.concatenate(
+            [
+                [(x,0) for x in range(nx)],
+                [(x,ny-1) for x in range(nx)],
+                [(0,y) for y in range(ny)],
+                [(nx-1,y) for y in range(ny)]
+            ]
+        )
+        
+        self.PF_coils = PF_coils
         
     def forward(self, x_params : torch.Tensor, x_PFCs : torch.Tensor):
         
@@ -222,27 +242,68 @@ class PINN(AbstractPINN):
         x = torch.concat((x_pos, x_params, x_PFCs), dim = 1)
         x = self.connector(x)
         x = self.decoder(x).view(x.size()[0], self.nx, self.ny)
+        
+        # to avoid nan or inf
+        x = torch.clamp(x, -10.0, 10.0)
+        x = torch.nan_to_num(x, nan = 0, posinf = 10.0, neginf = -10.0)
         return x
     
     def predict(self, x_params : torch.Tensor, x_PFCs : torch.Tensor):
         with torch.no_grad():
             x = self.forward(x_params, x_PFCs)
         return x
+    
+    def compute_Jphi_GS(self, psi : torch.Tensor):
+        Jphi = eliptic_operator(psi, self.r, self.z) * (-1)
+        Jphi /= self.r
+        return Jphi * self.compute_plasma_region(psi)
+    
+    def compute_boundary_loss(self, psi : torch.Tensor, x_PFCs : torch.Tensor):
+        
+        bc_loss = 0
+        
+        for x,y in self.bndry_indices:
+            psi_b = psi[:,x,y]
+            psi_b_pred = 0
+            
+            # boundary magnetic flux induced by PFC coil current
+            for coil_idx, coil_comp in enumerate(self.PF_coils.keys()):
+                Ic = x_PFCs[:,coil_idx]
+                x_coil, y_coil = self.PF_coils[coil_comp]
+                g = compute_Green_function(x_coil, y_coil, self.R2D[x,y].item(), self.Z2D[x,y].item())
+                psi_b_pred += Ic * g
+
+            # boundary magnetic flux induced by plasma current
+            Jphi = self.compute_Jphi_GS(psi) * self.Ip_scale
+            g_matrix = compute_Green_function(self.R2D.ravel(), self.Z2D.ravel(), self.R2D[x,y].item(), self.Z2D[x,y].item())
+            g_matrix = torch.as_tensor(g_matrix, dtype = torch.float).view(self.R2D.shape).to(Jphi.device)
+            g_matrix = torch.nan_to_num(g_matrix, nan = 0, posinf = 0, neginf = 0)
+            psi_p = torch.sum(Jphi * g_matrix, dim = (1,2)) * self.dr * self.dz
+            psi_b_pred += psi_p
+            
+            bc_loss += (psi_b_pred - psi_b) ** 2
+        
+        bc_loss /= len(self.bndry_indices)
+        bc_loss = torch.sqrt(bc_loss).sum()
+        return bc_loss
         
     def compute_Jphi(self, psi : torch.Tensor):
-        psi = self.norms(psi)
-        return compute_Jphi(psi, self.r, self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda, self.beta) * self.compute_plasma_region(psi)
-    
+        return compute_Jphi(self.norms(psi), self.r, self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda, self.beta) * self.compute_plasma_region(psi)
+        
     def compute_plasma_region(self, psi:torch.Tensor):
-        return compute_plasma_region(psi)
+        return compute_plasma_region(self.norms(psi)) * self.limiter_mask.to(psi.device)
     
     def compute_GS_loss(self, psi : torch.Tensor):
         return compute_grad_shafranov_loss(psi, self.r, self.z, self.compute_Jphi(psi))
     
-    def compute_constraint_loss(self, psi : torch.Tensor, Ip : float):
+    def compute_plasma_current(self, psi:torch.Tensor):
         Jphi = self.compute_Jphi(psi)
-        Ip_ = Jphi.sum() * self.dr * self.dz * self.Ip_scale
-        return torch.norm(Ip_ - Ip)
+        Ip = torch.sum(Jphi, dim = (1,2)) * self.dr * self.dz * self.Ip_scale * (-1)
+        return Ip
+    
+    def compute_constraint_loss(self, psi : torch.Tensor, Ip : float):
+        Ip_compute = self.compute_plasma_current(psi)
+        return torch.norm(Ip_compute- Ip)*1e-6
     
     def compute_Br(self, x_params : torch.Tensor, x_PFCs : torch.Tensor):
         psi = self.forward(x_params, x_PFCs)
@@ -309,7 +370,7 @@ class PINN(AbstractPINN):
         x_a, x_b = self.norms.predict_critical_value(psi)
         
         for idx, (psi_n, psi) in enumerate(zip(psi_norm_np_1d, psi_np_1d)):
-            val, _ = quad(_compute_ffprime, psi_n, 1.0)
+            val, _ = quad(_compute_ffprime, 0, psi_n)
             val *= (x_b - x_a) * (-1)
             fpol[idx] = val
             
@@ -318,11 +379,13 @@ class PINN(AbstractPINN):
         return fpol
     
     def compute_pressure_psi(self):
-        psi, pprime = self.compute_pprime()
-        pressure = np.zeros_like(pprime)
+        psi = np.linspace(0,1,64)
+        pressure = np.zeros_like(psi)
+        _compute_pprime = lambda x : compute_pprime(x, self.R1D, self.Rc, self.alpha_m.detach().cpu().item(), self.alpha_n.detach().cpu().item(), self.beta_m.detach().cpu().item(), self.beta_n.detach().cpu().item(), self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
         
         for idx in range(1, len(psi)-1):
-            pressure[idx] = simpson(pprime[0:idx], psi[0:idx])
+            val, _ = quad(_compute_pprime, 0.0, psi[idx])
+            pressure[idx] = val
             
         return psi, pressure
     
@@ -334,7 +397,7 @@ class PINN(AbstractPINN):
             psi = psi.squeeze(0)
             
         psi = psi.detach().cpu().numpy()
-        psi_norm = np.linspace(0,1,12)
+        psi_norm = np.linspace(0,1,32)
         Jphi_norm = []
         Jphi = Jphi.squeeze(0).detach().cpu().numpy()
         
@@ -384,7 +447,7 @@ class PINN(AbstractPINN):
             psi = psi.squeeze(0)
         
         psi = psi.detach().cpu().numpy()
-        psi_norm = np.linspace(0.1,1.0,32)
+        psi_norm = np.linspace(0,1,32)
         
         for p in psi_norm:
             contours = measure.find_contours(psi, p)
