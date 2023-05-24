@@ -1444,7 +1444,7 @@ class eqdsk:
 		
 	if __name__ == "__main__":
 	
-		import eqdsk
+		import src.GSsolver.eqdsk.eqdsk as eqdsk
 
 		if sys.argv[1].lower() == 'comp':
 
