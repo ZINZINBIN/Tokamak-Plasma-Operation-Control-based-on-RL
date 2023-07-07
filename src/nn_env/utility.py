@@ -25,7 +25,6 @@ def seed_everything(seed : int = 42, deterministic : bool = False):
         
 def preparing_0D_dataset(
     df : pd.DataFrame,
-    df_disruppt : pd.DataFrame,
     cols_0D : List,
     cols_ctrl : List,
     scaler : Literal['Robust', 'Standard', 'MinMax'] = 'Robust'
@@ -33,32 +32,39 @@ def preparing_0D_dataset(
 
     # nan interpolation
     df.interpolate(method = 'linear', limit_direction = 'forward')
+    df = df[df.shot > 19000]
     ts_cols = cols_0D + cols_ctrl
 
     # float type
     for col in ts_cols:
         df[col] = df[col].astype(np.float32)
+    
+    # shot sampling
+    shot_list = np.unique(df.shot.values)
+    shot_list_tmp = []
+    
+    for shot in shot_list:
+        df_shot = df[df.shot == shot]
+        t_start = df_shot.time.iloc[0]
+        t_end = df_shot.time.iloc[-1]   
 
+        if t_end - t_start > 10.0:
+            shot_list_tmp.append(shot)
+     
+    shot_list = shot_list_tmp
+    
+    print("# of shot : {}".format(len(shot_list)))
+    
     # train / valid / test data split
     from sklearn.model_selection import train_test_split
-    shot_list = np.unique(df.shot.values)
-
+    
     shot_train, shot_test = train_test_split(shot_list, test_size = 0.2, random_state = 42)
     shot_train, shot_valid = train_test_split(shot_train, test_size = 0.2, random_state = 42)
-
-    df_train = pd.DataFrame()
-    df_valid = pd.DataFrame()
-    df_test = pd.DataFrame()
-
-    for shot in shot_train:
-        df_train = pd.concat([df_train, df[df.shot == shot]], axis = 0)
-
-    for shot in shot_valid:
-        df_valid = pd.concat([df_valid, df[df.shot == shot]], axis = 0)
-
-    for shot in shot_test:
-        df_test = pd.concat([df_test, df[df.shot == shot]], axis = 0)
-
+    
+    df_train = df[df.shot.isin(shot_train)]
+    df_valid = df[df.shot.isin(shot_valid)]
+    df_test = df[df.shot.isin(shot_test)]
+    
     if scaler == 'Standard':
         scaler_0D = StandardScaler()
         scaler_ctrl = StandardScaler()

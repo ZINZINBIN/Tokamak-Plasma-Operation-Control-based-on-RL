@@ -41,6 +41,20 @@ class Config():
         '\\ne_tci05',
     ]
     
+    cols_control = [
+        '\\PCPF1U', 
+        '\\PCPF2U', 
+        '\\PCPF3U', 
+        '\\PCPF3L',
+        '\\PCPF4U', 
+        '\\PCPF4L', 
+        '\\PCPF5U', 
+        '\\PCPF5L', 
+        '\\PCPF6U', 
+        '\\PCPF6L',
+        '\\PCPF7U'
+    ]
+    
     TS_TE_CORE_COLS = ['\\TS_CORE1:CORE1_TE', '\\TS_CORE2:CORE2_TE', '\\TS_CORE3:CORE3_TE', '\\TS_CORE4:CORE4_TE', '\\TS_CORE5:CORE5_TE', '\\TS_CORE6:CORE6_TE', '\\TS_CORE7:CORE7_TE', '\\TS_CORE8:CORE8_TE', '\\TS_CORE9:CORE9_TE', '\\TS_CORE10:CORE10_TE', '\\TS_CORE11:CORE11_TE', '\\TS_CORE12:CORE12_TE', '\\TS_CORE13:CORE13_TE', '\\TS_CORE14:CORE14_TE']
     TS_TE_EDGE_COLS = ['\\TS_EDGE1:EDGE1_TE', '\\TS_EDGE2:EDGE2_TE', '\\TS_EDGE3:EDGE3_TE', '\\TS_EDGE4:EDGE4_TE', '\\TS_EDGE5:EDGE5_TE', '\\TS_EDGE6:EDGE6_TE', '\\TS_EDGE7:EDGE7_TE', '\\TS_EDGE8:EDGE8_TE', '\\TS_EDGE9:EDGE9_TE', '\\TS_EDGE10:EDGE10_TE', '\\TS_EDGE11:EDGE11_TE', '\\TS_EDGE12:EDGE12_TE', '\\TS_EDGE13:EDGE13_TE', '\\TS_EDGE14:EDGE14_TE', '\\TS_EDGE15:EDGE15_TE']
 

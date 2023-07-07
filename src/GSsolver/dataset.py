@@ -16,6 +16,9 @@ class PINNDataset(Dataset):
         self.params = df[cols_0D].values
         self.PFCs = df[cols_PFC].values
         
+        self.df['\\ipmhd'] = self.df['\\ipmhd'].apply(lambda x : x * 10 ** (-6))
+        self.df[cols_PFC] = self.df[cols_PFC].apply(lambda x : x * 10 ** (-3))
+        
     def __getitem__(self, idx : int):
         path = self.paths[idx]
         
@@ -32,10 +35,14 @@ class PINNDataset(Dataset):
         Ip = self.df['\\ipmhd'].values[idx].reshape(-1,)
         Ip = torch.from_numpy(Ip).float()
         
+        betap = self.df['\\betap'].values[idx].reshape(-1,)
+        betap = torch.from_numpy(betap).float()
+        
         data = {
             "params":x_param,
             "PFCs" : x_PFC,
-            "Ip" : Ip
+            "Ip" : Ip,
+            "betap" : betap
         }
         
         return data, target

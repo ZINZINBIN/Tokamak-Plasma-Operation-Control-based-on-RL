@@ -91,7 +91,7 @@ class Encoder(nn.Module):
         return x
     
 class Normalization(nn.Module):
-    def __init__(self, nx : int, ny : int):
+    def __init__(self, nx : int, ny : int, limiter_mask : torch.Tensor):
         super().__init__()
         self.nx = nx
         self.ny = ny
@@ -99,14 +99,28 @@ class Normalization(nn.Module):
         self.axis_regressor = Encoder(nx,ny)
         self.bndry_regressor = Encoder(nx,ny)
         
+        self.limiter_mask = limiter_mask
+        
     def forward(self, x : torch.Tensor):
-        x_a = self.axis_regressor(x).clamp(x.min().item(), 0)
-        x_b = self.bndry_regressor(x).clamp(0, x.max().item() * 0.75)
+        
+        batch_size = x.size()[0]
+        
+        # min and max value : psi_a and psi_b should be bounded
+        x_min = x.view(batch_size,-1).min(1)[0].view(batch_size, 1)
+        x_max = x.view(batch_size,-1).max(1)[0].view(batch_size, 1)
+        
+        # masking
+        x = x * self.limiter_mask.to(x.device)
+        
+        x_a = self.axis_regressor(x).clamp(min = x_min, max = torch.Tensor([0]).unsqueeze(0).repeat(batch_size, 1).to(x.device))
+        x_b = self.bndry_regressor(x).clamp(min = x_min, max = x_max)
+        
         x = torch.clamp((x - x_a.unsqueeze(-1)) / (x_b.unsqueeze(-1) - x_a.unsqueeze(-1)), min = 0, max = 1.5)
         return x
     
     def predict_critical_value(self, x : torch.Tensor):
         with torch.no_grad():
+            x *= self.limiter_mask.to(x.device)
             x_a = self.axis_regressor(x)
             x_b = self.bndry_regressor(x)
             return x_a, x_b
@@ -128,10 +142,12 @@ class PINN(AbstractPINN):
         beta : float = 0.5,
         nx : int = 65,
         ny : int = 65,
-        adjust_params_trainable : bool = True,
-        Ip_scale : float = 1e4,
         ):
         super().__init__()
+        
+        # Re-scale
+        self.Jphi_scale = 1 / Rc ** 2
+        self.psi_scale = 4 * math.pi * 10 **(-7) * 1 * Rc * (10 ** 6)
         
         # input data setting
         self.params_dim = params_dim
@@ -153,16 +169,15 @@ class PINN(AbstractPINN):
         self.z.requires_grad = True
         
         # Fitting current profile
-        self.alpha_m = nn.Parameter(torch.Tensor([alpha_m]), requires_grad=adjust_params_trainable)
-        self.alpha_n = nn.Parameter(torch.Tensor([alpha_n]), requires_grad=adjust_params_trainable)
-        self.beta_m = nn.Parameter(torch.Tensor([beta_m]), requires_grad=adjust_params_trainable)
-        self.beta_n = nn.Parameter(torch.Tensor([beta_n]), requires_grad=adjust_params_trainable)
+        self.alpha_m = alpha_m
+        self.alpha_n = alpha_n
+        self.beta_m = beta_m
+        self.beta_n = beta_n
         
         # adjusted parameters for current profile
         self.lamda = nn.Parameter(torch.Tensor([lamda]), requires_grad=True)
         self.beta = nn.Parameter(torch.Tensor([beta]), requires_grad=True)
         
-        self.Ip_scale = nn.Parameter(torch.Tensor([Ip_scale]), requires_grad=True)
         self.Rc = Rc
         
         # output dimension
@@ -208,8 +223,7 @@ class PINN(AbstractPINN):
         )
         
         # normalization
-        # self.norms = nn.LayerNorm((nx,ny))
-        self.norms = Normalization(nx,ny)
+        self.norms = Normalization(nx,ny, self.limiter_mask)
         
         # boundary loss
         self.bndry_indices = np.concatenate(
@@ -229,9 +243,11 @@ class PINN(AbstractPINN):
         self.z = self.z.to(x_params.device)
         
         # position info
-        x_pos = torch.concat([self.r, self.z], dim = 0).unsqueeze(0)
-        x_pos = x_pos.repeat(x_params.size()[0],1,1,1)
-        x_pos = self.encoder_pos(x_pos.view(x_pos.size()[0], -1))
+        x_r = self.r.repeat(x_params.size()[0],1,1).view(x_params.size()[0],-1)
+        x_z = self.z.repeat(x_params.size()[0],1,1).view(x_params.size()[0],-1)
+        
+        x_pos = torch.concat([x_r, x_z], dim = 1)
+        x_pos = self.encoder_pos(x_pos)
         
         # betap, q95, li info
         x_params = self.encoder_params(x_params)
@@ -252,11 +268,6 @@ class PINN(AbstractPINN):
         with torch.no_grad():
             x = self.forward(x_params, x_PFCs)
         return x
-    
-    def compute_Jphi_GS(self, psi : torch.Tensor):
-        Jphi = eliptic_operator(psi, self.r, self.z) * (-1)
-        Jphi /= self.r
-        return Jphi * self.compute_plasma_region(psi)
     
     def compute_boundary_loss(self, psi : torch.Tensor, x_PFCs : torch.Tensor):
         
@@ -286,24 +297,47 @@ class PINN(AbstractPINN):
         bc_loss /= len(self.bndry_indices)
         bc_loss = torch.sqrt(bc_loss).sum()
         return bc_loss
+
+    def compute_Jphi_GS(self, psi : torch.Tensor):
+        Jphi = eliptic_operator(psi, self.r, self.z) * (-1)
+        Jphi /= self.r
+        return Jphi * self.compute_plasma_region(psi) 
         
     def compute_Jphi(self, psi : torch.Tensor):
-        return compute_Jphi(self.norms(psi), self.r, self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda, self.beta) * self.compute_plasma_region(psi)
+        return compute_Jphi(self.norms(psi), self.r / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda, self.beta) * self.compute_plasma_region(psi)
         
     def compute_plasma_region(self, psi:torch.Tensor):
         return compute_plasma_region(self.norms(psi)) * self.limiter_mask.to(psi.device)
     
     def compute_GS_loss(self, psi : torch.Tensor):
-        return compute_grad_shafranov_loss(psi, self.r, self.z, self.compute_Jphi(psi))
+        Jphi = compute_Jphi(self.norms(psi), self.r / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda.detach(), self.beta.detach()) * self.compute_plasma_region(psi)
+        return compute_grad_shafranov_loss(psi, self.r, self.z, Jphi, self.Rc, self.psi_scale)
     
     def compute_plasma_current(self, psi:torch.Tensor):
-        Jphi = self.compute_Jphi(psi)
-        Ip = torch.sum(Jphi, dim = (1,2)) * self.dr * self.dz * self.Ip_scale * (-1)
+        Jphi = compute_Jphi(self.norms(psi).detach(), self.r / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda, self.beta) * self.compute_plasma_region(psi)
+        Ip = torch.sum(Jphi, dim = (1,2)).view(-1,1) * self.dr * self.dz * self.Jphi_scale
         return Ip
     
-    def compute_constraint_loss(self, psi : torch.Tensor, Ip : float):
+    def compute_constraint_loss(self, psi : torch.Tensor, Ip : torch.Tensor, betap : torch.Tensor):
+        Ip_constraint = self.compute_constraint_loss_Ip(psi, Ip)
+        betap_constraint = self.compute_constraint_loss_betap(psi, Ip, betap)
+        return Ip_constraint + betap_constraint
+    
+    def compute_constraint_loss_Ip(self, psi : torch.Tensor, Ip : float):
         Ip_compute = self.compute_plasma_current(psi)
-        return torch.norm(Ip_compute- Ip)*1e-6
+        return torch.norm(Ip_compute- Ip)
+    
+    def compute_constraint_loss_betap(self, psi : torch.Tensor, Ip : torch.Tensor, betap : torch.Tensor):
+        scale = 8 * math.pi / self.Rc ** 2 / Ip ** 2
+        pressure = compute_p_psi(psi * self.compute_plasma_region(psi), self.r / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda, self.beta)
+        betap_compute = torch.sum(pressure, dim = (1,2)).view(-1,1) * self.dr * self.dz * scale
+        return torch.norm(betap_compute - betap)    
+    
+    def compute_betap(self, psi : torch.Tensor, Ip : torch.Tensor):
+        scale = 8 * math.pi / self.Rc ** 2 / Ip.abs() ** 2
+        pressure = compute_p_psi(self.norms(psi).detach(), self.r / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda, self.beta)
+        pressure = pressure * self.compute_plasma_region(psi).detach()
+        return torch.sum(pressure, dim = (1,2)).view(-1,1) * self.dr * self.dz * scale
     
     def compute_Br(self, x_params : torch.Tensor, x_PFCs : torch.Tensor):
         psi = self.forward(x_params, x_PFCs)
@@ -328,7 +362,7 @@ class PINN(AbstractPINN):
         psi_np = psi.detach().squeeze(0).cpu().numpy()
         psi_norm_np = psi_norm.detach().squeeze(0).cpu().numpy()
         
-        _compute_ffprime = lambda x : compute_ffprime(x, self.R1D, self.Rc, self.alpha_m.detach().cpu().item(), self.alpha_n.detach().cpu().item(), self.beta_m.detach().cpu().item(), self.beta_n.detach().cpu().item(), self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
+        _compute_ffprime = lambda x : compute_ffprime(x, self.R1D / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
 
         psi_norm_np_1d = psi_norm_np.reshape(-1,)
         psi_np_1d = psi_np.reshape(-1,)
@@ -347,20 +381,22 @@ class PINN(AbstractPINN):
     
     def compute_pprime(self):
         psi = np.linspace(0,1,64)
-        return psi, compute_pprime(psi, self.R1D, self.Rc, self.alpha_m.detach().cpu().item(), self.alpha_n.detach().cpu().item(), self.beta_m.detach().cpu().item(), self.beta_n.detach().cpu().item(), self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
+        return psi, compute_pprime(psi, self.R1D / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
 
     def compute_ffprime(self):
         psi = np.linspace(0,1,64)
-        return psi, compute_ffprime(psi, self.R1D, self.Rc, self.alpha_m.detach().cpu().item(), self.alpha_n.detach().cpu().item(), self.beta_m.detach().cpu().item(), self.beta_n.detach().cpu().item(), self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
+        return psi, compute_ffprime(psi, self.R1D / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
     
     def compute_fpol(self, psi : torch.Tensor):
         device = psi.device
-        psi_norm = self.norms(psi)
+        psi_norm = self.norms(psi) * self.limiter_mask.to(psi.device)
         
         psi_np = psi.detach().squeeze(0).cpu().numpy()
         psi_norm_np = psi_norm.detach().squeeze(0).cpu().numpy()
         
-        _compute_ffprime = lambda x : compute_ffprime(x, self.R1D, self.Rc, self.alpha_m.detach().cpu().item(), self.alpha_n.detach().cpu().item(), self.beta_m.detach().cpu().item(), self.beta_n.detach().cpu().item(), self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
+        mu = 4 * math.pi * 10 **(-7)
+        
+        _compute_ffprime = lambda x : self.Jphi_scale * mu * self.Rc * compute_ffprime(x, self.R1D / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
 
         psi_norm_np_1d = psi_norm_np.reshape(-1,)
         psi_np_1d = psi_np.reshape(-1,)
@@ -381,7 +417,7 @@ class PINN(AbstractPINN):
     def compute_pressure_psi(self):
         psi = np.linspace(0,1,64)
         pressure = np.zeros_like(psi)
-        _compute_pprime = lambda x : compute_pprime(x, self.R1D, self.Rc, self.alpha_m.detach().cpu().item(), self.alpha_n.detach().cpu().item(), self.beta_m.detach().cpu().item(), self.beta_n.detach().cpu().item(), self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
+        _compute_pprime = lambda x : compute_pprime(x, self.R1D / self.Rc, self.alpha_m, self.alpha_n, self.beta_m, self.beta_n, self.lamda.detach().cpu().item(), self.beta.detach().cpu().item())
         
         for idx in range(1, len(psi)-1):
             val, _ = quad(_compute_pprime, 0.0, psi[idx])
@@ -433,6 +469,8 @@ class PINN(AbstractPINN):
         Bp = torch.sqrt(Bp)
         
         (r_axis, z_axis), _ = self.find_axis(psi, 1e-4)
+        r_axis /= self.Rc
+        z_axis /= self.Rc
         
         dl = (self.r - r_axis) ** 2 + (self.z - z_axis) ** 2
         dl = torch.sqrt(dl)
@@ -489,7 +527,10 @@ class PINN(AbstractPINN):
         mask_grad = grad.le(eps)
         mask_det = det.ge(0)
         
-        psi_masked = mask_det * mask_grad * psi
+        limiter_mask = compute_KSTAR_limiter_mask(self.R2D, self.Z2D, 0)
+        limiter_mask = torch.from_numpy(limiter_mask).unsqueeze(0)
+        
+        psi_masked = mask_det * mask_grad * psi * limiter_mask.to(psi.device)
         psi_axis = psi_masked.min()
         
         r_axis = self.R2D.ravel()[torch.argmin(psi_masked).item()]

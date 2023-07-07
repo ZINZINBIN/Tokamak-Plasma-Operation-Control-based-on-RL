@@ -72,6 +72,7 @@ class Transformer(nn.Module):
         range_info : Optional[Dict] = None,
         noise_mean : float = 0,
         noise_std : float = 0.81,
+        kernel_size : int = 3,
         ):
         
         super(Transformer, self).__init__()
@@ -100,11 +101,19 @@ class Transformer(nn.Module):
         
         self.noise = NoiseLayer(mean = noise_mean, std = noise_std)
         
+        if kernel_size // 2 == 0:
+            print("kernel sholud be odd number")
+            kernel_size += 1
+        padding = (kernel_size - 1) // 2
+        
         # 0D data encoder
         self.encoder_input_0D = nn.Sequential(
-            nn.Linear(in_features=input_0D_dim, out_features=feature_0D_dim // 2),
+            nn.Conv1d(in_channels=input_0D_dim, out_channels=feature_0D_dim // 2, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_0D_dim//2),
             nn.ReLU(),
-            nn.Linear(feature_0D_dim //2, feature_0D_dim)
+            nn.Conv1d(in_channels=feature_0D_dim // 2, out_channels=feature_0D_dim, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_0D_dim),
+            nn.ReLU()
         )
         
         self.pos_0D = PositionalEncoding(d_model = feature_0D_dim, max_len = input_0D_seq_len)
@@ -121,9 +130,12 @@ class Transformer(nn.Module):
         
         # ctrl data encoder
         self.encoder_input_ctrl = nn.Sequential(
-            nn.Linear(in_features=input_ctrl_dim, out_features=feature_ctrl_dim // 2),
+            nn.Conv1d(in_channels=input_ctrl_dim, out_channels=feature_ctrl_dim // 2, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_ctrl_dim//2),
             nn.ReLU(),
-            nn.Linear(feature_ctrl_dim //2, feature_ctrl_dim)
+            nn.Conv1d(in_channels=feature_ctrl_dim // 2, out_channels=feature_ctrl_dim, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_ctrl_dim),
+            nn.ReLU()
         )
         
         self.pos_ctrl = PositionalEncoding(d_model = feature_ctrl_dim, max_len = input_ctrl_seq_len)
@@ -190,16 +202,12 @@ class Transformer(nn.Module):
             
         # path : 0D data
         # encoding : (N, T, F) -> (N, T, d_model)
-        x_0D = self.encoder_input_0D(x_0D)
+        x_0D = self.encoder_input_0D(x_0D.permute(0,2,1)).permute(0,2,1)
         
         # (T, N, d_model)
         x_0D = x_0D.permute(1,0,2)
-        
-        if self.src_mask_0D is None or self.src_mask_0D.size(0) != len(x_0D):
-            device = x_0D.device
-            mask = self._generate_square_subsequent_mask(len(x_0D)).to(device)
-            self.src_mask_0D = mask
-        
+        self.src_mask_0D = self._generate_square_subsequent_mask(len(x_0D)).to(x_0D.device)
+            
         # positional encoding for time axis : (T, N, d_model)
         x_0D = self.pos_0D(x_0D)
         
@@ -210,16 +218,12 @@ class Transformer(nn.Module):
         x_0D = x_0D.permute(1,0,2)
         
         # path : ctrl data
-        x_ctrl = self.encoder_input_ctrl(x_ctrl)
+        x_ctrl = self.encoder_input_ctrl(x_ctrl.permute(0,2,1)).permute(0,2,1)
         
         # (T, N, d_model)
         x_ctrl = x_ctrl.permute(1,0,2)
-        
-        if self.src_mask_ctrl is None or self.src_mask_ctrl.size(0) != len(x_ctrl):
-            device = x_ctrl.device
-            mask = self._generate_square_subsequent_mask(len(x_ctrl)).to(device)
-            self.src_mask_ctrl = mask
-        
+        self.src_mask_ctrl = self._generate_square_subsequent_mask(len(x_ctrl)).to(x_ctrl.device)
+            
         # positional encoding for time axis : (T, N, d_model)
         x_ctrl = self.pos_ctrl(x_ctrl)
         

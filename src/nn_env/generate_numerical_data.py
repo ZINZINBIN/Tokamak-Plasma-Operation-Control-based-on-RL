@@ -18,9 +18,12 @@ def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List,
     # inf, -inf to nan
     df = df.replace([np.inf, -np.inf], np.nan)
     
+    # control(especaily heating) parameter : Nan -> 0
+    df[config.cols_heating] = df[config.cols_heating].fillna(0)
+    df[config.cols_control] = df[config.cols_control].fillna(0)
+    
     # nan interpolation
     df[config.cols_efit] = df[config.cols_efit].interpolate(method = 'linear', limit_direction = 'forward')
-    df[config.cols_heating] = df[config.cols_heating].interpolate(method = 'linear', limit_direction = 'forward')
     df[config.cols_diagnose] = df[config.cols_diagnose].interpolate(method = 'linear', limit_direction= 'forward')
     
     if exist_profile:
@@ -28,9 +31,6 @@ def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List,
         df[config.TS_TE_CORE_COLS] = df[config.TS_TE_CORE_COLS].interpolate(method = 'linear', limit_direction = 'forward')
         df[config.TS_NE_EDGE_COLS] = df[config.TS_NE_EDGE_COLS].interpolate(method = 'linear', limit_direction = 'forward')
         df[config.TS_TE_EDGE_COLS] = df[config.TS_TE_EDGE_COLS].interpolate(method = 'linear', limit_direction = 'forward')
-    
-    # control(especaily heating) parameter : Nan -> 0
-    df[config.cols_heating] = df[config.cols_heating].fillna(0)
     
     if exist_profile:
         # TS data : Nan -> 0
@@ -46,11 +46,15 @@ def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List,
         # scaling for Te
         df[config.TS_TE_CORE_COLS] = df[config.TS_TE_CORE_COLS].apply(lambda x : x / (1e3))
         df[config.TS_TE_EDGE_COLS] = df[config.TS_TE_EDGE_COLS].apply(lambda x : x / (1e3))
+        
+    def _bound(x, value : float):
+        return x if abs(x) < value else value * x / abs(x)
     
     # Some negative values are mis-estimated due to equipmental problem
     # These values will be replaced by preprocessing
     if '\\ipmhd' in config.cols_efit:
         df['\\ipmhd'] = df['\\ipmhd'].abs().values
+        df['\\ipmhd'] = df['\\ipmhd'].apply(lambda x : x / 1e6)
         
     if '\\betap' in config.cols_efit:
         df['\\betap'] = df['\\betap'].apply(lambda x : x if x > 0 else 0)
@@ -82,6 +86,10 @@ def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List,
     if '\\ne_tci05' in config.cols_diagnose:
         df['\\ne_tci05'] = df['\\ne_tci05'].apply(lambda x : x if x > 0 else 0)
         df['\\ne_tci05'] = df['\\ne_tci05'].apply(lambda x : x / 1e4)
+        
+    # PFPC coil current scaling
+    for col in config.cols_control:
+        df[col] = df[col].apply(lambda x : x / 1e3)
     
     # remove nan value of diagnose parameter
     cols_dia = [x for x in config.cols_diagnose if x != 'ne_inter01']
@@ -127,7 +135,7 @@ def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List,
                 break
             
             # constant value
-            if df_shot[col].max() - df_shot[col].min() < 1e-6:
+            if df_shot[col].max() - df_shot[col].min() < 1e-4:
                 shot_ignore.append(shot)
                 ignore_by_const_value.append(shot)
                 break
@@ -155,8 +163,8 @@ def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List,
             if col == '\\ipmhd':
                 continue
             
-            q1 = df_shot[col].quantile(0.25)
-            q3 = df_shot[col].quantile(0.75)
+            q1 = df_shot[col].quantile(0.15)
+            q3 = df_shot[col].quantile(0.85)
             
             IQR = q3 - q1
             whisker_width = 1.25      
@@ -264,7 +272,7 @@ def ts_interpolate(df : pd.DataFrame, df_disruption : pd.DataFrame, cols : List,
     return df_interpolate
 
 if __name__ == "__main__":
-    df = pd.read_csv("./dataset/KSTAR_rl_control_ts_data.csv")
+    df = pd.read_csv("./dataset/KSTAR_rl_control_ts_data_0704.csv")
     df_disrupt = pd.read_csv("./dataset/KSTAR_Disruption_Shot_List_2022.csv", encoding='cp949')
     
     print(df.describe())

@@ -8,6 +8,7 @@ import os, pdb
 from typing import Dict, Optional, List, Literal, Union
 from src.GSsolver.model import AbstractPINN
 from src.GSsolver.loss import SSIM
+from src.GSsolver.util import plot_PINN_profile
 
 def train_per_epoch(
     dataloader : DataLoader,
@@ -27,6 +28,9 @@ def train_per_epoch(
     constraint_loss = 0
     ssim_loss = 0
     total_size = 0
+    
+    ip_constraint_loss = 0
+    betap_constraint_loss = 0
     
     # loss defined
     loss_mse = nn.MSELoss(reduction = 'sum')
@@ -53,10 +57,13 @@ def train_per_epoch(
             gs_loss = gs_loss.detach().cpu().item()
         
         if getattr(model, "compute_constraint_loss"):
-            constraint_loss = model.compute_constraint_loss(output, data['Ip'].to(device)) 
+            constraint_loss = model.compute_constraint_loss(output, data['Ip'].to(device), data['betap'].to(device)) 
             
             if not torch.isnan(constraint_loss):
                 loss += constraint_loss * weights['Constraint_loss']
+                
+                ip_constraint_loss += model.compute_constraint_loss_Ip(output, data['Ip'].to(device)).detach().cpu().item()
+                betap_constraint_loss += model.compute_constraint_loss_betap(output, data['Ip'].to(device), data['betap'].to(device)).detach().cpu().item()
                 
             constraint_loss = constraint_loss.detach().cpu().item()
 
@@ -75,9 +82,8 @@ def train_per_epoch(
         
         # parameter range fixed
         with torch.no_grad():
-            model.lamda.clamp_(1e-2, 1e2)
-            model.Ip_scale.clamp_(1e2, 1e12)
-            model.beta.clamp_(0.01, 0.99)
+            model.lamda.clamp_(0.1, 10)
+            model.beta.clamp_(0.1, 0.9)
             
     if scheduler:
         scheduler.step()
@@ -87,13 +93,20 @@ def train_per_epoch(
         gs_loss /= total_size
         constraint_loss /= total_size
         ssim_loss /= total_size
+        
+        ip_constraint_loss /= total_size
+        betap_constraint_loss /= total_size
+        
     else:
         train_loss = 0
         gs_loss = 0
         constraint_loss = 0
         ssim_loss = 0
+        
+        ip_constraint_loss = 0
+        betap_constraint_loss = 0
     
-    return train_loss, gs_loss, constraint_loss, ssim_loss
+    return train_loss, gs_loss, constraint_loss, ip_constraint_loss, betap_constraint_loss, ssim_loss
         
         
 def valid_per_epoch(
@@ -114,6 +127,9 @@ def valid_per_epoch(
     ssim_loss = 0
     total_size = 0
     
+    ip_constraint_loss = 0
+    betap_constraint_loss = 0
+    
     # loss defined
     loss_mse = nn.MSELoss(reduction = 'sum')
     loss_ssim = SSIM()
@@ -127,6 +143,8 @@ def valid_per_epoch(
     
     for batch_idx, (data, target) in enumerate(dataloader):
         
+        optimizer.zero_grad()
+        
         output = model(data['params'].to(device), data['PFCs'].to(device))
         loss = loss_mse(output, target.to(device))
             
@@ -135,25 +153,35 @@ def valid_per_epoch(
             gs_loss += model.compute_GS_loss(output).detach().cpu().item()
         
         if getattr(model, "compute_constraint_loss"):
-            loss += model.compute_constraint_loss(output.detach(), data['Ip'].to(device)) * weights['Constraint_loss']
-            constraint_loss += model.compute_constraint_loss(output.detach(), data['Ip'].to(device)).detach().cpu().item()
+            loss += model.compute_constraint_loss(output, data['Ip'].to(device), data['betap'].to(device)) * weights['Constraint_loss']
+            constraint_loss += model.compute_constraint_loss(output, data['Ip'].to(device), data['betap'].to(device)).detach().cpu().item()
+            
+            ip_constraint_loss += model.compute_constraint_loss_Ip(output, data['Ip'].to(device)).detach().cpu().item()
+            betap_constraint_loss += model.compute_constraint_loss_betap(output, data['Ip'].to(device), data['betap'].to(device)).detach().cpu().item()
+                
 
-            valid_loss += loss.detach().cpu().item()
-            ssim_loss += loss_ssim(output.detach(), target.to(device)).detach().cpu().item()
-            total_size += target.size()[0]
+        valid_loss += loss.detach().cpu().item()
+        ssim_loss += loss_ssim(output.detach(), target.to(device)).detach().cpu().item()
+        total_size += target.size()[0]
     
     if total_size > 0:
         valid_loss /= total_size
         gs_loss /= total_size
         constraint_loss /= total_size
         ssim_loss /= total_size
+        
+        ip_constraint_loss /= total_size
+        betap_constraint_loss /= total_size
     else:
         valid_loss = 0
         gs_loss = 0
         constraint_loss = 0
         ssim_loss = 0
+
+        ip_constraint_loss = 0
+        betap_constraint_loss = 0
     
-    return valid_loss, gs_loss, constraint_loss, ssim_loss
+    return valid_loss, gs_loss, constraint_loss, ip_constraint_loss, betap_constraint_loss, ssim_loss
         
 def train(
     train_loader : DataLoader, 
@@ -168,6 +196,7 @@ def train(
     save_last_dir : str = "./weights/last.pt",
     max_norm_grad : Optional[float] = None,
     weights : Optional[Dict] = None,
+    test_for_check : Optional[DataLoader] = None,
     ):
     
     train_loss_list = []
@@ -178,7 +207,7 @@ def train(
     
     for epoch in tqdm(range(num_epoch), desc = 'training process'):
         
-        train_loss, train_gs_loss, train_constraint_loss, train_ssim_loss = train_per_epoch(
+        train_loss, train_gs_loss, train_constraint_loss, train_ip_constraint_loss, train_betap_constraint_loss, train_ssim_loss = train_per_epoch(
             train_loader,
             model,
             optimizer,
@@ -188,7 +217,7 @@ def train(
             weights
         )
         
-        valid_loss, valid_gs_loss, valid_constraint_loss, valid_ssim_loss = valid_per_epoch(
+        valid_loss, valid_gs_loss, valid_constraint_loss, valid_ip_constraint_loss, valid_betap_constraint_loss, valid_ssim_loss = valid_per_epoch(
             valid_loader,
             model,
             optimizer,
@@ -201,8 +230,8 @@ def train(
         valid_loss_list.append(valid_loss)
         
         if epoch % verbose == 0:
-            print("Epoch:{} | train loss:{:.3f} | GS loss:{:.3f} | Constraint:{:.3f} | SSIM :{:.3f}".format(epoch+1, train_loss, train_gs_loss, train_constraint_loss, train_ssim_loss))
-            print("Epoch:{} | valid loss:{:.3f} | GS loss:{:.3f} | Constraint:{:.3f} | SSIM :{:.3f}".format(epoch+1, valid_loss, valid_gs_loss, valid_constraint_loss, valid_ssim_loss))
+            print("Epoch:{} | train loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} | SSIM:{:.3f}".format(epoch+1, train_loss, train_gs_loss, train_ip_constraint_loss, train_betap_constraint_loss,train_ssim_loss))
+            print("Epoch:{} | valid loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} | SSIM:{:.3f}".format(epoch+1, valid_loss, valid_gs_loss, valid_ip_constraint_loss, valid_betap_constraint_loss, valid_ssim_loss))
         
         torch.save(model.state_dict(), save_last_dir)    
         

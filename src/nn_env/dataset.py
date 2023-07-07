@@ -126,7 +126,6 @@ class DatasetFor0D(Dataset):
             if shot not in df_disruption.shot.values:
                 tftsrt = 1.25
             else:
-                # tftsrt = df_disruption[df_disruption.shot == shot].tftsrt.values[0]
                 tftsrt = df_disruption[df_disruption.shot == shot].t_flattop_start.values[0]
             
             df_shot = self.ts_data[self.ts_data.shot == shot]

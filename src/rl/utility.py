@@ -7,6 +7,8 @@ from matplotlib.gridspec import GridSpec
 from typing import List, Optional, Literal, Dict, Union
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
 from src.rl.env import NeuralEnv
+from src.GSsolver.util import draw_KSTAR_limiter
+from matplotlib import colors, cm
 
 def preparing_initial_dataset(
     df : pd.DataFrame,
@@ -57,7 +59,6 @@ def get_range_of_output(df : pd.DataFrame, cols_ctrl : List):
 # class for generating the initial state of the plasma and inital control values
 # initial state : (1, seq_len, n_0D_parameters)
 # initial control value : (1, seq_len + pred_len, n_ctrl_parameters)
-
 class InitGenerator:
     def __init__(self, df : pd.DataFrame, t_init : float, state_cols : List, control_cols : List, seq_len : int, pred_len : int, random : bool = False, shot_num : Optional[int] = None):
         self.df = df
@@ -182,7 +183,11 @@ def plot_virtual_operation(
     title = "{}_shot_{}_operation_0D".format(tag, shot_num)
     save_file = os.path.join(save_dir, "{}.png".format(title))
     
-    fig = plt.figure(figsize = (12,6), facecolor="white")
+    if env.shape_predictor is not None:
+        fig = plt.figure(figsize = (16,6), facecolor="white")
+    else:
+        fig = plt.figure(figsize = (12,6), facecolor="white") 
+        
     fig.suptitle(title)
     
     total_cols = env.reward_sender.total_cols
@@ -197,7 +202,10 @@ def plot_virtual_operation(
     df_shot[total_cols] = scaler_0D.inverse_transform(df_shot[total_cols].values)
     df_shot[cols_control] = scaler_ctrl.inverse_transform(df_shot[cols_control].values)
     
-    gs = GridSpec(nrows = len(total_cols), ncols = 2)
+    if env.shape_predictor is not None:
+        gs = GridSpec(nrows = len(total_cols), ncols = 3)
+    else:
+        gs = GridSpec(nrows = len(total_cols), ncols = 2)
 
     for i, col in enumerate(total_cols):
         
@@ -244,6 +252,23 @@ def plot_virtual_operation(
     ax.set_xlabel('time')
     ax.set_ylabel("reward")
     ax.legend(loc = 'upper right')
+    
+    if env.shape_predictor is not None:
+        # plot the profile
+        ax = fig.add_subplot(gs[:,2])
+        ax.set_title("PINN test result : $\Psi$, $J_\phi$, $P(\psi)$ profile")
+        R = env.shape_predictor.R2D
+        Z = env.shape_predictor.Z2D
+        psi = env.flux.squeeze(0).detach().cpu().numpy()
+        ax.contourf(R,Z, psi, levels = 32)
+        ax = draw_KSTAR_limiter(ax)
+        norm = colors.Normalize(vmin = psi.min(), vmax = psi.max())
+        map = cm.ScalarMappable(norm=norm)
+        fig.colorbar(map)
+        ax.set_xlabel("R[m]")
+        ax.set_ylabel("Z[m]")
+        ax.set_title('Poloidal flux ($\psi$)')
+    
     fig.tight_layout()
     plt.savefig(save_file)
     

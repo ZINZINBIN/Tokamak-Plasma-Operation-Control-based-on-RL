@@ -18,10 +18,54 @@ from gym import error, spaces
 from gym import utils
 from gym.utils import seeding
 from src.rl.rewards import RewardSender
-from typing import Dict, Optional, Literal
+from typing import Dict, Optional, Literal, List
+from src.GSsolver.model import PINN
+from src.config import Config
 import logging
 
 logger = logging.getLogger(__name__)
+
+config = Config()
+
+# function for converting dictionary type of input to the tensor.
+def Dict2Tensor(col_state_list : List, col_control_list : List, state : Dict, control : Dict):
+    
+    state_tensor = []
+    control_tensor = []
+    
+    for idx, col in enumerate(col_state_list):
+        v = state[col].view(1,-1, 1)
+        state_tensor.append(v)
+    
+    for idx, col in enumerate(col_control_list):
+        v = control[col].view(1,-1,1)
+        control_tensor.append(v)
+    
+    state_tensor = torch.concat(state_tensor, dim = 2)
+    control_tensor = torch.concat(control_tensor, dim = 2)
+    
+    return state_tensor, control_tensor
+    
+
+# function for converting tensor type of input to the dictionary type.
+def Tensor2Dict(col_state_list : List, col_control_list : List, state : torch.Tensor, control : torch.Tensor):
+    
+    if state.ndim == 2:
+        state = state.unsqueeze(0)
+    
+    if control.ndim == 2:
+        control = control.unsqueeze(0)
+    
+    state_dict = {}
+    control_dict = {}
+    
+    for idx, col in enumerate(col_state_list):
+        state_dict[col] = state[:,:,idx]
+    
+    for idx, col in enumerate(col_control_list):
+        control_dict[col] = control[:,:,idx]
+    
+    return state_dict, control_dict
 
 class NeuralEnv(gym.Env):
     metadata = {'render.modes':['human']} # what does it means?
@@ -38,11 +82,32 @@ class NeuralEnv(gym.Env):
         cols_control = None,
         limit_ctrl_rate : bool = False,
         rate_range_info : Optional[Dict] = None,
+        shape_predictor : Optional[PINN] = None,
+        objective : Literal['params-control', 'shape-control', 'multi-objective'] = 'params-control',
+        scaler_0D = None,
+        scaler_ctrl = None,
         ):
         
         super().__init__()
+        
         # predictor : output as next state of plasma
         self.predictor = predictor.to(device)
+        
+        # objective
+        self.objective = objective
+        
+        # scaler
+        self.scaler_0D = scaler_0D
+        self.scaler_ctrl = scaler_ctrl
+        
+        if shape_predictor is not None:
+            self.shape_predictor = shape_predictor.to(device)
+            self.shape_predictor.eval()
+            self.flux = None
+        else:
+            self.shape_predictor = None
+            self.flux = None
+        
         self.predictor.eval()
         self.device = device
         
@@ -159,6 +224,14 @@ class NeuralEnv(gym.Env):
         next_state = self.predictor(state.to(self.device), action.to(self.device)).detach().cpu()
         reward = self.reward_sender(next_state)
         
+        # predict magnetic flux line
+        if self.shape_predictor is not None:
+            next_action = action[:,-1,:]
+            pinn_state, pinn_action = self.convert_PINN_input(next_state, next_action)
+            flux = self.shape_predictor(pinn_state.to(self.device), pinn_action.to(self.device))
+            gs_loss = self.shape_predictor.compute_GS_loss(flux)
+            self.flux = flux
+        
         # update done
         self.check_terminal_state(next_state)
         
@@ -200,6 +273,61 @@ class NeuralEnv(gym.Env):
         
         # cuda gpu cache memory clear
         torch.cuda.empty_cache()
+        
+    def convert_PINN_input(self, state : torch.Tensor, action : torch.Tensor):
+        state_cols = config.input_params[self.objective]['state']
+        control_cols = config.input_params[self.objective]['control']
+        
+        if self.scaler_0D is not None:
+            state = state.view(-1, len(state_cols)).cpu().numpy()
+            action = action.view(-1, len(control_cols)).cpu().numpy()
+            
+            state = self.scaler_0D.inverse_transform(state)
+            action = self.scaler_ctrl.inverse_transform(action)
+            
+            state = torch.from_numpy(state).float()
+            action = torch.from_numpy(action).float()
+        
+        state_dict, action_dict = Tensor2Dict(state_cols, control_cols, state, action)
+        
+        PINN_state_cols = config.input_params['GS-solver']['state']
+        PINN_control_cols = config.input_params['GS-solver']['control']
+        
+        PINN_state = []
+        PINN_control = []
+        
+        for col in PINN_state_cols:
+            if col in state_dict.keys():
+                state = state_dict[col]
+            else:
+                state = action_dict[col]
+                
+            PINN_state.append(state)
+            
+        for col in PINN_control_cols:
+            if col in action_dict.keys():
+                action = action_dict[col]
+            else:
+                action = state_dict[col]
+
+            PINN_control.append(action)
+            
+        ndim = state.ndim
+        
+        PINN_state = torch.concat(PINN_state, dim = ndim - 1)
+        PINN_control = torch.concat(PINN_control, dim = ndim - 1)
+        
+        if PINN_state.ndim == 3:
+            PINN_state = PINN_state.squeeze(1)
+        
+        if PINN_control.ndim == 3:
+            PINN_control = PINN_control.squeeze(1)
+            
+        # scale adjustment
+        PINN_state[:,0] = PINN_state[:,0] * (-1)
+        PINN_control = PINN_control
+            
+        return PINN_state, PINN_control
         
 # This is the custom environment with considering the stochastic behavior of the tokamak operation
 class StochasticNeuralEnv(gym.Env):

@@ -5,22 +5,10 @@ import random
 from typing import Optional, List
 import matplotlib.pyplot as plt
 from src.nn_env.dataset import DatasetFor0D
+from src.config import Config
 
-col2str = {
-    '\\q0' : 'q0',
-    '\\q95' : 'q95', 
-    '\\ipmhd' : 'Ip', 
-    '\\kappa' : 'K', 
-    '\\tritop' : 'tri-top', 
-    '\\tribot': 'tri-bot',
-    '\\betap': 'betap',
-    '\\betan': 'betan',
-    '\\li': 'li', 
-    '\\WTOT_DLM03' : 'W-tot', 
-    '\\ne_inter01' : 'Ne',
-    '\\TS_NE_CORE_AVG' : 'Ne-core', 
-    '\\TS_TE_CORE_AVG' : 'Te-core'
-}
+config = Config()
+col2str = config.COL2STR
 
 def generate_shot_data_from_real(
     model : torch.nn.Module,
@@ -38,7 +26,6 @@ def generate_shot_data_from_real(
     ):
     
     df_shot = df_shot_origin.copy(deep = True)
-    
     
     if scaler_0D:
         df_shot[cols_0D] = scaler_0D.transform(df_shot[cols_0D].values)
@@ -63,8 +50,8 @@ def generate_shot_data_from_real(
     
     while(idx < idx_max):
         with torch.no_grad():
-            input_0D = torch.from_numpy(data_0D.loc[idx+1:idx+seq_len_0D].values).unsqueeze(0)
-            input_ctrl = torch.from_numpy(data_ctrl.loc[idx+1:idx+seq_len_ctrl].values).unsqueeze(0)
+            input_0D = torch.from_numpy(data_0D.loc[idx+1:idx+seq_len_0D].values).float().unsqueeze(0)
+            input_ctrl = torch.from_numpy(data_ctrl.loc[idx+1:idx+seq_len_ctrl].values).float().unsqueeze(0)
             
             outputs = model(input_0D.to(device), input_ctrl.to(device)).squeeze(0).cpu().numpy()
             predictions.append(outputs)
@@ -77,7 +64,7 @@ def generate_shot_data_from_real(
     time_x = time_x.loc[seq_len_0D + 1: seq_len_0D + len(predictions)].values
     actual = data_0D[cols_0D].loc[seq_len_0D + 1 : seq_len_0D + len(predictions)].values
     
-    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (10,6), sharex=True, facecolor = 'white')
+    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (8,8), sharex=True, facecolor = 'white')
     plt.suptitle(title)
     
     if scaler_0D:
@@ -89,7 +76,12 @@ def generate_shot_data_from_real(
         ax.plot(time_x, predictions[:,i], 'b', label = "pred")
         ax.set_ylabel(col2str[col])
         ax.legend(loc = "upper right")
-
+        
+        # vertical line
+        ax.axvline(time_x[seq_len_0D+1], ymin = 0, ymax = 1, linewidth = 2, color = 'r')
+        
+    ax.set_xlabel("time(unit:s)")
+        
     fig.tight_layout()
     plt.savefig(save_dir)
 
@@ -110,7 +102,6 @@ def generate_shot_data_from_self(
     
     df_shot = df_shot_origin.copy(deep = True)
     time_x = df_shot['time']
-    
     
     if scaler_0D:
         df_shot[cols_0D] = scaler_0D.transform(df_shot[cols_0D].values)
@@ -138,12 +129,12 @@ def generate_shot_data_from_self(
     while(idx < idx_max):
         with torch.no_grad():
             if idx == 0:
-                input_0D = torch.from_numpy(data_0D.loc[idx+1:idx+seq_len_0D].values).unsqueeze(0)
-                input_ctrl = torch.from_numpy(data_ctrl.loc[idx+1:idx+seq_len_ctrl].values).unsqueeze(0)
+                input_0D = torch.from_numpy(data_0D.loc[idx+1:idx+seq_len_0D].values).float().unsqueeze(0)
+                input_ctrl = torch.from_numpy(data_ctrl.loc[idx+1:idx+seq_len_ctrl].values).float().unsqueeze(0)
                 
             else:
-                input_0D = previous_state.unsqueeze(0)
-                input_ctrl = torch.from_numpy(data_ctrl.loc[idx+1:idx+seq_len_ctrl].values).unsqueeze(0)
+                input_0D = previous_state.float().unsqueeze(0)
+                input_ctrl = torch.from_numpy(data_ctrl.loc[idx+1:idx+seq_len_ctrl].values).float().unsqueeze(0)
                             
             next_state = model(input_0D.to(device), input_ctrl.to(device)) 
                 
@@ -171,7 +162,7 @@ def generate_shot_data_from_self(
         predictions = scaler_0D.inverse_transform(predictions)
         actual = scaler_0D.inverse_transform(actual)
     
-    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (10,6), sharex=True, facecolor = 'white')
+    fig, axes = plt.subplots(len(cols_0D), 1, figsize = (8,8), sharex=True, facecolor = 'white')
     plt.suptitle(title)
     
     for i, (ax, col) in enumerate(zip(axes.ravel(), cols_0D)):
@@ -186,6 +177,8 @@ def generate_shot_data_from_self(
         
         # vertical line
         ax.axvline(time_x.loc[seq_len_0D+1], ymin = 0, ymax = 1, linewidth = 2, color = 'r')
+        
+    ax.set_xlabel("time(unit:s)")
 
     fig.tight_layout()
     plt.savefig(save_dir)

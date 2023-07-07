@@ -33,26 +33,45 @@ def gradient(u : torch.Tensor, x : torch.Tensor):
 def compute_Jphi(
     psi_s : torch.Tensor, 
     R : torch.Tensor,
-    Rc : Union[torch.Tensor, float],
-    alpha_m : torch.Tensor, 
-    alpha_n : torch.Tensor, 
-    beta_m : torch.Tensor, 
-    beta_n : torch.Tensor, 
+    alpha_m : float, 
+    alpha_n : float, 
+    beta_m : float, 
+    beta_n : float, 
     lamda : torch.Tensor, 
     beta : torch.Tensor
     ):
     
-    Jp = torch.pow((1 - torch.pow(psi_s, alpha_m.to(psi_s.device))), alpha_n.to(psi_s.device)) * R / Rc
-    Jf = torch.pow((1 - torch.pow(psi_s, beta_m.to(psi_s.device))), beta_n.to(psi_s.device)) * Rc / R
+    Jp = torch.pow((1 - torch.pow(psi_s, alpha_m)), alpha_n) * R
+    Jf = torch.pow((1 - torch.pow(psi_s, beta_m)), beta_n) / R
     
     Jphi = Jp * beta + Jf * (1-beta)
     Jphi *= lamda
     return Jphi
 
+def compute_p_psi(
+    psi_s : torch.Tensor, 
+    R : torch.Tensor,
+    alpha_m : float, 
+    alpha_n : float, 
+    beta_m : float, 
+    beta_n : float, 
+    lamda : torch.Tensor, 
+    beta : torch.Tensor
+    ):
+    
+    def _poly(psi_s, alpha_m, alpha_n):
+        result = 0
+        for k in range(0, alpha_n):
+            result += math.comb(int(alpha_n), k) * psi_s ** (alpha_m * k + 1) / (alpha_m * k + 1) * (-1) ** k           
+        return result
+    
+    p = _poly(psi_s, alpha_m, alpha_n)
+    p = p * beta * lamda
+    return p
+
 def compute_pprime(
     psi_s : np.array, 
     R : np.array,
-    Rc : Union[np.array, float],
     alpha_m : float, 
     alpha_n : float, 
     beta_m : float, 
@@ -60,14 +79,13 @@ def compute_pprime(
     lamda : float, 
     beta : float
     ):
-    pprime = np.power((1 - np.power(psi_s, alpha_m)), alpha_n) / Rc
+    pprime = np.power((1 - np.power(psi_s, alpha_m)), alpha_n)
     pprime *= beta * lamda
     return pprime
 
 def compute_ffprime(
     psi_s : np.array, 
     R : np.array,
-    Rc : Union[np.array, float],
     alpha_m : float, 
     alpha_n : float, 
     beta_m : float, 
@@ -75,14 +93,13 @@ def compute_ffprime(
     lamda : float, 
     beta : float
     ):
-    ffprime = np.power((1 - np.power(psi_s, beta_m)), beta_n) * Rc
+    ffprime = np.power((1 - np.power(psi_s, beta_m)), beta_n)
     ffprime *= (1-beta) * lamda
     return ffprime
 
 def compute_Jphi_1D(
     psi_s : np.array, 
     R : np.array,
-    Rc : Union[np.array, float],
     alpha_m : float, 
     alpha_n : float, 
     beta_m : float, 
@@ -91,8 +108,8 @@ def compute_Jphi_1D(
     beta : float
     ):
     
-    Jp = np.power((1 - np.power(psi_s, alpha_m)), alpha_n) * R / Rc
-    Jf = np.power((1 - np.power(psi_s, beta_m)), beta_n) * Rc / R
+    Jp = np.power((1 - np.power(psi_s, alpha_m)), alpha_n) * R
+    Jf = np.power((1 - np.power(psi_s, beta_m)), beta_n) / R
     
     Jphi = Jp * beta + Jf * (1-beta)
     Jphi *= lamda
@@ -111,8 +128,8 @@ def eliptic_operator(psi:torch.Tensor, R : torch.Tensor, Z : torch.Tensor):
     return psi_r2 - 1 / R * psi_r + psi_z2
 
 # Grad-Shafranov equation as a loss function
-def compute_grad_shafranov_loss(psi : torch.Tensor, R : torch.Tensor, Z : torch.Tensor, Jphi : torch.Tensor):
-    loss = eliptic_operator(psi, R, Z) + R * Jphi
+def compute_grad_shafranov_loss(psi : torch.Tensor, R : torch.Tensor, Z : torch.Tensor, Jphi : torch.Tensor, Rc : float, psi_s : float):
+    loss = eliptic_operator(psi, R, Z) * Rc ** 2 / psi_s + R * Jphi / Rc
     loss = torch.norm(loss)
     return loss
 
@@ -132,7 +149,7 @@ def compute_grad2(psi : torch.Tensor, R : torch.Tensor, Z : torch.Tensor):
     grad = torch.sqrt(grad)
     return grad
 
-def compute_KSTAR_limiter_mask(RR, ZZ):
+def compute_KSTAR_limiter_mask(RR, ZZ, min_value : float= 5e-2):
     
     def convert_coord_index(RR, ZZ, points_arr):
         indices_arr = []
@@ -156,7 +173,7 @@ def compute_KSTAR_limiter_mask(RR, ZZ):
         return np.array(indices_arr)
     
     from skimage.draw import polygon
-    mask = np.ones_like(RR) * 5e-2
+    mask = np.ones_like(RR, dtype = np.float32) * min_value
     contour = convert_coord_index(RR, ZZ, limiter_shape)
 
     # Create an empty image to store the masked array

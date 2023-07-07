@@ -8,50 +8,8 @@ import torch.nn as nn
 from torch.autograd import Variable
 from typing import Optional, Dict, List
 from pytorch_model_summary import summary
+from src.nn_env.transformer import PositionalEncoding, NoiseLayer, GELU
 
-class NoiseLayer(nn.Module):
-    def __init__(self, mean : float = 0, std : float = 1e-2):
-        super().__init__()
-        self.mean = mean
-        self.std = std
-        
-    def forward(self, x : torch.Tensor):
-        if self.training:
-            noise = Variable(torch.ones_like(x).to(x.device) * self.mean + torch.randn(x.size()).to(x.device) * self.std)
-            return x + noise
-        else:
-            return x
-
-# positional encoding process
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model : int, max_len : int = 5000):
-        super(PositionalEncoding, self).__init__()
-        self.d_model = d_model
-        self.max_len = max_len
-
-        pe = torch.zeros(max_len, d_model).float()
-        position = torch.arange(0, max_len).float().unsqueeze(1) # (max_len, 1)
-        div_term = (torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp() # (d_model // 2, )
-
-        pe[:,0::2] = torch.sin(position * div_term)
-
-        if d_model % 2 != 0:
-            pe[:,1::2] = torch.cos(position * div_term)[:,0:-1]
-        else:
-            pe[:,1::2] = torch.cos(position * div_term)
-
-        pe = pe.unsqueeze(0).transpose(0,1) # shape : (max_len, 1, d_model)
-
-        self.register_buffer('pe', pe)
-
-    def forward(self, x:torch.Tensor):
-        # x : (seq_len, batch_size, n_features)
-        return x + self.pe[:x.size(0), :, :]
-
-class GELU(nn.Module):
-    def forward(self, x):
-        return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
-    
 # De-stationary attention module
 class DSAttention(nn.Module):
     def __init__(self, mask_flag : bool = True, factor : float = 5, scale = None, dropout : float = 0.1, output_attention : bool = False):
@@ -142,11 +100,9 @@ class Encoder(nn.Module):
     def forward(self, x : torch.Tensor, attn_mask : torch.Tensor, tau : Optional[torch.Tensor]=None, delta : Optional[torch.Tensor] = None):
         # x : (B, L, D)
         attns = []
-        
         for attn_layer in self.attn_layers:
             x, attn = attn_layer(x, attn_mask, tau, delta)
             attns.append(attn)
-        
         if self.norm:
             x = self.norm(x)
         return x, attns
@@ -155,7 +111,6 @@ class Encoder(nn.Module):
 class Projector(nn.Module):
     def __init__(self, enc_in : int, seq_len : int, hidden_dim : int, output_dim : int, kernel_size : int = 3):
         super().__init__()
-        
         padding = 1 if torch.__version__ >= '1.5.0' else 2
         self.series_conv = nn.Conv1d(in_channels=seq_len, out_channels=1, kernel_size = kernel_size, padding = padding, padding_mode='circular', bias = False)
         self.backbone = nn.Sequential(
@@ -167,7 +122,6 @@ class Projector(nn.Module):
     def forward(self, x : torch.Tensor, stats : torch.Tensor):
         # x : (B,S,E)
         # stats : (B,1,E)
-        
         B = x.size()[0]
         # (B,1,E)
         x = self.series_conv(x)
@@ -198,6 +152,7 @@ class NStransformer(nn.Module):
         range_info : Optional[Dict] = None,
         noise_mean : float = 0,
         noise_std : float = 0.81,
+        kernel_size : int = 3,
         ):
         
         super(NStransformer, self).__init__()
@@ -225,11 +180,19 @@ class NStransformer(nn.Module):
         # Noise added for robust performance
         self.noise = NoiseLayer(mean = noise_mean, std = noise_std)
         
+        if kernel_size // 2 == 0:
+            print("kernel sholud be odd number")
+            kernel_size += 1
+        padding = (kernel_size - 1) // 2
+        
         # 0D data encoder
         self.encoder_input_0D = nn.Sequential(
-            nn.Linear(in_features=input_0D_dim, out_features=feature_0D_dim // 2),
+            nn.Conv1d(in_channels=input_0D_dim, out_channels=feature_0D_dim // 2, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_0D_dim//2),
             nn.ReLU(),
-            nn.Linear(feature_0D_dim //2, feature_0D_dim)
+            nn.Conv1d(in_channels=feature_0D_dim // 2, out_channels=feature_0D_dim, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_0D_dim),
+            nn.ReLU()
         )
         
         self.pos_0D = PositionalEncoding(d_model = feature_0D_dim, max_len = input_0D_seq_len)
@@ -250,12 +213,15 @@ class NStransformer(nn.Module):
             ],
             norm_layer=nn.LayerNorm(feature_0D_dim)
         )
-        
+
         # ctrl data encoder
         self.encoder_input_ctrl = nn.Sequential(
-            nn.Linear(in_features=input_ctrl_dim, out_features=feature_ctrl_dim // 2),
+            nn.Conv1d(in_channels=input_ctrl_dim, out_channels=feature_ctrl_dim // 2, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_ctrl_dim//2),
             nn.ReLU(),
-            nn.Linear(feature_ctrl_dim //2, feature_ctrl_dim)
+            nn.Conv1d(in_channels=feature_ctrl_dim // 2, out_channels=feature_ctrl_dim, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_ctrl_dim),
+            nn.ReLU()
         )
         
         self.pos_ctrl = PositionalEncoding(d_model = feature_ctrl_dim, max_len = input_ctrl_seq_len)
@@ -320,7 +286,7 @@ class NStransformer(nn.Module):
        
         # path : 0D data
         # encoding : (N, T, F) -> (N, T, d_model)
-        x_0D = self.encoder_input_0D(x_0D)
+        x_0D = self.encoder_input_0D(x_0D.permute(0,2,1)).permute(0,2,1)
         
         # (T, N, d_model)
         x_0D = x_0D.permute(1,0,2)
@@ -345,7 +311,7 @@ class NStransformer(nn.Module):
         # x_0D = x_0D.permute(1,0,2)
         
         # path : ctrl data
-        x_ctrl = self.encoder_input_ctrl(x_ctrl)
+        x_ctrl = self.encoder_input_ctrl(x_ctrl.permute(0,2,1)).permute(0,2,1)
         
         # (T, N, d_model)
         x_ctrl = x_ctrl.permute(1,0,2)

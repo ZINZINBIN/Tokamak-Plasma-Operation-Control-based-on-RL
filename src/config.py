@@ -36,71 +36,202 @@ class Config():
         '\\bcentr' : 'Bc',
         '\\rsurf':'R',
         '\\aminor':'a',
+        '\\PCPF1U':'PCPF1U', 
+        '\\PCPF2U':'PCPF2U', 
+        '\\PCPF3U':'PCPF3U', 
+        '\\PCPF3L':'PCPF3L',
+        '\\PCPF4U':'PCPF4U', 
+        '\\PCPF4L':'PCPF4L', 
+        '\\PCPF5U':'PCPF5U', 
+        '\\PCPF5L':'PCPF5L', 
+        '\\PCPF6U':'PCPF6U', 
+        '\\PCPF6L':'PCPF6L',
+        '\\PCPF7U':'PCPF7U'
     }
     
     ## columns for use
-    # 0D parameters
-    DEFAULT_COLS_0D = ['\\q95','\\betan','\\li', '\\q0']
-    
-    # control parameter
-    DEFAULT_COLS_CTRL = [
-        '\\nb11_pnb',
-        '\\nb12_pnb',
-        '\\nb13_pnb',
-        # '\\EC1_PWR', 
-        '\\EC2_PWR', 
-        '\\EC3_PWR',
-        '\\EC4_PWR', 
-        # '\\ECSEC1TZRTN', 
-        '\\ECSEC2TZRTN', 
-        '\\ECSEC3TZRTN',
-        '\\ECSEC4TZRTN',
-        '\\ipmhd', 
-        '\\kappa', 
-        '\\tritop', 
-        '\\tribot', 
-        '\\bcentr',
-        '\\rsurf',
-        '\\aminor',
-    ]
-    
-    # predictor : configuration for nn_env
-    TRANSFORMER_CONF = {
-        "n_layers": 4, 
-        "n_heads":8, 
-        "dim_feedforward" : 1024, 
-        "dropout" : 0.2,        
-        "RIN" : False,
-        "feature_0D_dim" : 128,
-        "feature_ctrl_dim": 128,
-        "noise_mean" : 0,
-        "noise_std" : 1.96
+    # We have to consider several cases: (1) 0D parameters control (2) shape parameters control (3) multi-objects control(0D + shape for example) (4) GS-solver
+    input_params = {
+        "params-control":{
+            "state":['\\q95','\\betan','\\betap','\\li'],
+            "control":[
+                # NBI
+                '\\nb11_pnb',
+                '\\nb12_pnb',
+                '\\nb13_pnb',
+                
+                # EC heating
+                '\\EC2_PWR', 
+                '\\EC3_PWR',
+                '\\EC4_PWR', 
+                '\\ECSEC2TZRTN', 
+                '\\ECSEC3TZRTN',
+                '\\ECSEC4TZRTN',
+                
+                # plasma current and magnetic field
+                '\\ipmhd', 
+                '\\bcentr',
+                
+                # shape parameter
+                '\\kappa', 
+                '\\tritop', 
+                '\\tribot', 
+                '\\rsurf',
+                '\\aminor',
+            ],
+        },
+        "shape-control":{
+            "state":['\\q95','\\betan','\\betap','\\li', '\\kappa', '\\tritop', '\\tribot', '\\rsurf','\\aminor'],
+            "control":[
+                # NBI
+                '\\nb11_pnb',
+                '\\nb12_pnb',
+                '\\nb13_pnb',
+                
+                # EC heating
+                '\\EC2_PWR', 
+                '\\EC3_PWR',
+                '\\EC4_PWR', 
+                '\\ECSEC2TZRTN', 
+                '\\ECSEC3TZRTN',
+                '\\ECSEC4TZRTN',
+                
+                # plasma current and magnetic field
+                '\\ipmhd', 
+                '\\bcentr',
+                
+                # PFPC
+                '\\PCPF1U', 
+                '\\PCPF2U', 
+                '\\PCPF3U', 
+                '\\PCPF3L',
+                '\\PCPF4U', 
+                '\\PCPF4L', 
+                '\\PCPF5U', 
+                '\\PCPF5L', 
+                '\\PCPF6U', 
+                '\\PCPF6L',
+                '\\PCPF7U'
+            ]
+        },
+        "multi-objective":{
+            "state":['\\q95','\\betan','\\li','\\kappa', '\\tritop', '\\tribot', '\\rsurf','\\aminor'],
+            "control":[
+                # NBI
+                '\\nb11_pnb',
+                '\\nb12_pnb',
+                '\\nb13_pnb',
+                
+                # EC heating
+                '\\EC2_PWR', 
+                '\\EC3_PWR',
+                '\\EC4_PWR', 
+                '\\ECSEC2TZRTN', 
+                '\\ECSEC3TZRTN',
+                '\\ECSEC4TZRTN',
+                
+                # plasma current and magnetic field
+                '\\ipmhd', 
+                '\\bcentr',
+                
+                # PFPC
+                '\\PCPF1U', 
+                '\\PCPF2U', 
+                '\\PCPF3U', 
+                '\\PCPF3L',
+                '\\PCPF4U', 
+                '\\PCPF4L', 
+                '\\PCPF5U', 
+                '\\PCPF5L', 
+                '\\PCPF6U', 
+                '\\PCPF6L',
+                '\\PCPF7U'
+            ]
+        },
+        "GS-solver":{
+            "state":['\\ipmhd', '\\q95','\\betap', '\li'],
+            "control":['\PCPF1U', '\PCPF2U', '\PCPF3U', '\PCPF3L', '\PCPF4U','\PCPF4L', '\PCPF5U', '\PCPF5L', '\PCPF6U', '\PCPF6L', '\PCPF7U']
+        }
     }
     
-    SCINET_CONF = {
-        "hid_size" : 1,
-        "num_levels" : 2,
-        "num_decoder_layer" : 1,
-        "concat_len" : 0,
-        "groups" : 1,
-        "kernel" : 3,
-        "dropout" : 0.1,
-        "single_step_output_One" : 0,
-        "positionalE" : False,
-        "modified" : True,
-        "RIN" : False,
-        "noise_mean" : 0,
-        "noise_std" : 1.96
+    # model configuration
+    model_config = {
+        "Transformer":{
+            "n_layers": 4, 
+            "n_heads":8, 
+            "dim_feedforward" : 1024, 
+            "dropout" : 0.1,        
+            "RIN" : False,
+            "feature_0D_dim" : 128,
+            "feature_ctrl_dim": 128,
+            "noise_mean" : 0,
+            "noise_std" : 1.96,
+            "kernel_size" : 3,
+        },
+        "SCINet":{
+            "hid_size" : 1,
+            "num_levels" : 2,
+            "num_decoder_layer" : 1,
+            "concat_len" : 0,
+            "groups" : 1,
+            "kernel" : 3,
+            "dropout" : 0.1,
+            "single_step_output_One" : 0,
+            "positionalE" : False,
+            "modified" : True,
+            "RIN" : False,
+            "noise_mean" : 0,
+            "noise_std" : 1.96
+        },
+        "NStransformer":{
+            "n_layers": 4, 
+            "n_heads":8, 
+            "dim_feedforward" : 1024, 
+            "dropout" : 0.1,        
+            "RIN" : False,
+            "feature_0D_dim" : 128,
+            "feature_ctrl_dim": 128,
+            "noise_mean" : 0,
+            "noise_std" : 1.96,
+            "kernel_size" : 3,
+        },
+        "GS-solver":{
+            "n_PFCs" : 11,
+            "alpha_m" : 2,
+            "alpha_n" : 1,
+            "beta_m" : 2,
+            "beta_n" : 1,
+            "beta" : 0.102,
+            "lamda" : 0.1,
+            "Rc" : 1.8,
+            "nx" : 65,
+            "ny" : 65,
+            "hidden_dim" : 128,
+            "params_dim" : 4,
+        }
     }
     
-    # DDPG configuration
-    DDPG_CONF = {
-        "mlp_dim" : 128
-    }
-    
-    # SAC configuration
-    SAC_CONF = {
-        "mlp_dim" : 128
+    # RL algorithm configuration
+    control_config = {
+        "DDPG":{
+            "mlp_dim" : 128
+        },
+        "SAC":{
+            "mlp_dim" : 128
+        },
+        "target":{
+            'params-control' : {
+                "\\betan" : 3.0
+            }, 
+            'shape-control' : {
+                "\\betan" : 3.0,
+                '\\kappa' : 2.0
+            }, 
+            'multi-objective' : {
+                "\\betan" : 3.0,
+                '\\kappa' : 1.8
+            }
+        }
     }
     
     # information of range for action input difference 
@@ -124,9 +255,4 @@ class Config():
         '\\tritop':[-0.1, 0.1], 
         '\\tribot':[-0.1, 0.1], 
         '\\bcentr':[-0.05, 0.05]
-    }
-    
-    # control target value
-    DEFAULT_TARGETS = {
-        "\\betan" : 2.75,
     }
