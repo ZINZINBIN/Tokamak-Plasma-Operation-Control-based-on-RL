@@ -5,7 +5,7 @@ This is github repository for research on Tokamak plasma operation control based
 </p>
 <div>
     <p float = 'left'>
-        <img src="/image/control_performance.png"  width="720" height="320">
+        <img src="/image/control_performance.gif"  width="720" height="320">
     </p>
 </div>
 <p>
