@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 import numpy as np
 from scipy.integrate import romb, quad, simpson
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, RectBivariateSpline
 from src.GSsolver.GradShafranov import *
 from skimage import measure
 from src.GSsolver.KSTAR_setup import PF_coils
@@ -121,8 +121,13 @@ class Normalization(nn.Module):
     def predict_critical_value(self, x : torch.Tensor):
         with torch.no_grad():
             x *= self.limiter_mask.to(x.device)
-            x_a = self.axis_regressor(x)
-            x_b = self.bndry_regressor(x)
+            
+            batch_size = x.size()[0]
+            x_min = x.view(batch_size,-1).min(1)[0].view(batch_size, 1)
+            x_max = x.view(batch_size,-1).max(1)[0].view(batch_size, 1)
+            
+            x_a = self.axis_regressor(x).clamp(min = x_min, max = torch.Tensor([0]).unsqueeze(0).repeat(batch_size, 1).to(x.device))
+            x_b = self.bndry_regressor(x).clamp(min = x_min, max = x_max)
             return x_a, x_b
     
 class PINN(AbstractPINN):
@@ -538,3 +543,43 @@ class PINN(AbstractPINN):
                 
         return (r_axis, z_axis), psi_axis
         
+    def find_xpoints(self, psi : torch.Tensor, eps : float = 1e-4):
+        det = compute_det(psi, self.r, self.z)
+        grad = compute_grad2(psi, self.r, self.z)
+        
+        mask_grad = grad.le(eps)
+        mask_det = det.le(0)
+        
+        limiter_mask = compute_KSTAR_limiter_mask(self.R2D, self.Z2D, 0)
+        limiter_mask = torch.from_numpy(limiter_mask).unsqueeze(0)
+        
+        psi_masked = mask_det * mask_grad * psi * limiter_mask.to(psi.device)
+        indices_xpts = torch.argwhere(psi_masked.flatten() > 0.1)
+        
+        if len(indices_xpts) == 0:
+            return []
+    
+        xpts = []
+        for idx in indices_xpts.detach().cpu().numpy():
+            psi_xpt = psi_masked.flatten()[idx].detach().cpu().item()
+            r_xpt = self.R2D.ravel()[idx]
+            z_xpt = self.Z2D.ravel()[idx]
+            xpts.append((r_xpt, z_xpt, psi_xpt))
+        
+        xpts = self.remove_dup(xpts, 1e-3)
+        
+        return xpts
+    
+    def remove_dup(self, points, eps : float = 1e-5):
+        
+        result = []
+        
+        for n, p in enumerate(points):
+            dup = False
+            for p2 in result:
+                if math.sqrt((p[0] - p2[0]) ** 2 + (p[1] - p2[1]) ** 2) < eps:
+                    dup = True  # Duplicate
+                    break
+            if not dup:
+                result.append(p)  # Add to the list
+        return result

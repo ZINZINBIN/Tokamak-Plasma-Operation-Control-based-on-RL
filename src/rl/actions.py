@@ -1,7 +1,29 @@
 import gym
 import numpy as np
 import torch
+import torch.nn as nn
 from typing import List, Dict
+
+gauss_noise = torch.distributions.Normal(0,1)
+
+def add_noise_to_action(action : torch.Tensor):
+    noise = gauss_noise.sample(sample_shape=action.size()).to(action.device)
+    return action + noise
+
+# Smoothness-inducing regularizer for smooth control
+def smoothness_inducing_regularizer(
+    loss_fn : nn.Module, 
+    mu : torch.Tensor,
+    next_mu : torch.Tensor,
+    near_mu : torch.Tensor,
+    lamda_temporal_smoothness : float, 
+    lamda_spatial_smoothness : float,
+    ):
+    
+    Lt = lamda_temporal_smoothness * loss_fn(mu, next_mu)
+    Ls = lamda_spatial_smoothness * loss_fn(mu, near_mu)
+    
+    return Lt + Ls
 
 class NormalizedActions(gym.ActionWrapper):
     def action(self, action:torch.Tensor):

@@ -16,6 +16,7 @@ from src.rl.PER import PER
 from src.rl.utility import InitGenerator
 from itertools import count
 from src.rl.env import NeuralEnv
+from src.rl.actions import smoothness_inducing_regularizer, add_noise_to_action
 
 # Encoder : plasma state -> hidden vector
 class Encoder(nn.Module):
@@ -182,8 +183,16 @@ def update_policy(
     device : Optional[str] = "cpu",
     min_value : float = -np.inf,
     max_value : float = np.inf,
-    tau : float = 1e-2
+    tau : float = 1e-2,
+    use_CAPS : bool = False,
+    lamda_temporal_smoothness : float = 1.0, 
+    lamda_spatial_smoothness : float = 1.0,
     ):
+    
+    if use_CAPS:
+        loss_fn_CAPS = nn.SmoothL1Loss(reduction='mean')
+    else:
+        loss_fn_CAPS = None
     
     # policy and q network => parameter update : True
     policy_network.train()
@@ -258,6 +267,16 @@ def update_policy(
     q = torch.min(q1, action_batch_sampled)
     
     policy_loss = torch.mean(q + entropy * alpha.to(device)) * (-1)
+    
+    if use_CAPS:
+        mu,_,_ = policy_network.sample(state_batch[non_final_mask])
+        next_mu,_,_ = policy_network.sample(non_final_next_states)
+        near_mu = add_noise_to_action(mu)
+        loss_CAPS = smoothness_inducing_regularizer(loss_fn_CAPS, mu, next_mu, near_mu, lamda_temporal_smoothness, lamda_spatial_smoothness)
+        policy_loss += loss_CAPS
+    else:
+        pass
+    
     policy_optimizer.zero_grad()
     policy_loss.backward()
     
@@ -433,7 +452,10 @@ def train_sac(
     verbose : int = 8,
     save_best : Optional[str] = None,
     save_last : Optional[str] = None,
-    scaler_0D = None
+    scaler_0D = None,
+    use_CAPS : bool = False,
+    lamda_temporal_smoothness : float = 1.0,
+    lamda_spatial_smoothness : float = 1.0
     ):
     
     T_MAX = 1024
@@ -513,8 +535,12 @@ def train_sac(
                     device,
                     min_value,
                     max_value,
-                    tau
+                    tau,
+                    use_CAPS,
+                    lamda_temporal_smoothness,
+                    lamda_spatial_smoothness
                 )
+                
             elif isinstance(memory, PER):
                 q1_loss, q2_loss, policy_loss = update_policy_PER(
                     memory, 

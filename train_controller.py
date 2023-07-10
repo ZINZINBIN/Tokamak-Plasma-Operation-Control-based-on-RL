@@ -51,6 +51,9 @@ def parsing():
     parser.add_argument("--max_value", type = float, default = 10.0)
     parser.add_argument("--tau", type = float, default = 0.01)
     parser.add_argument("--verbose", type = int, default = 4)
+    parser.add_argument("--use_CAPS", type = bool, default=False)
+    parser.add_argument("--lamda_temporal_smoothness", type = float, default = 1.0)
+    parser.add_argument("--lamda_spatial_smoothness", type = float, default = 1.0)
     
     # environment setup
     parser.add_argument("--stochastic", type = bool, default = False)
@@ -252,6 +255,15 @@ if __name__ == "__main__":
     input_dim = len(cols_0D)
     n_actions = len(cols_control)
     
+    # CAPS: Regularzing Action Policies for smooth control with reinforcement learning
+    if args['use_CAPS']:
+        tag = "{}_CAPS".format(tag)
+        lamda_temporal_smoothness = args['lamda_temporal_smoothness']
+        lamda_spatial_smoothness = args['lamda_spatial_smoothness']
+    else:
+        lamda_temporal_smoothness = 0
+        lamda_spatial_smoothness = 0
+    
     if len(args['tag']) > 0:
         tag = "{}_{}".format(tag, args['tag'])
     
@@ -311,7 +323,10 @@ if __name__ == "__main__":
             verbose,
             save_best,
             save_last,
-            scaler_0D
+            scaler_0D,
+            args['use_CAPS'],
+            lamda_temporal_smoothness,
+            lamda_spatial_smoothness
         )
     
     elif args['algorithm'] == 'DDPG':
@@ -369,7 +384,10 @@ if __name__ == "__main__":
             verbose,
             save_best,
             save_last,
-            scaler_0D
+            scaler_0D,
+            args['use_CAPS'],
+            lamda_temporal_smoothness,
+            lamda_spatial_smoothness
         )
     
     # Evaluation

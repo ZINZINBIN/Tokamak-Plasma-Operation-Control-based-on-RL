@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from typing import List, Optional, Literal, Dict, Union
 from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler
+from skimage import measure
 from src.rl.env import NeuralEnv
-from src.GSsolver.util import draw_KSTAR_limiter
+from src.GSsolver.util import draw_KSTAR_limiter, modify_resolution
 from matplotlib import colors, cm
 
 def preparing_initial_dataset(
@@ -261,7 +262,62 @@ def plot_virtual_operation(
         Z = env.shape_predictor.Z2D
         psi = env.flux.squeeze(0).detach().cpu().numpy()
         ax.contourf(R,Z, psi, levels = 32)
+        
+        try:
+            (r_axis, z_axis), _ = env.shape_predictor.find_axis(env.flux, eps = 1e-3)
+            xpts = env.shape_predictor.find_xpoints(env.flux, eps = 1e-3)
+            
+        except:
+            r_axis = None
+            z_axis = None
+            xpts = []
+        
         ax = draw_KSTAR_limiter(ax)
+        
+        if r_axis is not None:
+            ax.plot(r_axis, z_axis, "o", c = "r", label = "magnetic axis", linewidth = 2)
+            ax.legend(loc = 'upper right')
+        
+        if len(xpts) > 0:
+            r_xpts = []
+            z_xpts = []
+            psi_xpts = []
+            
+            for r_xpt, z_xpt, psi_xpt in xpts:
+                r_xpts.append(r_xpt)
+                z_xpts.append(z_xpt)
+                psi_xpts.append(psi_xpt)
+            
+            r_xpts = np.array(r_xpts)
+            z_xpts = np.array(z_xpts)
+            psi_xpts = np.array(psi_xpts)
+            psi_b = np.min(psi_xpts)
+        
+        else:
+            psi_b = 0.1
+            
+        try:
+            if len(xpts) > 0:
+                contours = measure.find_contours(psi, psi_b)
+                dist_list = []
+                for contour in contours:
+                    r_contour = R.min() + (R.max() - R.min()) * contour[:,1] / R.shape[0]
+                    z_contour = Z.min() + (Z.max() - Z.min()) * contour[:,0] / Z.shape[0]
+                    dist = np.mean((r_contour-r_axis) ** 2 + (z_contour - z_axis) ** 2)
+                    dist_list.append(dist)
+                    
+                b_contour = contours[np.argmin(np.array(dist_list))]
+                
+            else:
+                b_contour = None
+        except:
+            b_contour = None
+                    
+        if b_contour is not None:
+            r_contour = R.min() + (R.max() - R.min()) * b_contour[:,1] / R.shape[0]
+            z_contour = Z.min() + (Z.max() - Z.min()) * b_contour[:,0] / Z.shape[0]
+            ax.plot(r_contour, z_contour, c = 'r', linewidth = 2)
+     
         norm = colors.Normalize(vmin = psi.min(), vmax = psi.max())
         map = cm.ScalarMappable(norm=norm)
         fig.colorbar(map)

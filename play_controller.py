@@ -34,7 +34,7 @@ def parsing():
     parser.add_argument("--shot_num", type = int, default = 30399)
     parser.add_argument("--shot_random", type = bool, default = False)
     parser.add_argument("--t_init", type = float, default = 0.0)
-    parser.add_argument("--t_terminal", type = float, default = 10.0)
+    parser.add_argument("--t_terminal", type = float, default = 4.0)
     parser.add_argument("--dt", type = float, default = 0.05)
     
     # objective : params control vs shape control vs multi-objective
@@ -331,7 +331,6 @@ if __name__ == "__main__":
         tag,
         save_dir
     )
-    
     '''
     # gif file generation
     title = "{}_ani_shot_{}_operation_control".format(tag, shot_num)
@@ -339,12 +338,14 @@ if __name__ == "__main__":
     generate_control_performance(
         save_file,
         total_state,
-        total_action,
+        env.flux_list,
+        env.shape_predictor.R2D,
+        env.shape_predictor.Z2D,
         cols_0D,
-        cols_control,
         targets_dict,
         title,
         args['dt'],
-        24,
+        12,
+        env.seq_len
     )
-    '''
+    '''    

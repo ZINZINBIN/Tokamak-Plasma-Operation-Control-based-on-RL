@@ -107,6 +107,8 @@ class NeuralEnv(gym.Env):
         else:
             self.shape_predictor = None
             self.flux = None
+            
+        self.flux_list = []
         
         self.predictor.eval()
         self.device = device
@@ -231,6 +233,7 @@ class NeuralEnv(gym.Env):
             flux = self.shape_predictor(pinn_state.to(self.device), pinn_action.to(self.device))
             gs_loss = self.shape_predictor.compute_GS_loss(flux)
             self.flux = flux
+            self.flux_list.append(flux.squeeze(0).detach().cpu().numpy())
         
         # update done
         self.check_terminal_state(next_state)

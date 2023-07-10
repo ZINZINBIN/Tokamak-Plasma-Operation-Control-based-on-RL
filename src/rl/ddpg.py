@@ -12,6 +12,7 @@ from src.rl.buffer import Transition, ReplayBuffer
 from src.rl.PER import PER
 from src.rl.utility import InitGenerator
 from src.rl.env import NeuralEnv
+from src.rl.actions import smoothness_inducing_regularizer, add_noise_to_action
 
 # Encoder : plasma state -> hidden vector
 class Encoder(nn.Module):
@@ -166,8 +167,16 @@ def update_policy(
     device : Optional[str] = "cpu",
     min_value : float = -np.inf,
     max_value : float = np.inf,
-    tau : float = 1e-2
+    tau : float = 1e-2,
+    use_CAPS : bool = False,
+    lamda_temporal_smoothness : float = 1.0, 
+    lamda_spatial_smoothness : float = 1.0,
     ):
+    
+    if use_CAPS:
+        loss_fn_CAPS = nn.SmoothL1Loss(reduction='mean')
+    else:
+        loss_fn_CAPS = None
 
     policy_network.train()
     value_network.train()
@@ -231,6 +240,15 @@ def update_policy(
     value_network.eval()
     policy_loss = value_network(state_batch_, policy_network(state_batch_))
     policy_loss = -policy_loss.mean()
+    
+    if use_CAPS:
+        mu = policy_network(state_batch[non_final_mask])
+        next_mu = policy_network(non_final_next_states)
+        near_mu = add_noise_to_action(mu)
+        loss_CAPS = smoothness_inducing_regularizer(loss_fn_CAPS, mu, next_mu, near_mu, lamda_temporal_smoothness, lamda_spatial_smoothness)
+        policy_loss += loss_CAPS
+    else:
+        pass
 
     policy_optimizer.zero_grad()
     policy_loss.backward()
@@ -371,9 +389,6 @@ def update_policy_PER(
 
     return value_loss.item(), policy_loss.item()
 
-
-
-
 def train_ddpg(
     env : NeuralEnv,
     ou_noise : OUNoise,
@@ -397,6 +412,9 @@ def train_ddpg(
     save_best : Optional[str] = None,
     save_last : Optional[str] = None,
     scaler_0D = None,
+    use_CAPS : bool = False,
+    lamda_temporal_smoothness : float = 1.0, 
+    lamda_spatial_smoothness : float = 1.0,
     ):
     
     T_MAX = 1024
@@ -485,8 +503,12 @@ def train_ddpg(
                     device,
                     min_value,
                     max_value,
-                    tau
+                    tau,
+                    use_CAPS,
+                    lamda_temporal_smoothness, 
+                    lamda_spatial_smoothness
                 )
+                
             elif isinstance(memory, PER):
                 value_loss, policy_loss = update_policy_PER(
                     memory,
