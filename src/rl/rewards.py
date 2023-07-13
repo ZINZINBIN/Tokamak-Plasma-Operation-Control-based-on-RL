@@ -1,5 +1,5 @@
 ''' Customized reward functions
-
+    
     Reference
     -   https://towardsdatascience.com/how-to-design-reinforcement-learning-reward-function-for-a-lunar-lander-562a24c393f6 
 '''
@@ -14,8 +14,9 @@ def compute_reward(inputs : torch.Tensor, targets : torch.Tensor, residue : floa
     return reward
 
 class RewardSender:
-    def __init__(self, targets_dict : Dict, total_cols : List):
+    def __init__(self, targets_dict : Dict, total_cols : List, targets_weight : Optional[List] = None):
         self.targets_dict = targets_dict
+        self.targets_weight = targets_weight
         self.targets_cols = list(targets_dict.keys())
         self.targets_value = list(targets_dict.values())
         self.total_cols = total_cols
@@ -29,7 +30,22 @@ class RewardSender:
         for target_value, idx in zip(self.targets_value, self.target_cols_indices):
             state_per_idx = state[:,:,idx]
             target_per_idx = torch.ones(state_per_idx.size()) * target_value
-            reward += compute_reward(state_per_idx, target_per_idx)
+            
+            if self.targets_weight is not None:
+                weight = self.targets_weight[idx]
+                reward += weight * compute_reward(state_per_idx, target_per_idx)
+            else:
+                reward += compute_reward(state_per_idx, target_per_idx)
+                
+        return reward
+    
+    # compute reward as a vector for Multi-objective Reinforcement Learning
+    def compute_vectorized_reward(self, state : Union[torch.Tensor, np.ndarray]):
+        reward = torch.zeros((len(self.targets_weight),))
+        for i, (target_value, idx) in enumerate(zip(self.targets_value, self.target_cols_indices)):
+            state_per_idx = state[:,:,idx]
+            target_per_idx = torch.ones(state_per_idx.size()) * target_value
+            reward[i] += compute_reward(state_per_idx, target_per_idx)
         return reward
     
     def _extract_target_index(self, total_cols : List):
@@ -38,3 +54,6 @@ class RewardSender:
             indices.append(total_cols.index(col))
         
         self.target_cols_indices = indices
+        
+    def update_target_weight(self, target_weight : List):
+        self.targets_weight = target_weight

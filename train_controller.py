@@ -1,4 +1,4 @@
-from src.rl.env import NeuralEnv, StochasticNeuralEnv
+from src.rl.env import NeuralEnv
 from src.nn_env.transformer import Transformer
 from src.nn_env.NStransformer import NStransformer
 from src.nn_env.SCINet import SimpleSCINet
@@ -214,28 +214,24 @@ if __name__ == "__main__":
     # environment
     if args['stochastic']:
         tag = "{}_stochastic".format(tag)
-        env = StochasticNeuralEnv(
-                predictor=model, device = device, reward_sender = reward_sender, 
-                seq_len = seq_len, pred_len = pred_len, range_info = range_info, 
-                t_terminal = args['t_terminal'], dt = args['dt'],cols_control=cols_control,
-                noise_mean_0D=args['env_noise_mean_0D'], noise_mean_ctrl=args['env_noise_mean_ctrl'],
-                noise_std_0D=args['env_noise_std_0D'], noise_std_ctrl=args['env_noise_std_ctrl'],
-                scale_0D=args['env_noise_scale_0D'], scale_ctrl=args['env_noise_scale_ctrl']
-            )
-    else:
-        env = NeuralEnv(
-            predictor=model, 
-            device = device, 
-            reward_sender = reward_sender, 
-            seq_len = seq_len, 
-            pred_len = pred_len, 
-            range_info = range_info, 
-            t_terminal = args['t_terminal'], 
-            dt = args['dt'], 
-            cols_control=cols_control,
-            objective = args['objective']
-        )
-    
+         
+    env = NeuralEnv(
+        predictor=model, 
+        device = device, 
+        reward_sender = reward_sender, 
+        seq_len = seq_len, 
+        pred_len = pred_len, 
+        range_info = range_info, 
+        t_terminal = args['t_terminal'], 
+        dt = args['dt'], 
+        cols_control=cols_control,
+        objective = args['objective'],
+        use_stochastic=args['stochastic'],
+        noise_mean_0D=args['env_noise_mean_0D'], noise_mean_ctrl=args['env_noise_mean_ctrl'],
+        noise_std_0D=args['env_noise_std_0D'], noise_std_ctrl=args['env_noise_std_ctrl'],
+        noise_scale_0D=args['env_noise_scale_0D'], noise_scale_ctrl=args['env_noise_scale_ctrl']
+    )
+        
     # action rapper
     if args['use_normalized_action']:
         env = NormalizedActions(env)

@@ -1,4 +1,4 @@
-from src.rl.env import NeuralEnv, StochasticNeuralEnv
+from src.rl.env import NeuralEnv
 from src.nn_env.transformer import Transformer
 from src.nn_env.NStransformer import NStransformer
 from src.nn_env.SCINet import SimpleSCINet
@@ -34,7 +34,7 @@ def parsing():
     parser.add_argument("--shot_num", type = int, default = 30399)
     parser.add_argument("--shot_random", type = bool, default = False)
     parser.add_argument("--t_init", type = float, default = 0.0)
-    parser.add_argument("--t_terminal", type = float, default = 4.0)
+    parser.add_argument("--t_terminal", type = float, default = 3.0)
     parser.add_argument("--dt", type = float, default = 0.05)
     
     # objective : params control vs shape control vs multi-objective
@@ -223,30 +223,26 @@ if __name__ == "__main__":
     # environment
     if args['stochastic']:
         tag = "{}_stochastic".format(tag)
-        env = StochasticNeuralEnv(
-                predictor=model, device = device, reward_sender = reward_sender, 
-                seq_len = seq_len, pred_len = pred_len, range_info = range_info, 
-                t_terminal = args['t_terminal'], dt = args['dt'], cols_control=cols_control,
-                noise_mean_0D=args['env_noise_mean_0D'], noise_mean_ctrl=args['env_noise_mean_ctrl'],
-                noise_std_0D=args['env_noise_std_0D'], noise_std_ctrl=args['env_noise_std_ctrl'],
-                scale_0D=args['env_noise_scale_0D'], scale_ctrl=args['env_noise_scale_ctrl']
-        )
-    else:
-        env = NeuralEnv(
-            predictor=model, 
-            device = device, 
-            reward_sender = reward_sender, 
-            seq_len = seq_len, 
-            pred_len = pred_len, 
-            range_info = range_info, 
-            t_terminal = args['t_terminal'], 
-            dt = args['dt'], 
-            cols_control=cols_control,
-            shape_predictor=shape_predictor,
-            objective = args['objective'],
-            scaler_0D = scaler_0D,
-            scaler_ctrl = scaler_ctrl,
-        )
+        
+    env = NeuralEnv(
+        predictor=model, 
+        device = device, 
+        reward_sender = reward_sender, 
+        seq_len = seq_len, 
+        pred_len = pred_len, 
+        range_info = range_info, 
+        t_terminal = args['t_terminal'], 
+        dt = args['dt'], 
+        cols_control=cols_control,
+        shape_predictor = shape_predictor,
+        objective = args['objective'],
+        scaler_0D = scaler_0D,
+        scaler_ctrl = scaler_ctrl,
+        use_stochastic=args['stochastic'],
+        noise_mean_0D=args['env_noise_mean_0D'], noise_mean_ctrl=args['env_noise_mean_ctrl'],
+        noise_std_0D=args['env_noise_std_0D'], noise_std_ctrl=args['env_noise_std_ctrl'],
+        noise_scale_0D=args['env_noise_scale_0D'], noise_scale_ctrl=args['env_noise_scale_ctrl']
+    )
     
     # action rapper
     if args['use_normalized_action']:
@@ -331,21 +327,20 @@ if __name__ == "__main__":
         tag,
         save_dir
     )
-    '''
+    
     # gif file generation
     title = "{}_ani_shot_{}_operation_control".format(tag, shot_num)
     save_file = os.path.join(save_dir, "{}.gif".format(title))
     generate_control_performance(
         save_file,
         total_state,
-        env.flux_list,
-        env.shape_predictor.R2D,
-        env.shape_predictor.Z2D,
+        env,
         cols_0D,
         targets_dict,
         title,
         args['dt'],
         12,
-        env.seq_len
+        env.seq_len, 
+        True
     )
-    '''    
+     
