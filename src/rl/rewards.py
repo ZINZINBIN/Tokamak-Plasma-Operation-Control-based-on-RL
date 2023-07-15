@@ -27,12 +27,12 @@ class RewardSender:
     
     def _compute_reward(self, state:Union[torch.Tensor, np.ndarray]):
         reward = 0
-        for target_value, idx in zip(self.targets_value, self.target_cols_indices):
+        for i, (target_value, idx) in enumerate(zip(self.targets_value, self.target_cols_indices)):
             state_per_idx = state[:,:,idx]
             target_per_idx = torch.ones(state_per_idx.size()) * target_value
             
             if self.targets_weight is not None:
-                weight = self.targets_weight[idx]
+                weight = self.targets_weight[i]
                 reward += weight * compute_reward(state_per_idx, target_per_idx)
             else:
                 reward += compute_reward(state_per_idx, target_per_idx)

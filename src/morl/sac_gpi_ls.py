@@ -29,11 +29,10 @@
         (1) Multi-objective reinforcement learning : https://github.com/kevin880987/Multi-Objective-Reinforement-Learning
         (2) Multi-objective optimization and multi-task learning : https://github.com/xiaofangxd/Multi-objective-optimization-and-Multi-task-Learning
 '''
-import copy
 import torch
 import torch.nn as nn
 import numpy as np
-import gc, time
+import gc, os, random
 from tqdm.auto import tqdm
 from typing import Optional, List, Literal, Dict, Union
 from src.rl.sac import TwinnedQNetwork, GaussianPolicy, update_policy, update_policy_PER, train_sac
@@ -43,6 +42,7 @@ from src.rl.utility import InitGenerator
 from itertools import count
 from src.rl.env import NeuralEnv
 from src.rl.actions import smoothness_inducing_regularizer, add_noise_to_action
+from src.morl.utility import random_weights
 
 # for solving the vertex enumerate problem
 import cdd
@@ -59,6 +59,8 @@ def policy_evaluation(
     
     mean_vec_return = []
     env.reward_sender.update_target_weight(weight)
+    policy_network.eval()
+    policy_network.to(device)
     
     for i_episode in range(num_episode):
         
@@ -70,7 +72,7 @@ def policy_evaluation(
         state = env.reset()
         
         reward_list = []
-        state_list = []
+        gamma = 1.0
 
         for t in range(T_MAX):
             
@@ -82,7 +84,9 @@ def policy_evaluation(
             state, _, done, _ = env.step(action)
             vec_reward = env.reward_sender.compute_vectorized_reward(state)
 
-            reward_list.append(vec_reward.detach().cpu().numpy())
+            reward_list.append(vec_reward.detach() * gamma)
+            
+            gamma *= env.gamma
             
             if not done:
                 next_state = env.get_state()
@@ -95,9 +99,10 @@ def policy_evaluation(
             if done or t > T_MAX:
                 break
         
-        reward = torch.concat(reward_list, dim = 0).mean(axis = 0).view(-1,)
+        reward = torch.stack(reward_list).mean(axis = 0).view(-1,)
         mean_vec_return.append(reward)
-    mean_vec_return = torch.mean(mean_vec_return)
+    
+    mean_vec_return = torch.mean(torch.stack(mean_vec_return), dim = 0)
     
     return mean_vec_return
 
@@ -114,6 +119,11 @@ def compute_corner_weights(ccs : List, num_objectives : int):
     A_plus[0,-1] = 0
     A = np.concatenate((A,A_plus), axis = 0)
     
+    for i in range(num_objectives):
+        A_plus = np.zeros(A.shape[1]).reshape(1, -1)
+        A_plus[0, i] = -1
+        A = np.concatenate((A, A_plus), axis=0)
+    
     b = np.zeros(len(ccs) + 2 + num_objectives)
     b[len(ccs)] = 1
     b[len(ccs) + 1] = -1
@@ -121,7 +131,7 @@ def compute_corner_weights(ccs : List, num_objectives : int):
     def _compute_poly_vertices(A_:np.ndarray,b_:np.ndarray):
         b_ = b_.reshape((b_.shape[0], 1))
         mat = cdd.Matrix(np.hstack([b_, -A_]), number_type = "float")
-        mat.red_type = cdd.RedType.INEQUALITY
+        mat.rep_type = cdd.RepType.INEQUALITY
         P = cdd.Polyhedron(mat)
         g = P.get_generators()
         V = np.array(g)
@@ -137,6 +147,7 @@ def compute_corner_weights(ccs : List, num_objectives : int):
     
     vertices = _compute_poly_vertices(A,b)
     for v in vertices:
+        v = torch.from_numpy(v[:-1]).float()
         corner_weights.append(v)
     return corner_weights
 
@@ -163,6 +174,7 @@ def gpi_ls_priority(w:np.ndarray, ccs : List, gpi_expanded_set : List):
     
 def update_corner_weights(
     init_generator:InitGenerator,
+    queue:List,
     env : NeuralEnv, 
     policy_network:GaussianPolicy, 
     ccs : List, 
@@ -170,23 +182,28 @@ def update_corner_weights(
     device : str
     ):
     
-    W_corner = compute_corner_weights(ccs, num_objectives)
-    queue = []
-    
-    # policy evaluation
-    gpi_expanded_set = [policy_evaluation(init_generator, env, policy_network, wc, 4, 32, device) for wc in W_corner]
-    
-    for wc in W_corner:
-        priority = gpi_ls_priority(wc, ccs, gpi_expanded_set)
-        queue.append((priority, wc))
-    
+    if len(ccs) > 0:
+        W_corner = compute_corner_weights(ccs, num_objectives)
+        queue.clear()
+        
+        # policy evaluation
+        gpi_expanded_set = [policy_evaluation(init_generator, env, policy_network, wc, 4, 32, device) for wc in W_corner]
+        
+        for wc in W_corner:
+            priority = gpi_ls_priority(wc, ccs, gpi_expanded_set)
+            queue.append((priority, wc))
+        
+        if len(queue) > 0:
+            queue.sort(key = lambda t : t[0], reverse = True)
+        
+            if queue[0][0] == 0.0:
+                random.shuffle(queue)
+                
     if len(queue) == 0:
         return None
-    
-    queue.sort(key = lambda t : t[0], reverse = True)
-    
-    next_w = queue.pop(0)[1]
-    return next_w
+    else:
+        next_w = queue.pop(0)[1]
+        return next_w
 
 def remove_obsolete_weight(new_value, ccs : List, queue : List):
     W_del = []
@@ -197,7 +214,8 @@ def remove_obsolete_weight(new_value, ccs : List, queue : List):
     inds_remove = []
     
     for i, (priority, cw) in enumerate(queue):
-        if np.dot(cw, new_value) > max_scalarized_value(cw, ccs):
+
+        if torch.dot(cw, new_value) > max_scalarized_value(cw, ccs):
             W_del.append(cw)
             inds_remove.append(i)
     
@@ -206,7 +224,7 @@ def remove_obsolete_weight(new_value, ccs : List, queue : List):
     
     return W_del
 
-def remove_obsolete_values(value, visited_weights : List, weight_support:List, ccs : List):
+def remove_obsolete_values(value, visited_weights : List, weight_support:List, ccs : List, policy_list : List):
     removed_indx = []
     for i in reversed(range(len(ccs))):
         weights_optimal = [w for w in visited_weights if np.dot(ccs[i],w) == max_scalarized_value(w, ccs) and np.dot(value, w) < np.dot(ccs[i], w)]
@@ -215,6 +233,7 @@ def remove_obsolete_values(value, visited_weights : List, weight_support:List, c
             removed_indx.append(i)
             ccs.pop(i)
             weight_support.pop(i)
+            policy_list.pop(i)
             
     return removed_indx
 
@@ -229,17 +248,20 @@ def is_dominated(value, visited_weights : List, ccs : List):
         
     return True
 
-def add_solution(value, weight, visited_weights : List, weight_support : List, ccs : List):
+def add_solution(value, weight, visited_weights : List, weight_support : List, ccs : List, policy_save_dir : str,  policy_list : List):
     
     visited_weights.append(weight)
+    print(f"Adding value : {value} to CCS")
     
     if is_dominated(value, visited_weights, ccs):
+        print(f"Value {value} is dominated. Removing the value")
         return [len(ccs)]
     
-    removed_indx = remove_obsolete_values(value, visited_weights, weight_support, ccs)
+    removed_indx = remove_obsolete_values(value, visited_weights, weight_support, ccs, policy_list)
     
     ccs.append(value)
     weight_support.append(weight)
+    policy_list.append(policy_save_dir)
     
     return removed_indx
 
@@ -269,9 +291,10 @@ def train_new_policy(
     use_CAPS : bool = False,
     lamda_temporal_smoothness : float = 1.0,
     lamda_spatial_smoothness : float = 1.0,
+    verbose : int = 8,
     ):
     
-    T_MAX = 1024
+    T_MAX = 64
 
     if device is None:
         device = "cpu"
@@ -279,6 +302,7 @@ def train_new_policy(
     best_reward = 0
     
     for i_episode in range(num_episode):
+        
         # update new initial state and action
         init_state, init_action = init_generator.get_state()
         env.update_init_state(init_state, init_action)
@@ -363,11 +387,15 @@ def train_new_policy(
                 state_list.append(state[:,-1,:].unsqueeze(0).numpy())
 
             if done or t > T_MAX:
-                max_reward = np.max(reward_list)
-                min_reward = np.min(reward_list)
-                mean_reward = np.mean(reward_list)
                 break
-            
+        
+        max_reward = np.max(reward_list)
+        min_reward = np.min(reward_list)
+        mean_reward = np.mean(reward_list)
+        
+        if i_episode % verbose == 0:
+            print(r"| episode:{:05d} | duration:{:04d} | reward - mean: {:.2f}, min: {:.2f}, max: {:.2f}".format(i_episode+1, t + 1, mean_reward, min_reward, max_reward))
+
         # memory cache delete
         gc.collect()
 
@@ -381,9 +409,10 @@ def train_new_policy(
             best_reward = mean_reward
             torch.save(policy_network.state_dict(), save_best)
 
-    env.close()
+    memory.clear()
 
-        
+    return q_network, policy_network
+    
 def train_sac_linear_support(
     env : NeuralEnv,
     init_generator : InitGenerator,
@@ -406,62 +435,103 @@ def train_sac_linear_support(
     tau : float = 1e-2,
     num_episode : int = 256,  
     verbose : int = 8,
-    save_best : Optional[str] = None,
-    save_last : Optional[str] = None,
+    verbose_policy : int = 8,
+    save_dir : Optional[str] = None,
     scaler_0D = None,
     use_CAPS : bool = False,
     lamda_temporal_smoothness : float = 1.0,
     lamda_spatial_smoothness : float = 1.0,
     max_gpi_ls_iters : int = 32,
     num_objectives : int = 2,
+    tag : str = "",
     ):
     
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
     
+    policy_set = []
     visited_weights = []
     weight_support = []
     ccs = []
+    queue = []
     
-    for gpi_ls_iter in tqdm(range(len(max_gpi_ls_iters))):
+    def _init_weights(dim: int, is_random : bool = True):
+        if is_random:
+            return list(random_weights(dim, n = 4, seed = 42))
+        else:
+            return list(torch.eye(dim, dtype=torch.float32))
+    
+    for w in _init_weights(num_objectives):
+        queue.append((float("inf"), w))
+    
+    for gpi_ls_iter in tqdm(range(max_gpi_ls_iters)):
         
-        if gpi_ls_iter == 0:
-            
-            # initial weight
-            w = [0 for i in range(len(num_objectives))]
-            w[0] = 1
-            
-            # update reward sender with initial weight
-            env.reward_sender.update_target_weight(w)
-            
-            # find the optimal policy and value newtork with given initial weight
-            train_new_policy(
-                env,
-                init_generator,
-                memory,
-                policy_network,
-                q_network,
-                target_q_network,
-                target_entropy,
-                log_alpha,
-                policy_optimizer,
-                q1_optimizer,
-                q2_optimizer,
-                alpha_optimizer,
-                criterion,
-                batch_size,
-                gamma,
-                device,
-                min_value,
-                max_value,
-                tau,
-                num_episode,
-                save_best,
-                save_last,
-                use_CAPS,
-                lamda_temporal_smoothness,
-                lamda_spatial_smoothness,
-            )
-            
-
+        # directory info
+        save_best = os.path.join(save_dir, "{}_{}_best.pt".format(tag, gpi_ls_iter))
+        save_last = os.path.join(save_dir, "{}_{}_last.pt".format(tag, gpi_ls_iter))
         
-        # compute the corner weights
-        W_corner = compute_corner_weights(ccs, num_objectives)
+        # update cornder weight first
+        w_next = update_corner_weights(init_generator, queue, env, policy_network, ccs, num_objectives, device)
+        
+        # initialize the networks
+        policy_network.initialize()
+        q_network.initialize()
+        target_q_network.initialize()
+        
+        # update reward sender with initial weight
+        env.reward_sender.update_target_weight(w_next)
+         
+        # find the optimal policy and value newtork with given initial weight
+        print("="*20, " New policy with updated weight ({:03d}/{:03d})".format(gpi_ls_iter+1, max_gpi_ls_iters), "="*20)
+        print("Next weight : ", w_next)
+        
+        _, _ = train_new_policy(
+            env,
+            init_generator,
+            memory,
+            policy_network,
+            q_network,
+            target_q_network,
+            target_entropy,
+            log_alpha,
+            policy_optimizer,
+            q1_optimizer,
+            q2_optimizer,
+            alpha_optimizer,
+            criterion,
+            batch_size,
+            gamma,
+            device,
+            min_value,
+            max_value,
+            tau,
+            num_episode,
+            save_best,
+            save_last,
+            use_CAPS,
+            lamda_temporal_smoothness,
+            lamda_spatial_smoothness,
+            verbose_policy
+        )
+        
+        value = policy_evaluation(init_generator, env, policy_network, w_next, 4, 64, device)
+        
+        # add new policy and value vector with removing the dominated value vector set
+        add_solution(value, w_next,visited_weights, weight_support, ccs, save_best, policy_set)
+        
+        # condition
+        if len(queue) == 0:
+            break
+        
+        if gpi_ls_iter % verbose == 0:
+            
+            print("="*80)
+            print("GPI-LS : weight update process ({}/{})".format(gpi_ls_iter + 1, max_gpi_ls_iters))
+            for i, (target_value, idx) in enumerate(zip(env.reward_sender.targets_value, env.reward_sender.target_cols_indices)):
+                key = env.reward_sender.targets_cols[i]
+                wi = w_next[i]
+                print("Target features:{:10} | Target value:{:.2f} | Reward:{:.2f} | Weight:{:.2f}".format(key,target_value,value[i],wi))
+            print("="*80)
+               
+    print("Generalized Policy Improvement Linear Support : SAC training process done..!")
+    return weight_support, ccs, policy_set

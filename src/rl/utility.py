@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn as nn
 import os
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -10,6 +11,18 @@ from skimage import measure
 from src.rl.env import NeuralEnv
 from src.GSsolver.util import draw_KSTAR_limiter, modify_resolution
 from matplotlib import colors, cm
+
+def initialize_weights(m):
+    if isinstance(m, nn.Conv2d):
+        nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
+        if m.bias is not None:
+            nn.init.constant_(m.bias.data, 0)
+    elif isinstance(m, nn.BatchNorm2d):
+        nn.init.constant_(m.weight.data, 1)
+        nn.init.constant_(m.bias.data, 0)
+    elif isinstance(m, nn.Linear):
+        nn.init.kaiming_uniform_(m.weight.data)
+        nn.init.constant_(m.bias.data, 0)
 
 def preparing_initial_dataset(
     df : pd.DataFrame,

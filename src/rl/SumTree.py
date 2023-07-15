@@ -10,6 +10,11 @@ class SumTree(object):
         self.tree = np.zeros(2 * capacity - 1)
         self.data = np.zeros(capacity, dtype = object)
         self.n_entries = 0
+    
+    def _clear(self):
+        self.tree = np.zeros(2 * self.capacity - 1)
+        self.data = np.zeros(self.capacity, dtype = object)
+        self.n_entries = 0
         
     def _propagate(self, idx : int, change:float):
         parent = (idx - 1) // 2

@@ -43,3 +43,6 @@ class ReplayBuffer(object):
         
         with open(save_path, 'rb') as f:
             self.memory = pickle.load(f)
+            
+    def clear(self):
+        self.memory.clear()

@@ -13,7 +13,7 @@ from tqdm.auto import tqdm
 from typing import Optional, List, Literal, Dict, Union
 from src.rl.buffer import Transition, ReplayBuffer
 from src.rl.PER import PER
-from src.rl.utility import InitGenerator
+from src.rl.utility import InitGenerator, initialize_weights
 from itertools import count
 from src.rl.env import NeuralEnv
 from src.rl.actions import smoothness_inducing_regularizer, add_noise_to_action
@@ -130,7 +130,10 @@ class GaussianPolicy(nn.Module):
         entropy = -log_probs.sum(dim=1, keepdim = True)
         
         return action, entropy, torch.tanh(mu)
-        
+    
+    def initialize(self):
+        self.apply(initialize_weights)
+            
 # Critic
 class QNetwork(nn.Module):
     def __init__(self, input_dim : int, seq_len : int, pred_len : int, mlp_dim : int, n_actions : int):
@@ -164,6 +167,9 @@ class TwinnedQNetwork(nn.Module):
         q2 = self.Q2(state, action)
         
         return q1, q2
+    
+    def initialize(self):
+        self.apply(initialize_weights)
 
 # update process for policy and q-network in SAC
 def update_policy(

@@ -92,7 +92,8 @@ class NeuralEnv(gym.Env):
         noise_mean_ctrl : float = 0,
         noise_std_ctrl : float = 1.0,
         noise_scale_0D : float = 1.0,
-        noise_scale_ctrl : float = 1.0
+        noise_scale_ctrl : float = 1.0,
+        gamma : float = 0.995
         ):
         
         super().__init__()
@@ -175,6 +176,9 @@ class NeuralEnv(gym.Env):
         
         self.noise_scale_0D = noise_scale_0D
         self.noise_scale_ctrl = noise_scale_ctrl
+        
+        # reward
+        self.gamma = gamma
         
     # for general policy improvement linear support
     def update_ls_weight(self, weights:List):

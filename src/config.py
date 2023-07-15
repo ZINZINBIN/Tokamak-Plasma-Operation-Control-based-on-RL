@@ -115,7 +115,7 @@ class Config():
             ]
         },
         "multi-objective":{
-            "state":['\\q95','\\betan','\\li','\\kappa', '\\tritop', '\\tribot', '\\rsurf','\\aminor'],
+            "state":['\\q95','\\betan','\\betap','\\li', '\\kappa', '\\tritop', '\\tribot', '\\rsurf','\\aminor'],
             "control":[
                 # NBI
                 '\\nb11_pnb',
@@ -225,11 +225,12 @@ class Config():
             }, 
             'shape-control' : {
                 "\\betan" : 3.0,
-                '\\kappa' : 2.0
+                '\\kappa' : 1.8
             }, 
             'multi-objective' : {
                 "\\betan" : 3.0,
-                '\\kappa' : 1.8
+                # '\\q95' : 4.8,
+                '\\kappa' : 1.8,
             }
         }
     }

@@ -131,9 +131,9 @@ if __name__ == "__main__":
     print("valid data : ", valid_data.__len__())
     print("test data : ", test_data.__len__())
 
-    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = args['num_workers'], shuffle = True, pin_memory = False)
-    valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = args['num_workers'], shuffle = True, pin_memory = False)
-    test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = args['num_workers'], shuffle = True, pin_memory = False)
+    train_loader = DataLoader(train_data, batch_size = batch_size, num_workers = args['num_workers'], shuffle = True, pin_memory = True)
+    valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers = args['num_workers'], shuffle = True, pin_memory = True)
+    test_loader = DataLoader(test_data, batch_size = batch_size, num_workers = args['num_workers'], shuffle = True, pin_memory = True)
     
     # data range
     ts_data = pd.concat([train_data.ts_data, valid_data.ts_data, test_data.ts_data], axis = 1)
@@ -238,6 +238,9 @@ if __name__ == "__main__":
     tensorboard_dir = os.path.join("./runs/", "tensorboard_{}".format(tag))
 
     loss_fn = torch.nn.MSELoss(reduction = 'mean')
+    
+    if os.path.exists(save_last_dir):
+        model.load_state_dict(torch.load(save_last_dir))
     
     print("=============== Training process ===============")
     train_loss, valid_loss = train(

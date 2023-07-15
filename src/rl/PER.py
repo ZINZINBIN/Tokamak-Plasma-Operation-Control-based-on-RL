@@ -87,3 +87,6 @@ class PER(object):
         
         with open(save_path, 'rb') as f:
             self.tree = pickle.load(f)
+            
+    def clear(self):
+        self.tree._clear()
