@@ -337,3 +337,9 @@ if __name__ == "__main__":
   
     print("weight support: ", weight_support)
     print("policy set: ", policy_set)
+    
+    result = pd.DataFrame({})
+    result['weight-support'] = weight_support
+    result['CCS'] = ccs
+    result['policy'] = policy_set
+    result.to_csv("./result/MORL-GPI-LS.csv")

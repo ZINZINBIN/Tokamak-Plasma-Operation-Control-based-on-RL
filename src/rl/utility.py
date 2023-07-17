@@ -176,6 +176,7 @@ def plot_virtual_operation(
     scaler_ctrl : Optional[Union[StandardScaler, MinMaxScaler, RobustScaler]]= None,
     tag : str = "",
     save_dir : str = "",
+    vis_cols : Optional[List] = None
     ):
     
     total_state = None
@@ -218,10 +219,21 @@ def plot_virtual_operation(
     
     if env.shape_predictor is not None:
         gs = GridSpec(nrows = len(total_cols), ncols = 3)
+        
+        if vis_cols is not None:
+            gs = GridSpec(nrows = len(vis_cols), ncols = 3)
+            
     else:
         gs = GridSpec(nrows = len(total_cols), ncols = 2)
+        
+        if vis_cols is not None:
+            gs = GridSpec(nrows = len(vis_cols), ncols = 2)
 
     for i, col in enumerate(total_cols):
+        
+        if vis_cols is not None:
+            if col not in vis_cols:
+                continue
         
         ax = fig.add_subplot(gs[i,0])
         hist = total_state[:,i]

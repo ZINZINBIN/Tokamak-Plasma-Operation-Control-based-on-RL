@@ -151,7 +151,8 @@ class Config():
         "GS-solver":{
             "state":['\\ipmhd', '\\q95','\\betap', '\li'],
             "control":['\PCPF1U', '\PCPF2U', '\PCPF3U', '\PCPF3L', '\PCPF4U','\PCPF4L', '\PCPF5U', '\PCPF5L', '\PCPF6U', '\PCPF6L', '\PCPF7U']
-        }
+        },
+        "visualization":['\\q95','\\betan','\\betap','\\li', '\\kappa']
     }
     
     # model configuration

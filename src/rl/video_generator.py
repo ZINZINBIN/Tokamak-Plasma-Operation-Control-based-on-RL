@@ -39,10 +39,15 @@ def generate_control_performance(
     fig = plt.figure(figsize = (14,9), facecolor="white")
     gs = GridSpec(nrows = len(cols_0D), ncols = 2)
     
+    if cols_plot is not None:
+        gs = GridSpec(nrows = len(cols_plot), ncols = 2)
+    
     # generate axis for plotting each column of data
     axes_0D = []
     
-    for idx in range(len(cols_0D)):
+    n_axes = len(cols_0D) if cols_plot is None else len(cols_plot)
+    
+    for idx in range(n_axes):
         ax = fig.add_subplot(gs[idx,0])
         axes_0D.append(ax)
         
@@ -68,6 +73,9 @@ def generate_control_performance(
     def _plot(idx : int, axes_0D, axes_0D_point, ax_flux):
         # plot the 0D states of plasma
         for j, (ax_ori, ax) in enumerate(zip(axes_0D, axes_0D_point)):
+            
+            if cols_plot is not None:
+                j = cols_0D.index(cols_plot[j])
             
             ax_ori.set_facecolor(plt.cm.Blues(0.2))
             ax.set_data(time_x[:idx], total_state[:idx,j])
@@ -158,6 +166,8 @@ def generate_control_performance(
                 r_contour = R.min() + (R.max() - R.min()) * b_contour[:,1] / R.shape[0]
                 z_contour = Z.min() + (Z.max() - Z.min()) * b_contour[:,0] / Z.shape[0]
                 ax_flux.plot(r_contour, z_contour, c = 'r', linewidth = 2) 
+                
+        fig.tight_layout()
   
     replay = lambda idx : _plot(idx, axes_0D, axes_0D_point, ax_flux)
       

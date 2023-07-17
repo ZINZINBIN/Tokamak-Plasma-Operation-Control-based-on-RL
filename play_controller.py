@@ -53,6 +53,7 @@ def parsing():
     parser.add_argument("--env_noise_mean_ctrl", type = float, default = 0)
     parser.add_argument("--env_noise_std_0D", type = float, default = 1.0)
     parser.add_argument("--env_noise_std_ctrl", type = float, default = 1.0)
+    parser.add_argument("--use_CAPS", type = bool, default=False)
     
     # predictor config
     parser.add_argument("--predictor_model", type = str, default = 'Transformer', choices=['Transformer', 'SCINet', 'NStransformer'])
@@ -252,6 +253,9 @@ if __name__ == "__main__":
     if args['use_clip_action']:
         env = ClippingActions(env)
         tag = "{}_clipping".format(tag)
+        
+    if args['use_CAPS']:
+        tag = "{}_CAPS".format(tag)
     
     # policy and critic network
     input_dim = len(cols_0D)
@@ -325,7 +329,8 @@ if __name__ == "__main__":
         scaler_0D,
         scaler_ctrl,
         tag,
-        save_dir
+        save_dir,
+        config.input_params['visualization']
     )
     
     # gif file generation
@@ -341,6 +346,7 @@ if __name__ == "__main__":
         args['dt'],
         12,
         env.seq_len, 
-        True
+        True,
+        config.input_params['visualization']
     )
      
