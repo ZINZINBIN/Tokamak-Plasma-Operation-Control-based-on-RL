@@ -26,6 +26,9 @@ def generate_control_performance(
     ):
     
     total_flux = env.flux_list
+    total_contour = env.contour_list
+    total_axis = env.axis_list
+    
     R = env.shape_predictor.R2D
     Z = env.shape_predictor.Z2D
     
@@ -121,6 +124,8 @@ def generate_control_performance(
         ax_flux.set_title('Poloidal flux ($\psi$)')
         
         if plot_boundary:
+            
+            '''
             r_axis, z_axis = total_opts[idx]
             xpts = total_xpts[idx]
             
@@ -166,6 +171,15 @@ def generate_control_performance(
                 r_contour = R.min() + (R.max() - R.min()) * b_contour[:,1] / R.shape[0]
                 z_contour = Z.min() + (Z.max() - Z.min()) * b_contour[:,0] / Z.shape[0]
                 ax_flux.plot(r_contour, z_contour, c = 'r', linewidth = 2) 
+            ''' 
+            
+            # new version : use contour regressor
+            axis = total_axis[idx]
+            ax_flux.plot(axis[0], axis[1], "o", c = "r", label = "magnetic axis", linewidth = 2)
+            ax_flux.legend(loc = 'upper right')
+            
+            contour = total_contour[idx]
+            ax_flux.plot(contour[:,0], contour[:,1], c = 'r', linewidth = 2)
                 
         fig.tight_layout()
   

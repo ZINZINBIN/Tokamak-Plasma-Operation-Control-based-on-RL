@@ -11,6 +11,7 @@ from src.rl.buffer import ReplayBuffer
 from src.rl.PER import PER
 from src.rl.actions import NormalizedActions, ClippingActions
 from src.config import Config
+from src.morl.utility import plot_pareto_front
 import torch
 import argparse, os
 import pandas as pd
@@ -26,7 +27,7 @@ def parsing():
     parser.add_argument("--save_dir", type = str, default = "./result")
     
     # gpu allocation
-    parser.add_argument("--gpu_num", type = int, default = 0)
+    parser.add_argument("--gpu_num", type = int, default = 1)
     
     # scenario for training
     parser.add_argument("--shot_random", type = bool, default = True)
@@ -40,18 +41,18 @@ def parsing():
     
     # training setup
     parser.add_argument("--batch_size", type = int, default = 128)
-    parser.add_argument("--num_episode", type = int, default = 128)  
+    parser.add_argument("--num_episode", type = int, default = 512)  
     parser.add_argument("--lr", type = float, default = 2e-4)
     parser.add_argument("--gamma", type = float, default = 0.995)
     parser.add_argument("--min_value", type = float, default = -10.0)
     parser.add_argument("--max_value", type = float, default = 10.0)
     parser.add_argument("--tau", type = float, default = 0.01)
     parser.add_argument("--verbose", type = int, default = 1)
-    parser.add_argument("--verbose_policy",type=int, default = 16)
+    parser.add_argument("--verbose_policy",type=int, default = 32)
     parser.add_argument("--use_CAPS", type = bool, default=False)
-    parser.add_argument("--lamda_temporal_smoothness", type = float, default = 1.0)
+    parser.add_argument("--lamda_temporal_smoothness", type = float, default = 4.0)
     parser.add_argument("--lamda_spatial_smoothness", type = float, default = 1.0)
-    parser.add_argument("--max_gpi_ls_iters", type = int, default = 32)
+    parser.add_argument("--max_gpi_ls_iters", type = int, default = 64)
     
     # environment setup
     parser.add_argument("--stochastic", type = bool, default = False)
@@ -343,3 +344,18 @@ if __name__ == "__main__":
     result['CCS'] = ccs
     result['policy'] = policy_set
     result.to_csv("./result/MORL-GPI-LS.csv")
+    
+    plot_pareto_front(
+        init_generator,
+        env,
+        policy_network,
+        policy_set,
+        weight_support,
+        ['\\betan', '\\kappa'],
+        list(config.control_config['target']["multi-objective"].keys()),
+        device,
+        "./result/SAC_MORL_GPI_LS_Pareto_frontier.png",
+        "./weights/SAC_shape-control_Transformer_best.pt",
+        8,
+        32
+    )

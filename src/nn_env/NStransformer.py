@@ -1,5 +1,15 @@
-'''
+''' 
+    Non-stationary Transformer (NeurIPS 2022)
+    
+    A novel Transformer architecture for covering the Non-stationary data with utilizing De-stationary Attention module
+    and Series stationarization. One of the severe issue related to the Transformer is Over-Stationarization. The vanilla 
+    attention module can not effectively capture the temporal features from the Non-stationary temporal data.
+    
+    In this code, we applied DS Attention module based Transformer model to simulate a virtual KSTAR environment.
+    We referred the example code and paper as given below. 
+    
     Reference
+    - Paper: Non-stationary Transformer (https://arxiv.org/abs/2205.14415)
     - code : https://github.com/thuml/Nonstationary_Transformers/blob/main/ns_models/ns_Transformer.py
     - Non-stationary transformer
 '''
@@ -83,12 +93,10 @@ class EncoderLayer(nn.Module):
     def forward(self, x : torch.Tensor, att_mask : torch.Tensor, tau : Optional[torch.Tensor]=None, delta : Optional[torch.Tensor] = None):
         x_n, attn = self.attention(x,x,x,att_mask,tau,delta)
         x = self.dropout(x_n) + x
-        x_branch= self.norm1(x)
-        out = self.dropout(self.activation(self.conv1(x_branch.transpose(-1,1))))
+        out = x = self.norm1(x)
+        out = self.dropout(self.activation(self.conv1(out.transpose(-1,1))))
         out = self.dropout(self.conv2(out).transpose(-1,1))
-    
-        out = self.norm2(out + x_branch)
-
+        out = self.norm2(out + x)
         return out, attn
 
 class Encoder(nn.Module):
@@ -106,6 +114,59 @@ class Encoder(nn.Module):
         if self.norm:
             x = self.norm(x)
         return x, attns
+    
+class DecoderLayer(nn.Module):
+    def __init__(self, self_attention, cross_attention, d_model, d_ff=None, dropout=0.1):
+        super(DecoderLayer, self).__init__()
+        d_ff = d_ff or 4 * d_model
+        self.self_attention = self_attention
+        self.cross_attention = cross_attention
+        self.conv1 = nn.Conv1d(in_channels=d_model, out_channels=d_ff, kernel_size=1)
+        self.conv2 = nn.Conv1d(in_channels=d_ff, out_channels=d_model, kernel_size=1)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(dropout)
+        self.activation = GELU()
+
+    def forward(self, x, cross, x_mask=None, cross_mask=None, tau=None, delta=None):
+
+        x = x + self.dropout(self.self_attention(
+            x, x, x,
+            attn_mask=x_mask,
+            tau=tau, delta=None
+        )[0])  
+        x = self.norm1(x)
+
+        x = x + self.dropout(self.cross_attention(
+            x, cross, cross,
+            attn_mask=cross_mask,
+            tau=tau, delta=delta
+        )[0])
+
+        y = x = self.norm2(x)
+        y = self.dropout(self.activation(self.conv1(y.transpose(-1, 1))))
+        y = self.dropout(self.conv2(y).transpose(-1, 1))
+
+        return self.norm3(x + y)
+
+class Decoder(nn.Module):
+    def __init__(self, layers, norm_layer=None, projection=None):
+        super(Decoder, self).__init__()
+        self.layers = nn.ModuleList(layers)
+        self.norm = norm_layer
+        self.projection = projection
+
+    def forward(self, x, cross, x_mask=None, cross_mask=None, tau=None, delta=None):
+        for layer in self.layers:
+            x = layer(x, cross, x_mask=x_mask, cross_mask=cross_mask, tau=tau, delta=delta)
+
+        if self.norm is not None:
+            x = self.norm(x)
+
+        if self.projection is not None:
+            x = self.projection(x)
+        return x
   
 # Projector : MLP to learn De-stationary factors
 class Projector(nn.Module):
@@ -142,13 +203,11 @@ class NStransformer(nn.Module):
         dropout : float = 0.1,      
         factor : float = 5.0,  
         input_0D_dim : int = 12,
-        input_0D_seq_len : int = 20,
         input_ctrl_dim : int = 14,
-        input_ctrl_seq_len : int = 24,
-        output_0D_pred_len : int = 4,
+        input_seq_len : int = 16,
+        output_pred_len : int = 4,
         output_0D_dim : int = 12,
-        feature_0D_dim : int = 128,
-        feature_ctrl_dim : int = 128,
+        feature_dim : int = 128,
         range_info : Optional[Dict] = None,
         noise_mean : float = 0,
         noise_std : float = 0.81,
@@ -159,23 +218,22 @@ class NStransformer(nn.Module):
         
         # input information
         self.input_0D_dim = input_0D_dim
-        self.input_0D_seq_len = input_0D_seq_len
+        self.input_seq_len = input_seq_len
         self.input_ctrl_dim = input_ctrl_dim
-        self.input_ctrl_seq_len = input_ctrl_seq_len
         
         # output information
-        self.output_0D_pred_len = output_0D_pred_len
+        self.output_pred_len = output_pred_len
         self.output_0D_dim = output_0D_dim
         
         # source mask
-        self.src_mask_0D = None
-        self.src_mask_ctrl = None
+        self.src_mask = None
+        self.src_dec_mask = None
+        self.tgt_dec_mask = None
         
         # transformer info
-        self.feature_0D_dim = feature_0D_dim
+        self.feature_dim = feature_dim
         self.n_layers = n_layers
         self.n_heads = n_heads
-        self.feature_ctrl_dim = feature_ctrl_dim
     
         # Noise added for robust performance
         self.noise = NoiseLayer(mean = noise_mean, std = noise_std)
@@ -186,66 +244,74 @@ class NStransformer(nn.Module):
         padding = (kernel_size - 1) // 2
         
         # 0D data encoder
-        self.encoder_input_0D = nn.Sequential(
-            nn.Conv1d(in_channels=input_0D_dim, out_channels=feature_0D_dim // 2, kernel_size= kernel_size, stride = 1, padding = padding),
-            nn.BatchNorm1d(feature_0D_dim//2),
+        self.encoder_input = nn.Sequential(
+            nn.Conv1d(in_channels=input_0D_dim + input_ctrl_dim, out_channels=feature_dim // 2, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_dim//2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=feature_0D_dim // 2, out_channels=feature_0D_dim, kernel_size= kernel_size, stride = 1, padding = padding),
-            nn.BatchNorm1d(feature_0D_dim),
+            nn.Conv1d(in_channels=feature_dim // 2, out_channels=feature_dim, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_dim),
             nn.ReLU()
         )
         
-        self.pos_0D = PositionalEncoding(d_model = feature_0D_dim, max_len = input_0D_seq_len)
+        self.enc_pos = PositionalEncoding(d_model = feature_dim, max_len = input_seq_len)
         
-        self.trans_enc_0D = Encoder(
+        self.trans_enc = Encoder(
             [   
                 EncoderLayer(
                     AttentionLayer(
                         DSAttention(True, factor, None, dropout, True),
-                        feature_0D_dim,
+                        feature_dim,
                         n_heads,
                         dim_feedforward
                     ),
-                    feature_0D_dim,
+                    feature_dim,
                     dim_feedforward,
                     dropout
                 ) for _ in range(n_layers)
             ],
-            norm_layer=nn.LayerNorm(feature_0D_dim)
+            norm_layer=nn.LayerNorm(feature_dim)
         )
 
-        # ctrl data encoder
-        self.encoder_input_ctrl = nn.Sequential(
-            nn.Conv1d(in_channels=input_ctrl_dim, out_channels=feature_ctrl_dim // 2, kernel_size= kernel_size, stride = 1, padding = padding),
-            nn.BatchNorm1d(feature_ctrl_dim//2),
+        # Tau and Delta : De-stationary Learner
+        self.tau_learner = Projector(input_0D_dim, input_seq_len, feature_dim, 1)
+        self.delta_learner = Projector(input_0D_dim, input_seq_len, feature_dim, input_seq_len)
+
+        # decoder
+        self.decoder_input = nn.Sequential(
+            nn.Conv1d(in_channels=input_ctrl_dim, out_channels=feature_dim // 2, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_dim//2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=feature_ctrl_dim // 2, out_channels=feature_ctrl_dim, kernel_size= kernel_size, stride = 1, padding = padding),
-            nn.BatchNorm1d(feature_ctrl_dim),
+            nn.Conv1d(in_channels=feature_dim // 2, out_channels=feature_dim, kernel_size= kernel_size, stride = 1, padding = padding),
+            nn.BatchNorm1d(feature_dim),
             nn.ReLU()
         )
         
-        self.pos_ctrl = PositionalEncoding(d_model = feature_ctrl_dim, max_len = input_ctrl_seq_len)
-        self.enc_ctrl = nn.TransformerEncoderLayer(
-            d_model = feature_ctrl_dim, 
-            nhead = n_heads, 
-            dropout = dropout,
-            dim_feedforward = dim_feedforward,
-            activation = GELU()
+        self.dec_pos = PositionalEncoding(d_model = feature_dim, max_len = input_seq_len)
+        
+        self.decoder = Decoder(
+            [
+                DecoderLayer(
+                    AttentionLayer(
+                        DSAttention(True, factor, None, dropout, False),
+                        feature_dim,
+                        n_heads,
+                        dim_feedforward
+                    ),
+                    AttentionLayer(
+                        DSAttention(False, factor, None, dropout, False),
+                        feature_dim,
+                        n_heads,
+                        dim_feedforward
+                    ),
+                    feature_dim,
+                    dim_feedforward,
+                    dropout
+                ) for _ in range(n_layers)
+            ],
+            norm_layer=nn.LayerNorm(feature_dim),
+            projection = nn.Linear(feature_dim, output_0D_dim)
         )
-        self.trans_enc_ctrl = nn.TransformerEncoder(self.enc_ctrl, num_layers=n_layers)
         
-        # Tau and Delta : De-stationary Learner
-        self.tau_learner = Projector(input_0D_dim, input_0D_seq_len, feature_0D_dim, 1)
-        self.delta_learner = Projector(input_0D_dim, input_0D_seq_len, feature_0D_dim, input_0D_seq_len)
-
-        # FC decoder
-        # sequence length reduction
-        self.lc_0D_seq = nn.Linear(input_0D_seq_len, output_0D_pred_len)
-        self.lc_ctrl_seq = nn.Linear(input_ctrl_seq_len, output_0D_pred_len)
-        
-        # dimension reduction
-        self.lc_feat= nn.Linear(feature_0D_dim + feature_ctrl_dim, output_0D_dim)
-         
         self.range_info = range_info
         
         if range_info:
@@ -255,22 +321,7 @@ class NStransformer(nn.Module):
             self.range_min = None
             self.range_max = None
             
-        # initialize
-        self.init_weights()
-    
-    def init_weights(self):
-        
-        initrange = 0.1    
-        self.lc_feat.bias.data.zero_()
-        self.lc_feat.weight.data.uniform_(-initrange, initrange)
-        
-        self.lc_0D_seq.bias.data.zero_()
-        self.lc_0D_seq.weight.data.uniform_(-initrange, initrange)
-        
-        self.lc_ctrl_seq.bias.data.zero_()
-        self.lc_ctrl_seq.weight.data.uniform_(-initrange, initrange)
-        
-    def forward(self, x_0D : torch.Tensor, x_ctrl : torch.Tensor):
+    def forward(self, x_0D : torch.Tensor, x_ctrl : torch.Tensor, target_0D : Optional[torch.Tensor] = None, target_ctrl : Optional[torch.Tensor] = None):
         
         b = x_0D.size()[0]
         x_0D_origin = x_0D.clone().detach()
@@ -283,69 +334,50 @@ class NStransformer(nn.Module):
 
         # add noise to robust performance
         x_0D = self.noise(x_0D)
-       
-        # path : 0D data
+        
+        # concat : (N, T, F1 + F2)
+        x = torch.concat([x_0D, x_ctrl], axis = 2)
+        
         # encoding : (N, T, F) -> (N, T, d_model)
-        x_0D = self.encoder_input_0D(x_0D.permute(0,2,1)).permute(0,2,1)
-        
+        x = self.encoder_input(x)
+ 
         # (T, N, d_model)
-        x_0D = x_0D.permute(1,0,2)
+        x = x.permute(1,0,2)
         
-        if self.src_mask_0D is None or self.src_mask_0D.size(0) != len(x_0D):
-            device = x_0D.device
-            mask = self._generate_square_subsequent_mask(len(x_0D)).to(device)
-            self.src_mask_0D = mask
+        if self.src_mask is None or self.src_mask.size(0) != len(x):
+            device = x.device
+            mask = self._generate_square_subsequent_mask(len(x)).to(device)
+            self.src_mask = mask
         
         # positional encoding for time axis : (T, N, d_model)
-        x_0D = self.pos_0D(x_0D)
+        x = self.enc_pos(x)
         
         # tau and delta for non-stationarity
         tau = self.tau_learner(x_0D_origin, stdev_0D).exp()
         delta = self.delta_learner(x_0D_origin, means_0D)
         
         # transformer encoding layer : (T, N, d_model) -> (N, T, d_model)
-        x_0D = x_0D.permute(1,0,2)
-        x_0D, _ = self.trans_enc_0D(x_0D, self.src_mask_0D.to(x_0D.device), tau, delta)
-        
-        # (N, T, d_model)
         # x_0D = x_0D.permute(1,0,2)
+        x, _ = self.trans_enc(x, self.src_mask.to(x.device), tau, delta)
         
-        # path : ctrl data
-        x_ctrl = self.encoder_input_ctrl(x_ctrl.permute(0,2,1)).permute(0,2,1)
+        # Decoder process
+        target_0D = self.noise(target_0D)
+        target = torch.concat([target_0D, target_ctrl], axis = 2)
+        x_dec = self.decoder_input(target)
+        x_dec = x_dec.permute(1,0,2)
         
-        # (T, N, d_model)
-        x_ctrl = x_ctrl.permute(1,0,2)
-        
-        if self.src_mask_ctrl is None or self.src_mask_ctrl.size(0) != len(x_ctrl):
-            device = x_ctrl.device
-            mask = self._generate_square_subsequent_mask(len(x_ctrl)).to(device)
-            self.src_mask_ctrl = mask
+        if self.tgt_dec_mask is None or self.tgt_dec_mask.size(0) != len(x_dec):
+            device = x_dec.device
+            mask = self._generate_square_subsequent_mask(len(x_dec)).to(device)
+            self.tgt_dec_mask = mask
         
         # positional encoding for time axis : (T, N, d_model)
-        x_ctrl = self.pos_ctrl(x_ctrl)
-        
-        # transformer encoding layer : (T, N, d_model)
-        x_ctrl = self.trans_enc_ctrl(x_ctrl, self.src_mask_ctrl.to(x_ctrl.device))
-        
-        # (N, T, d_model)
-        x_ctrl = x_ctrl.permute(1,0,2)
-        
-        # (N, d_model, T_)
-        x_0D = self.lc_0D_seq(x_0D.permute(0,2,1))
-        
-        # (N, T_, d_model)
-        x_0D = x_0D.permute(0,2,1)
-        
-        # (N, d_model, T_)
-        x_ctrl = self.lc_ctrl_seq(x_ctrl.permute(0,2,1))
-        
-        # (N, T_, d_model)
-        x_ctrl = x_ctrl.permute(0,2,1)
-        
-        x = torch.concat([x_0D, x_ctrl], axis = 2)
+        x_dec = self.dec_pos(x_dec)
         
         # dim reduction
-        x = self.lc_feat(x)
+        x = self.decoder(x_dec, x, x_mask = self.tgt_dec_mask, cross_mask = None, tau = tau, delta = delta)
+        
+        x = x * stdev_0D + means_0D
         
         # clamping : output range
         x = torch.clamp(x, min = -10.0, max = 10.0)
@@ -361,7 +393,7 @@ class NStransformer(nn.Module):
         return mask
 
     def summary(self):
-        sample_0D = torch.zeros((1, self.input_0D_seq_len, self.input_0D_dim))
-        sample_ctrl = torch.zeros((1, self.input_ctrl_seq_len, self.input_ctrl_dim))
+        sample_0D = torch.zeros((1, self.input_seq_len, self.input_0D_dim))
+        sample_ctrl = torch.zeros((1, self.input_seq_len, self.input_ctrl_dim))
         summary(self, sample_0D, sample_ctrl, batch_size = 1, show_input = True, print_summary=True)
         

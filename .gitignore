@@ -12,3 +12,6 @@ runs/*
 
 # ignore .out
 *.out
+
+# NS transformer : not complete
+src/nn_env/NStransformer.py

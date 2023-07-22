@@ -792,7 +792,7 @@ class eqdsk:
 
 		r_up = self.rzbdy[big_ind,0]
 		r_low = self.rzbdy[small_ind,0]
-			
+		
 		self.elong2 = (self.rzbdy[big_ind,1]-self.rzbdy[small_ind,1])/a * 0.5
 		self.triu = (R-r_up)/a
 		self.tril = (R-r_low)/a

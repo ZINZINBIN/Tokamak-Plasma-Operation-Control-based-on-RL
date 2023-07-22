@@ -19,7 +19,7 @@ from gym import utils
 from gym.utils import seeding
 from src.rl.rewards import RewardSender
 from typing import Dict, Optional, Literal, List
-from src.GSsolver.model import PINN
+from src.GSsolver.model import PINN, ContourRegressor
 from src.config import Config
 import logging
 
@@ -83,6 +83,7 @@ class NeuralEnv(gym.Env):
         limit_ctrl_rate : bool = False,
         rate_range_info : Optional[Dict] = None,
         shape_predictor : Optional[PINN] = None,
+        contour_regressor : Optional[ContourRegressor] = None,
         objective : Literal['params-control', 'shape-control', 'multi-objective'] = 'params-control',
         scaler_0D = None,
         scaler_ctrl = None,
@@ -115,9 +116,21 @@ class NeuralEnv(gym.Env):
         else:
             self.shape_predictor = None
             self.flux = None
-            
+        
+        if contour_regressor is not None:
+            self.contour_regressor = contour_regressor.to(device)
+            self.contour_regressor.eval()
+            self.contour = None
+            self.axis = None
+        else:
+            self.shape_predictor = None
+            self.contour = None
+            self.axis = None
+          
         # shape information
         self.flux_list = []
+        self.contour_list = []
+        self.axis_list = []
         self.xpts = []
         self.opts = []
         
@@ -287,6 +300,18 @@ class NeuralEnv(gym.Env):
             
             self.opts.append((r_axis, z_axis))
             self.xpts.append(xpts)
+        
+        if self.contour_regressor is not None:
+            next_action = action[:,-1,:]
+            pinn_state, pinn_action = self.convert_PINN_input(next_state, next_action)
+            flux = self.shape_predictor(pinn_state.to(self.device), pinn_action.to(self.device))
+            contour = self.contour_regressor.compute_rzbdys(flux, pinn_state.to(self.device), pinn_action.to(self.device))
+            self.contour = contour
+            self.contour_list.append(contour)
+            
+            cen, rad = self.contour_regressor(flux, pinn_state.to(self.device), pinn_action.to(self.device))
+            self.axis_list.append(cen.detach().cpu().squeeze(0).numpy())
+            self.axis = cen.detach().cpu().squeeze(0).numpy()
         
         # update done
         self.check_terminal_state(next_state)

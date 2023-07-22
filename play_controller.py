@@ -9,7 +9,7 @@ from src.rl.sac import GaussianPolicy, evaluate_sac
 from src.rl.ddpg import Actor, evaluate_ddpg
 from src.rl.actions import NormalizedActions, ClippingActions
 from src.rl.video_generator import generate_control_performance
-from src.GSsolver.model import PINN
+from src.GSsolver.model import PINN, ContourRegressor
 from src.config import Config
 import torch
 import numpy as np
@@ -58,6 +58,7 @@ def parsing():
     # predictor config
     parser.add_argument("--predictor_model", type = str, default = 'Transformer', choices=['Transformer', 'SCINet', 'NStransformer'])
     parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq_10_pred_1_interval_3_params-control_Robust_best.pt")
+    parser.add_argument("--contour_regressor_weight", type = str, default = "./weights/contour_best.pt")
     parser.add_argument("--PINN_weight", type = str, default = "./weights/PINN_best.pt")
     parser.add_argument("--use_DF", type = bool, default = False)
     parser.add_argument('--scale_DF', type = float, default = 0.1)
@@ -193,7 +194,7 @@ if __name__ == "__main__":
     # info for output range
     range_info = get_range_of_output(df, cols_control)
     
-    if args['objective'] == 'shape-control':
+    if args['objective'] == 'shape-control' or args['objective'] == 'multi-objective':
         sample_data = np.load("./src/GSsolver/toy_dataset/g028911_004060.npz")
         R = sample_data['R']
         Z = sample_data['Z']
@@ -218,8 +219,14 @@ if __name__ == "__main__":
         shape_predictor.eval()
         shape_predictor.to(device)
         shape_predictor.load_state_dict(torch.load(args['PINN_weight']))
+        
+        contour_regressor = ContourRegressor(65, 65, config.model_config['GS-solver']['params_dim'], config.model_config['GS-solver']['n_PFCs'])
+        contour_regressor.eval()
+        contour_regressor.to(device)
+        contour_regressor.load_state_dict(torch.load(args['contour_regressor_weight']))
     else:
         shape_predictor = None
+        contour_regressor = None
 
     # environment
     if args['stochastic']:
@@ -236,6 +243,7 @@ if __name__ == "__main__":
         dt = args['dt'], 
         cols_control=cols_control,
         shape_predictor = shape_predictor,
+        contour_regressor=contour_regressor,
         objective = args['objective'],
         scaler_0D = scaler_0D,
         scaler_ctrl = scaler_ctrl,

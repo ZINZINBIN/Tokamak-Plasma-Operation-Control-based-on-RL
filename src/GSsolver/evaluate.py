@@ -2,14 +2,15 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from typing import Optional, Dict
-from src.GSsolver.model import AbstractPINN
+from src.GSsolver.model import PINN, ContourRegressor
 from src.GSsolver.loss import SSIM
 
 def evaluate(
     dataloader : DataLoader,
-    model : AbstractPINN,
+    model : PINN,
     device : str = "cpu",
-    weights : Optional[Dict] = None
+    weights : Optional[Dict] = None,
+    contour_regressor : Optional[ContourRegressor] = None,
     ):
     
     model.eval()
@@ -23,9 +24,20 @@ def evaluate(
     ssim_loss = 0
     total_size = 0
     
+    if contour_regressor is not None:
+        contour_regressor.eval()
+        contour_regressor.to(device)
+    
     # loss defined
     loss_mse = nn.MSELoss(reduction = 'sum')
     loss_ssim = SSIM()
+    
+    if contour_regressor is not None:
+        test_contour_loss = 0
+        contour_loss_mse = nn.MSELoss(reduction='sum')
+    else:
+        test_contour_loss = None
+        contour_loss_mse = None
     
     # weights
     if weights is None:
@@ -53,6 +65,17 @@ def evaluate(
         test_loss += loss.detach().cpu().item()
         ssim_loss += loss_ssim(output.detach(), target.to(device)).detach().cpu().item()
         total_size += target.size()[0]
+        
+        
+        if contour_regressor is not None:
+            with torch.no_grad():
+                output = contour_regressor(target.to(device))
+                contour_loss = contour_loss_mse(output, data['rzbdys'].to(device))
+            
+            if not torch.isnan(contour_loss):
+                test_contour_loss += contour_loss.detach().cpu().item()
+            else:
+                pass
     
     if total_size > 0:
         test_loss /= total_size
@@ -62,6 +85,9 @@ def evaluate(
         
         ip_constraint_loss /= total_size
         betap_constraint_loss /= total_size
+        
+        if test_contour_loss is not None:
+            test_contour_loss /= total_size
     
     else:
         test_loss = 0
@@ -72,6 +98,9 @@ def evaluate(
         ip_constraint_loss = 0
         betap_constraint_loss = 0
         
-    print("Evaluation | test loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} |SSIM :{:.3f}".format(test_loss, gs_loss, ip_constraint_loss, betap_constraint_loss, ssim_loss))
+    if test_contour_loss is not None:
+        print("Evaluation | test loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} |SSIM :{:.3f} | contour loss:{:.3f}".format(test_loss, gs_loss, ip_constraint_loss, betap_constraint_loss, ssim_loss, test_contour_loss))
+    else:
+        print("Evaluation | test loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} |SSIM :{:.3f}".format(test_loss, gs_loss, ip_constraint_loss, betap_constraint_loss, ssim_loss))
         
-    return test_loss, gs_loss, constraint_loss, ssim_loss
+    return test_loss, gs_loss, constraint_loss, ssim_loss, test_contour_loss

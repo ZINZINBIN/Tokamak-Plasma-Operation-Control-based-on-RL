@@ -59,7 +59,7 @@ def preparing_0D_dataset(
     from sklearn.model_selection import train_test_split
     
     shot_train, shot_test = train_test_split(shot_list, test_size = 0.2, random_state = 42)
-    shot_train, shot_valid = train_test_split(shot_train, test_size = 0.2, random_state = 42)
+    shot_train, shot_valid = train_test_split(shot_train, test_size = 0.25, random_state = 42)
     
     df_train = df[df.shot.isin(shot_train)]
     df_valid = df[df.shot.isin(shot_valid)]

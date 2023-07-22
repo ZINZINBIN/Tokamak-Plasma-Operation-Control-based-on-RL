@@ -288,6 +288,9 @@ def plot_virtual_operation(
         psi = env.flux.squeeze(0).detach().cpu().numpy()
         ax.contourf(R,Z, psi, levels = 32)
         
+        ax = draw_KSTAR_limiter(ax)
+        
+        '''
         try:
             (r_axis, z_axis), _ = env.shape_predictor.find_axis(env.flux, eps = 1e-3)
             xpts = env.shape_predictor.find_xpoints(env.flux, eps = 1e-3)
@@ -297,12 +300,10 @@ def plot_virtual_operation(
             z_axis = None
             xpts = []
         
-        ax = draw_KSTAR_limiter(ax)
-        
         if r_axis is not None:
             ax.plot(r_axis, z_axis, "o", c = "r", label = "magnetic axis", linewidth = 2)
             ax.legend(loc = 'upper right')
-        
+            
         if len(xpts) > 0:
             r_xpts = []
             z_xpts = []
@@ -316,10 +317,11 @@ def plot_virtual_operation(
             r_xpts = np.array(r_xpts)
             z_xpts = np.array(z_xpts)
             psi_xpts = np.array(psi_xpts)
-            psi_b = np.min(psi_xpts)
+            # psi_b = np.min(psi_xpts)
+            psi_b = 0.08
         
         else:
-            psi_b = 0.1
+            psi_b = 0.08
             
         try:
             if len(xpts) > 0:
@@ -342,7 +344,18 @@ def plot_virtual_operation(
             r_contour = R.min() + (R.max() - R.min()) * b_contour[:,1] / R.shape[0]
             z_contour = Z.min() + (Z.max() - Z.min()) * b_contour[:,0] / Z.shape[0]
             ax.plot(r_contour, z_contour, c = 'r', linewidth = 2)
-     
+        '''
+            
+        # new version : use contour regressor
+        if env.contour_regressor is not None:
+            
+            contour = env.contour
+            ax.plot(contour[:,0], contour[:,1], c = 'r', linewidth = 2)
+            
+            axis = env.axis
+            ax.plot(axis[0], axis[1], "o", c = "r", label = "magnetic axis", linewidth = 2)
+            ax.legend(loc = 'upper right')
+        
         norm = colors.Normalize(vmin = psi.min(), vmax = psi.max())
         map = cm.ScalarMappable(norm=norm)
         fig.colorbar(map)

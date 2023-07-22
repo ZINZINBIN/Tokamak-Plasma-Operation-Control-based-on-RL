@@ -8,7 +8,7 @@ from src.rl.utility import InitGenerator, preparing_initial_dataset, get_range_o
 from src.rl.sac import GaussianPolicy, evaluate_sac
 from src.rl.actions import NormalizedActions, ClippingActions
 from src.rl.video_generator import generate_control_performance
-from src.GSsolver.model import PINN
+from src.GSsolver.model import PINN, ContourRegressor
 from src.config import Config
 import torch
 import numpy as np
@@ -20,17 +20,15 @@ warnings.filterwarnings(action = 'ignore')
 
 # temporal info
 policy_set = [
-    './weights/MORL/GPI-LS_multi-objective_Transformer_CAPS_betan-kappa_10_best.pt', 
-    './weights/MORL/GPI-LS_multi-objective_Transformer_CAPS_betan-kappa_47_best.pt', 
-    './weights/MORL/GPI-LS_multi-objective_Transformer_CAPS_betan-kappa_56_best.pt', 
-    './weights/MORL/GPI-LS_multi-objective_Transformer_CAPS_betan-kappa_60_best.pt'
+    './weights/MORL/GPI-LS_multi-objective_Transformer_17_best.pt', 
+    './weights/MORL/GPI-LS_multi-objective_Transformer_33_best.pt', 
+    './weights/MORL/GPI-LS_multi-objective_Transformer_61_best.pt'
 ]
 
 weight_support = [
-    [0.2486, 0.7514], 
-    [0.2670, 0.7330], 
+    [1., 0.], 
     [0., 1.], 
-    [0., 1.]
+    [0.5959, 0.4041]
 ]
 
 def parsing():
@@ -68,6 +66,7 @@ def parsing():
     # predictor config
     parser.add_argument("--predictor_model", type = str, default = 'Transformer', choices=['Transformer', 'SCINet', 'NStransformer'])
     parser.add_argument("--predictor_weight", type = str, default = "./weights/Transformer_seq_10_pred_1_interval_3_multi-objective_Robust_best.pt")
+    parser.add_argument("--contour_regressor_weight", type = str, default = "./weights/contour_best.pt")
     parser.add_argument("--PINN_weight", type = str, default = "./weights/PINN_best.pt")
     parser.add_argument("--use_DF", type = bool, default = False)
     parser.add_argument('--scale_DF', type = float, default = 0.1)
@@ -227,6 +226,11 @@ if __name__ == "__main__":
     shape_predictor.eval()
     shape_predictor.to(device)
     shape_predictor.load_state_dict(torch.load(args['PINN_weight']))
+    
+    contour_regressor = ContourRegressor(65, 65, config.model_config['GS-solver']['params_dim'], config.model_config['GS-solver']['n_PFCs'])
+    contour_regressor.eval()
+    contour_regressor.to(device)
+    contour_regressor.load_state_dict(torch.load(args['contour_regressor_weight']))
 
     # environment
     if args['stochastic']:
@@ -243,6 +247,7 @@ if __name__ == "__main__":
         dt = args['dt'], 
         cols_control=cols_control,
         shape_predictor = shape_predictor,
+        contour_regressor = contour_regressor,
         objective = 'multi-objective',
         scaler_0D = scaler_0D,
         scaler_ctrl = scaler_ctrl,
@@ -287,7 +292,7 @@ if __name__ == "__main__":
     policy_network.to(device)
     
     # load best model
-    save_best = policy_set[0]
+    save_best = policy_set[1]
     policy_network.load_state_dict(torch.load(save_best))
 
     state_list, action_list, reward_list = evaluate_sac(

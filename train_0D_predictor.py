@@ -5,7 +5,7 @@ import pandas as pd
 from src.config import Config
 from src.nn_env.utility import preparing_0D_dataset, get_range_of_output
 from src.nn_env.dataset import DatasetFor0D, DatasetForMultiStepPred
-from src.nn_env.transformer import Transformer
+from src.nn_env.transformer import Transformer, Transformer_
 from src.nn_env.NStransformer import NStransformer
 from src.nn_env.SCINet import SimpleSCINet
 from src.nn_env.train import train
@@ -40,6 +40,7 @@ def parsing():
     parser.add_argument("--verbose", type = int, default = 8)
     parser.add_argument("--max_norm_grad", type = float, default = 1.0)
     parser.add_argument("--multi_step_validation", type = bool, default = False)
+    parser.add_argument("--evaluate_multi_step", type = bool, default = False)
     
     # test shot num
     parser.add_argument("--test_shot_num", type = int, default = 30399)
@@ -124,7 +125,10 @@ if __name__ == "__main__":
     if args['multi_step_validation']:
         test_data = DatasetForMultiStepPred(ts_test.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, seq_len * 4, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
     else:
-        test_data = DatasetFor0D(ts_test.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+        if args['evaluate_multi_step']:
+            test_data = DatasetForMultiStepPred(ts_test.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, seq_len * 4, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
+        else:
+            test_data = DatasetFor0D(ts_test.copy(deep = True), df_disruption, seq_len, seq_len + pred_len, pred_len, cols_0D, cols_control, interval, scaler_0D, scaler_ctrl)
     
     print("=============== Dataset information ===============")
     print("train data : ", train_data.__len__())
@@ -141,6 +145,9 @@ if __name__ == "__main__":
     
     # transformer model argument
     if args['model'] == 'Transformer':
+        
+        '''
+        # version 1 : 2 independent head
         model = Transformer(
             n_layers = config.model_config[args['model']]['n_layers'], 
             n_heads = config.model_config[args['model']]['n_heads'], 
@@ -155,6 +162,26 @@ if __name__ == "__main__":
             output_0D_dim = len(cols_0D),
             feature_0D_dim = config.model_config[args['model']]['feature_0D_dim'],
             feature_ctrl_dim = config.model_config[args['model']]['feature_ctrl_dim'],
+            range_info = range_info,
+            noise_mean = config.model_config[args['model']]['noise_mean'],
+            noise_std = config.model_config[args['model']]['noise_std'],
+            kernel_size = config.model_config[args['model']]['kernel_size']
+        )
+        '''
+        # version 2 : simplifed model
+        model = Transformer_(
+            n_layers = config.model_config[args['model']]['n_layers'], 
+            n_heads = config.model_config[args['model']]['n_heads'], 
+            dim_feedforward = config.model_config[args['model']]['dim_feedforward'], 
+            dropout = config.model_config[args['model']]['dropout'],        
+            RIN = config.model_config[args['model']]['RIN'],
+            input_0D_dim = len(cols_0D),
+            input_0D_seq_len = seq_len,
+            input_ctrl_dim = len(cols_control),
+            input_ctrl_seq_len = seq_len + pred_len,
+            output_0D_pred_len = pred_len,
+            output_0D_dim = len(cols_0D),
+            feature_dim = config.model_config[args['model']]['feature_0D_dim'],
             range_info = range_info,
             noise_mean = config.model_config[args['model']]['noise_mean'],
             noise_std = config.model_config[args['model']]['noise_std'],
@@ -243,6 +270,7 @@ if __name__ == "__main__":
         model.load_state_dict(torch.load(save_last_dir))
     
     print("=============== Training process ===============")
+    print("Process : {}".format(tag))
     train_loss, valid_loss = train(
         train_loader,
         valid_loader,
@@ -275,13 +303,24 @@ if __name__ == "__main__":
             device,
         )
     else:
-        test_loss, mse, rmse, mae, r2 = evaluate(
-            test_loader,
-            model,
-            optimizer,
-            loss_fn,
-            device,
-        )
+        if args['evaluate_multi_step']:
+            test_loss, mse, rmse, mae, r2 = evaluate_multi_step(
+                test_loader,
+                model,
+                optimizer,
+                loss_fn,
+                device,
+            )
+            
+        else:
+            test_loss, mse, rmse, mae, r2 = evaluate(
+                test_loader,
+                model,
+                optimizer,
+                loss_fn,
+                device,
+            )
+            
     
     print("=============== Auto-regressive prediction ===============")
     shot_num = args['test_shot_num']

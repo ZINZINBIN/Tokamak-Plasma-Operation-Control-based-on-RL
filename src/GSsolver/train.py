@@ -6,7 +6,7 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import os, pdb
 from typing import Dict, Optional, List, Literal, Union
-from src.GSsolver.model import AbstractPINN
+from src.GSsolver.model import AbstractPINN, ContourRegressor
 from src.GSsolver.loss import SSIM
 from src.GSsolver.util import plot_PINN_profile
 
@@ -17,7 +17,10 @@ def train_per_epoch(
     scheduler : Optional[torch.optim.lr_scheduler._LRScheduler],
     device : str = "cpu",
     max_norm_grad : Optional[float] = 1.0,
-    weights : Optional[Dict] = None
+    weights : Optional[Dict] = None,
+    contour_regressor : Optional[ContourRegressor] = None,
+    contour_optimizer : Optional[torch.optim.Optimizer] = None,
+    contour_scheduler : Optional[torch.optim.lr_scheduler._LRScheduler] = None,
     ):
     
     model.train()
@@ -35,6 +38,15 @@ def train_per_epoch(
     # loss defined
     loss_mse = nn.MSELoss(reduction = 'sum')
     loss_ssim = SSIM()
+    
+    if contour_regressor is not None:
+        contour_regressor.train()
+        contour_regressor.to(device)
+        contour_loss_mse = nn.MSELoss(reduction = 'sum')
+        train_loss_contour = 0
+    else:
+        contour_loss_mse = None
+        train_loss_contour = None
     
     # weights
     if weights is None:
@@ -85,8 +97,23 @@ def train_per_epoch(
             model.lamda.clamp_(0.1, 10)
             model.beta.clamp_(0.1, 0.9)
             
+        if contour_regressor is not None:
+            contour_optimizer.zero_grad()
+            output = contour_regressor(target.to(device))
+            contour_loss = contour_loss_mse(output, data['rzbdys'].to(device))
+            
+            if not torch.isnan(contour_loss):
+                contour_loss.backward()
+                contour_optimizer.step()
+                train_loss_contour += contour_loss.detach().cpu().item()
+            else:
+                pass
+            
     if scheduler:
         scheduler.step()
+        
+    if contour_scheduler:
+        contour_scheduler.step()
         
     if total_size > 0:
         train_loss /= total_size
@@ -97,6 +124,9 @@ def train_per_epoch(
         ip_constraint_loss /= total_size
         betap_constraint_loss /= total_size
         
+        if train_loss_contour is not None:
+            train_loss_contour /= total_size
+        
     else:
         train_loss = 0
         gs_loss = 0
@@ -106,7 +136,7 @@ def train_per_epoch(
         ip_constraint_loss = 0
         betap_constraint_loss = 0
     
-    return train_loss, gs_loss, constraint_loss, ip_constraint_loss, betap_constraint_loss, ssim_loss
+    return train_loss, gs_loss, constraint_loss, ip_constraint_loss, betap_constraint_loss, ssim_loss, train_loss_contour
         
         
 def valid_per_epoch(
@@ -115,7 +145,10 @@ def valid_per_epoch(
     optimizer : torch.optim.Optimizer,
     scheduler : Optional[torch.optim.lr_scheduler._LRScheduler],
     device : str = "cpu",
-    weights : Optional[Dict] = None
+    weights : Optional[Dict] = None,
+    contour_regressor : Optional[ContourRegressor] = None,
+    contour_optimizer : Optional[torch.optim.Optimizer] = None,
+    contour_scheduler : Optional[torch.optim.lr_scheduler._LRScheduler] = None,
     ):
     
     model.eval()
@@ -140,6 +173,15 @@ def valid_per_epoch(
             "GS_loss" : 1.0,
             "Constraint_loss" : 1.0 
         }
+        
+    if contour_regressor is not None:
+        contour_regressor.eval()
+        contour_regressor.to(device)
+        contour_loss_mse = nn.MSELoss(reduction = 'sum')
+        valid_loss_contour = 0
+    else:
+        contour_loss_mse = None
+        valid_loss_contour = None
     
     for batch_idx, (data, target) in enumerate(dataloader):
         
@@ -163,6 +205,17 @@ def valid_per_epoch(
         valid_loss += loss.detach().cpu().item()
         ssim_loss += loss_ssim(output.detach(), target.to(device)).detach().cpu().item()
         total_size += target.size()[0]
+        
+        if contour_regressor is not None:
+            with torch.no_grad():
+                contour_optimizer.zero_grad()
+                output = contour_regressor(target.to(device))
+                contour_loss = contour_loss_mse(output, data['rzbdys'].to(device))
+            
+            if not torch.isnan(contour_loss):
+                valid_loss_contour += contour_loss.detach().cpu().item()
+            else:
+                pass
     
     if total_size > 0:
         valid_loss /= total_size
@@ -172,6 +225,10 @@ def valid_per_epoch(
         
         ip_constraint_loss /= total_size
         betap_constraint_loss /= total_size
+        
+        if valid_loss_contour is not None:
+            valid_loss_contour /= total_size
+    
     else:
         valid_loss = 0
         gs_loss = 0
@@ -181,7 +238,7 @@ def valid_per_epoch(
         ip_constraint_loss = 0
         betap_constraint_loss = 0
     
-    return valid_loss, gs_loss, constraint_loss, ip_constraint_loss, betap_constraint_loss, ssim_loss
+    return valid_loss, gs_loss, constraint_loss, ip_constraint_loss, betap_constraint_loss, ssim_loss, valid_loss_contour
         
 def train(
     train_loader : DataLoader, 
@@ -197,49 +254,76 @@ def train(
     max_norm_grad : Optional[float] = None,
     weights : Optional[Dict] = None,
     test_for_check : Optional[DataLoader] = None,
+    contour_regressor : Optional[ContourRegressor] = None,
+    contour_optimizer : Optional[torch.optim.Optimizer] = None,
+    contour_scheduler : Optional[torch.optim.lr_scheduler._LRScheduler] = None,
+    contour_save_best_dir : Optional[str] = "./weights/best.pt",
+    contour_save_last_dir : Optional[str] = "./weights/last.pt",
     ):
-    
+
     train_loss_list = []
     valid_loss_list = []
     
     best_epoch = 0
     best_loss = np.inf
     
+    if contour_regressor is not None:
+        best_loss_contour = np.inf
+    else:
+        best_loss_contour = None
+    
     for epoch in tqdm(range(num_epoch), desc = 'training process'):
         
-        train_loss, train_gs_loss, train_constraint_loss, train_ip_constraint_loss, train_betap_constraint_loss, train_ssim_loss = train_per_epoch(
+        train_loss, train_gs_loss, train_constraint_loss, train_ip_constraint_loss, train_betap_constraint_loss, train_ssim_loss, train_loss_contour = train_per_epoch(
             train_loader,
             model,
             optimizer,
             scheduler,
             device,
             max_norm_grad,
-            weights
+            weights,
+            contour_regressor,
+            contour_optimizer,
+            contour_scheduler
         )
         
-        valid_loss, valid_gs_loss, valid_constraint_loss, valid_ip_constraint_loss, valid_betap_constraint_loss, valid_ssim_loss = valid_per_epoch(
+        valid_loss, valid_gs_loss, valid_constraint_loss, valid_ip_constraint_loss, valid_betap_constraint_loss, valid_ssim_loss, valid_loss_contour = valid_per_epoch(
             valid_loader,
             model,
             optimizer,
             scheduler,
             device,
-            weights
+            weights,
+            contour_regressor,
+            contour_optimizer,
+            contour_scheduler
         )
         
         train_loss_list.append(train_loss)
         valid_loss_list.append(valid_loss)
         
         if epoch % verbose == 0:
-            print("Epoch:{} | train loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} | SSIM:{:.3f}".format(epoch+1, train_loss, train_gs_loss, train_ip_constraint_loss, train_betap_constraint_loss,train_ssim_loss))
-            print("Epoch:{} | valid loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} | SSIM:{:.3f}".format(epoch+1, valid_loss, valid_gs_loss, valid_ip_constraint_loss, valid_betap_constraint_loss, valid_ssim_loss))
+            if train_loss_contour is not None:
+                print("Epoch:{} | train loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} | SSIM:{:.3f} | contour loss:{:.3f}".format(epoch+1, train_loss, train_gs_loss, train_ip_constraint_loss, train_betap_constraint_loss,train_ssim_loss,train_loss_contour))
+                print("Epoch:{} | valid loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} | SSIM:{:.3f} | contour loss:{:.3f}".format(epoch+1, valid_loss, valid_gs_loss, valid_ip_constraint_loss, valid_betap_constraint_loss,valid_ssim_loss,valid_loss_contour))
+            else:
+                print("Epoch:{} | train loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} | SSIM:{:.3f}".format(epoch+1, train_loss, train_gs_loss, train_ip_constraint_loss, train_betap_constraint_loss,train_ssim_loss))
+                print("Epoch:{} | valid loss:{:.3f} | GS loss:{:.3f} | Constraint(Ip):{:.3f} | Constraint(betap):{:.3f} | SSIM:{:.3f}".format(epoch+1, valid_loss, valid_gs_loss, valid_ip_constraint_loss, valid_betap_constraint_loss, valid_ssim_loss))
         
-        torch.save(model.state_dict(), save_last_dir)    
-        
+        torch.save(model.state_dict(), save_last_dir)   
+
         if valid_loss < best_loss:
             best_epoch = epoch
             best_loss = valid_loss
             torch.save(model.state_dict(), save_best_dir)
+            
+        if contour_regressor is not None:
+            torch.save(contour_regressor.state_dict(), contour_save_last_dir)
+            
+            if valid_loss_contour < best_loss_contour:
+                best_loss_contour = valid_loss_contour
+                torch.save(contour_regressor.state_dict(), contour_save_best_dir)
     
-    print("Training process finished, best loss : {:.3f}, best epoch : {}".format(best_loss, best_epoch))    
+    print("Training process finished, best loss:{:.3f}, best epoch : {}".format(best_loss, best_epoch))    
     
     return train_loss_list, valid_loss_list

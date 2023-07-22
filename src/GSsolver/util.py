@@ -5,9 +5,9 @@ from scipy.interpolate import RectBivariateSpline, interp2d
 from matplotlib import colors, cm
 from matplotlib.pyplot import Axes
 from src.GSsolver.KSTAR_setup import limiter_shape
-from src.GSsolver.model import AbstractPINN
+from src.GSsolver.model import AbstractPINN, ContourRegressor
 from matplotlib.gridspec import GridSpec
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 
 # draw KSTAR limiter (External boundary)
 def draw_KSTAR_limiter(ax:Axes):
@@ -34,8 +34,35 @@ def modify_resolution(psi : np.ndarray, R : np.ndarray, Z : np.ndarray, n_grid :
     PSI = interp_fn(R_new,Z_new).reshape(n_grid, n_grid)
     return RR,ZZ,PSI
 
+def compute_shape_parameters(rzbdy : Union[torch.Tensor, np.ndarray]):
+    
+    big_ind = 1
+    small_ind = 1
+
+    len2 = len(rzbdy)
+
+    for i in range(len2-1):
+
+        if (rzbdy[i,1] > rzbdy[big_ind,1]):
+            big_ind = i
+
+        if (rzbdy[i,1] < rzbdy[small_ind,1]):
+            small_ind = i
+
+    a = (max(rzbdy[:,0]) - min(rzbdy[:,0])) * 0.5
+    R = (max(rzbdy[:,0]) + min(rzbdy[:,0])) * 0.5
+
+    r_up = rzbdy[big_ind,0]
+    r_low = rzbdy[small_ind,0]
+    
+    k = (rzbdy[big_ind,1]-rzbdy[small_ind,1])/a * 0.5
+    triu = (R-r_up)/a
+    tril = (R-r_low)/a
+    
+    return k, triu, tril, R, a
+
 # plot predicted flux, 2D current profile and 1D profile of pressure, current and safety-factor
-def plot_PINN_profile(model : AbstractPINN, data : Dict, device : str = "cpu", save_dir : str = "./result/", tag : str = "PINN"):
+def plot_PINN_profile(model : AbstractPINN, data : Dict, device : str = "cpu", save_dir : str = "./result/", tag : str = "PINN", contour_regressor : Optional[ContourRegressor] = None):
     
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
@@ -111,6 +138,11 @@ def plot_PINN_profile(model : AbstractPINN, data : Dict, device : str = "cpu", s
     ax.set_ylabel("Z[m]")
     ax.set_title('Poloidal flux ($\psi$)')
     
+    if contour_regressor is not None:
+        contour_regressor.eval()
+        bndy = contour_regressor.compute_rzbdys(psi_p, x_param.to(device), x_PFCs.to(device))
+        ax.plot(bndy[:,0], bndy[:,1], c = 'r', linewidth = 1.5)
+    
     ax = fig.add_subplot(gs[:,1])
     ax.contourf(R,Z,Jphi, levels = 32)
     ax = draw_KSTAR_limiter(ax)
@@ -158,6 +190,11 @@ def plot_PINN_profile(model : AbstractPINN, data : Dict, device : str = "cpu", s
     ax[0].set_ylabel("Z[m]")
     ax[0].set_title('psi-norm')
     
+    if contour_regressor is not None:
+        contour_regressor.eval()
+        bndy = contour_regressor.compute_rzbdys(psi_p, x_param.to(device), x_PFCs.to(device))
+        ax[0].plot(bndy[:,0], bndy[:,1], c = 'r', linewidth = 1.5)
+    
     norm = colors.Normalize(vmin = psi_p_norm.min(), vmax = psi_p_norm.max())
     map = cm.ScalarMappable(norm=norm)
     fig.colorbar(map, ax = ax[0])
@@ -178,7 +215,7 @@ def plot_PINN_profile(model : AbstractPINN, data : Dict, device : str = "cpu", s
     
     
 # plot the PINN result and real magnetic flux
-def plot_PINN_comparison(model : AbstractPINN, psi:Union[torch.Tensor, np.ndarray], data : Dict, device : str = "cpu", save_dir : str = "./result/", tag : str = "PINN"):
+def plot_PINN_comparison(model : AbstractPINN, psi:Union[torch.Tensor, np.ndarray], data : Dict, device : str = "cpu", save_dir : str = "./result/", tag : str = "PINN", contour_regressor : Optional[ContourRegressor] = None):
     
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
@@ -197,13 +234,20 @@ def plot_PINN_comparison(model : AbstractPINN, psi:Union[torch.Tensor, np.ndarra
     
     if type(psi) == torch.Tensor:
         psi = psi.detach().cpu().numpy()
-    
+        
     fig, ax = plt.subplots(2,1,figsize=(4,8))
     ax[0].contourf(R,Z, psi, levels = 32)
     ax[0] = draw_KSTAR_limiter(ax[0])
+    bndy = data['rzbdys'].cpu().squeeze(0).numpy()
+    ax[0].plot(bndy[:,0], bndy[:,1], c = 'r', linewidth = 1.5)
     
     ax[1].contourf(R,Z,psi_p_np, levels = 32)
     ax[1] = draw_KSTAR_limiter(ax[1])
+    
+    if contour_regressor is not None:
+        contour_regressor.eval()
+        bndy = contour_regressor.compute_rzbdys(psi_p, x_param.to(device), x_PFCs.to(device))
+        ax[1].plot(bndy[:,0], bndy[:,1], c = 'r', linewidth = 1.5)
     
     ax[0].set_xlabel("R[m]")
     ax[0].set_ylabel("Z[m]")

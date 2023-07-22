@@ -42,69 +42,10 @@ from src.rl.utility import InitGenerator
 from itertools import count
 from src.rl.env import NeuralEnv
 from src.rl.actions import smoothness_inducing_regularizer, add_noise_to_action
-from src.morl.utility import random_weights
+from src.morl.utility import random_weights, policy_evaluation
 
 # for solving the vertex enumerate problem
 import cdd
-
-def policy_evaluation(
-    init_generator:InitGenerator,
-    env : NeuralEnv, 
-    policy_network:GaussianPolicy, 
-    weight : List,
-    num_episode : int,
-    T_MAX : int,
-    device : str,
-    ):
-    
-    mean_vec_return = []
-    env.reward_sender.update_target_weight(weight)
-    policy_network.eval()
-    policy_network.to(device)
-    
-    for i_episode in range(num_episode):
-        
-        # update new initial state and action
-        init_state, init_action = init_generator.get_state()
-        env.update_init_state(init_state, init_action)
-        
-        # reset ou noise and current state from env
-        state = env.reset()
-        
-        reward_list = []
-        gamma = 1.0
-
-        for t in range(T_MAX):
-            
-            # compute action
-            policy_network.eval()
-            action, _, _ = policy_network.sample(state.to(device))
-            action = action.detach().cpu()
-                        
-            state, _, done, _ = env.step(action)
-            vec_reward = env.reward_sender.compute_vectorized_reward(state)
-
-            reward_list.append(vec_reward.detach() * gamma)
-            
-            gamma *= env.gamma
-            
-            if not done:
-                next_state = env.get_state()
-            else:
-                next_state = None
-
-            # update state
-            state = next_state
-            
-            if done or t > T_MAX:
-                break
-        
-        reward = torch.stack(reward_list).mean(axis = 0).view(-1,)
-        mean_vec_return.append(reward)
-    
-    mean_vec_return = torch.mean(torch.stack(mean_vec_return), dim = 0)
-    
-    return mean_vec_return
 
 def compute_corner_weights(ccs : List, num_objectives : int):
     corner_weights = []
@@ -294,7 +235,7 @@ def train_new_policy(
     verbose : int = 8,
     ):
     
-    T_MAX = 64
+    T_MAX = 50
 
     if device is None:
         device = "cpu"
@@ -483,7 +424,7 @@ def train_sac_linear_support(
          
         # find the optimal policy and value newtork with given initial weight
         print("="*20, " New policy with updated weight ({:03d}/{:03d})".format(gpi_ls_iter+1, max_gpi_ls_iters), "="*20)
-        print("Next weight : ", w_next)
+        print("Updated weight vector: ", w_next)
         
         _, _ = train_new_policy(
             env,
@@ -514,7 +455,7 @@ def train_sac_linear_support(
             verbose_policy
         )
         
-        value = policy_evaluation(init_generator, env, policy_network, w_next, 4, 64, device)
+        value = policy_evaluation(init_generator, env, policy_network, w_next, 4, 32, device)
         
         # add new policy and value vector with removing the dominated value vector set
         add_solution(value, w_next,visited_weights, weight_support, ccs, save_best, policy_set)
@@ -531,6 +472,7 @@ def train_sac_linear_support(
                 key = env.reward_sender.targets_cols[i]
                 wi = w_next[i]
                 print("Target features:{:10} | Target value:{:.2f} | Reward:{:.2f} | Weight:{:.2f}".format(key,target_value,value[i],wi))
+                print("# of queue: {}".format(len(queue)))
             print("="*80)
                
     print("Generalized Policy Improvement Linear Support : SAC training process done..!")
