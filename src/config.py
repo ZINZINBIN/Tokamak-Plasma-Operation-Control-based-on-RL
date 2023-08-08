@@ -150,9 +150,17 @@ class Config():
         },
         "GS-solver":{
             "state":['\\ipmhd', '\\q95','\\betap', '\li'],
-            "control":['\PCPF1U', '\PCPF2U', '\PCPF3U', '\PCPF3L', '\PCPF4U','\PCPF4L', '\PCPF5U', '\PCPF5L', '\PCPF6U', '\PCPF6L', '\PCPF7U']
+            "control":['\PCPF1U', '\PCPF2U', '\PCPF3U', '\PCPF3L', '\PCPF4U','\PCPF4L', '\PCPF5U', '\PCPF5L', '\PCPF6U', '\PCPF6L', '\PCPF7U'],
         },
-        "visualization":['\\q95','\\betan','\\betap','\\li', '\\kappa']
+        "GS-solver-params-control":{
+            "state":['\\ipmhd', '\\q95','\\betap', '\li'],
+            "control":['\\kappa', '\\tritop', '\\tribot', '\\rsurf','\\aminor'],
+        },
+        "visualization":{
+            "params-control":['\\q95','\\betan','\\betap','\\li'],
+            "shape-control":['\\q95','\\betan','\\betap','\\li', '\\kappa'],
+            "multi-objective":['\\q95','\\betan','\\betap','\\li', '\\kappa']
+        }   
     }
     
     # model configuration
@@ -209,6 +217,20 @@ class Config():
             "ny" : 65,
             "hidden_dim" : 128,
             "params_dim" : 4,
+        },
+        "GS-solver-params-control":{
+            "n_PFCs" : 5,
+            "alpha_m" : 2,
+            "alpha_n" : 1,
+            "beta_m" : 2,
+            "beta_n" : 1,
+            "beta" : 0.102,
+            "lamda" : 0.1,
+            "Rc" : 1.8,
+            "nx" : 65,
+            "ny" : 65,
+            "hidden_dim" : 128,
+            "params_dim" : 4,
         }
     }
     
@@ -222,16 +244,16 @@ class Config():
         },
         "target":{
             'params-control' : {
-                "\\betan" : 3.0
+                "\\betan" : 2.5
             }, 
             'shape-control' : {
-                "\\betan" : 3.0,
-                '\\kappa' : 1.8
+                "\\betan" : 2.5,
+                '\\kappa' : 1.7
             }, 
             'multi-objective' : {
-                "\\betan" : 3.0,
-                # '\\q95' : 4.8,
-                '\\kappa' : 1.8,
+                "\\betan" : 2.5,
+                # '\\kappa' : 1.7,
+                '\\q95' : 5.2
             }
         }
     }

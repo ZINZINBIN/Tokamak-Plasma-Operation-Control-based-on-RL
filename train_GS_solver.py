@@ -23,6 +23,9 @@ def parsing():
     parser.add_argument("--use_contour_regressor", type = bool, default = True)
     parser.add_argument("--contour_regressor_weight", type = str, default = "./weights/contour_best.pt")
     
+    # objective : params control vs shape control
+    parser.add_argument("--objective", type = str, default = "shape-control", choices = ['params-control', 'shape-control'])
+    
     # gpu allocation
     parser.add_argument("--gpu_num", type = int, default = 0)
     
@@ -31,7 +34,7 @@ def parsing():
     parser.add_argument("--num_epoch", type = int, default = 1024)  
     parser.add_argument("--lr", type = float, default = 1e-2)
     parser.add_argument("--max_norm_grad", type = float, default = 1.0)
-    parser.add_argument("--verbose", type = int, default = 1)
+    parser.add_argument("--verbose", type = int, default = 32)
     
     # scheduler
     parser.add_argument("--step_size", type = int, default = 16)
@@ -52,8 +55,6 @@ def parsing():
     
     # model setup
     parser.add_argument("--hidden_dim", type = int, default = 128)
-    parser.add_argument("--params_dim", type = int, default = 4)
-    parser.add_argument("--n_PFCs", type = int, default = 11)
  
     # loss weight
     parser.add_argument("--GS_loss", type = float, default = 1.0)
@@ -85,8 +86,14 @@ if __name__ == "__main__":
     
     config = Config()
     
-    cols_0D = config.input_params['GS-solver']['state']
-    cols_PFC = config.input_params['GS-solver']['control']
+    if args['objective'] == 'params-control':
+        cols_0D = config.input_params['GS-solver-params-control']['state']
+        cols_PFC = config.input_params['GS-solver-params-control']['control']
+
+        args['tag'] = "{}_params-control".format(args['tag'])
+    else:
+        cols_0D = config.input_params['GS-solver']['state']
+        cols_PFC = config.input_params['GS-solver']['control']
     
     df = pd.read_csv("./dataset/KSTAR_rl_GS_solver.csv")
     df_train, df_valid = train_test_split(df, test_size = 0.4, random_state=40)
@@ -132,8 +139,8 @@ if __name__ == "__main__":
     beta = args['beta']
     Rc = args['Rc']
     
-    params_dim = args['params_dim']
-    n_PFCs = args['n_PFCs']
+    params_dim = len(cols_0D)
+    n_PFCs = len(cols_PFC)
     hidden_dim = args['hidden_dim']
     
     # model load
@@ -183,8 +190,8 @@ if __name__ == "__main__":
         contour_regressor=None, # contour_regressor,
         contour_optimizer=None, # contour_optimizer,
         contour_scheduler=None, # contour_scheduler,
-        contour_save_best_dir="./weights/{}-contour_best.pt".format(args['tag']),
-        contour_save_last_dir="./weights/{}-contour_last.pt".format(args['tag'])
+        contour_save_best_dir=None,
+        contour_save_last_dir=None
     )
     
     model.eval()

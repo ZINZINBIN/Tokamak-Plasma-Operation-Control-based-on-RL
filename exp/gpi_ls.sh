@@ -1,0 +1,1 @@
+python3 train_mo_controller.py --gpu_num 3 --seed 40

@@ -123,7 +123,7 @@ class NeuralEnv(gym.Env):
             self.contour = None
             self.axis = None
         else:
-            self.shape_predictor = None
+            self.contour_regressor = None
             self.contour = None
             self.axis = None
           
@@ -371,8 +371,12 @@ class NeuralEnv(gym.Env):
         
         state_dict, action_dict = Tensor2Dict(state_cols, control_cols, state, action)
         
-        PINN_state_cols = config.input_params['GS-solver']['state']
-        PINN_control_cols = config.input_params['GS-solver']['control']
+        if self.objective =='params-control':
+            PINN_state_cols = config.input_params['GS-solver-params-control']['state']
+            PINN_control_cols = config.input_params['GS-solver-params-control']['control']
+        else:
+            PINN_state_cols = config.input_params['GS-solver']['state']
+            PINN_control_cols = config.input_params['GS-solver']['control']
         
         PINN_state = []
         PINN_control = []

@@ -66,7 +66,7 @@ class CNNencoder(nn.Module):
         )
     def forward(self, x : torch.Tensor):
         return self.encoder(x)
-
+'''
 class Transformer(nn.Module):
     def __init__(
         self, 
@@ -289,8 +289,8 @@ class Transformer(nn.Module):
         sample_0D = torch.zeros((1, self.input_0D_seq_len, self.input_0D_dim))
         sample_ctrl = torch.zeros((1, self.input_ctrl_seq_len, self.input_ctrl_dim))
         summary(self, sample_0D, sample_ctrl, batch_size = 1, show_input = True, print_summary=True)
-        
-class Transformer_(nn.Module):
+'''     
+class Transformer(nn.Module):
     def __init__(
         self, 
         n_layers : int = 2, 
@@ -311,7 +311,7 @@ class Transformer_(nn.Module):
         kernel_size : int = 3,
         ):
         
-        super(Transformer_, self).__init__()
+        super(Transformer, self).__init__()
         
         # input information
         self.input_0D_dim = input_0D_dim

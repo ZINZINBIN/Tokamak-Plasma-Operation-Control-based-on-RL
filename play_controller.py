@@ -120,14 +120,13 @@ if __name__ == "__main__":
             input_ctrl_seq_len = seq_len + pred_len,
             output_0D_pred_len = pred_len,
             output_0D_dim = len(cols_0D),
-            feature_0D_dim = config.model_config[args['predictor_model']]['feature_0D_dim'],
-            feature_ctrl_dim = config.model_config[args['predictor_model']]['feature_ctrl_dim'],
+            feature_dim = config.model_config[args['predictor_model']]['feature_0D_dim'],
             noise_mean = config.model_config[args['predictor_model']]['noise_mean'],
             noise_std = config.model_config[args['predictor_model']]['noise_std'],
             kernel_size = config.model_config[args['predictor_model']]['kernel_size']
         )
         
-    elif args['predictor_model'] == 'SCINet':
+    elif args['predictor_model'] == 'NStransformer':
         model = NStransformer(
             n_layers = config.model_config[args['predictor_model']]['n_layers'], 
             n_heads = config.model_config[args['predictor_model']]['n_heads'], 
@@ -146,7 +145,7 @@ if __name__ == "__main__":
             kernel_size = config.model_config[args['predictor_model']]['kernel_size']
         )
         
-    elif args['predictor_model'] == 'NStransformer':
+    elif args['predictor_model'] == 'SCINet':
         model = SimpleSCINet(
             output_len = pred_len,
             input_len = seq_len,
@@ -225,9 +224,36 @@ if __name__ == "__main__":
         contour_regressor.to(device)
         contour_regressor.load_state_dict(torch.load(args['contour_regressor_weight']))
     else:
-        shape_predictor = None
-        contour_regressor = None
-
+        sample_data = np.load("./src/GSsolver/toy_dataset/g028911_004060.npz")
+        R = sample_data['R']
+        Z = sample_data['Z']
+        
+        shape_predictor = PINN(
+            R = R,
+            Z = Z,
+            Rc = config.model_config['GS-solver-params-control']['Rc'],
+            params_dim = config.model_config['GS-solver-params-control']['params_dim'],
+            n_PFCs = config.model_config['GS-solver-params-control']['n_PFCs'],
+            hidden_dim = config.model_config['GS-solver-params-control']['hidden_dim'],
+            alpha_m = config.model_config['GS-solver-params-control']['alpha_m'],
+            alpha_n = config.model_config['GS-solver-params-control']['alpha_n'],
+            beta_m = config.model_config['GS-solver-params-control']['beta_m'],
+            beta_n = config.model_config['GS-solver-params-control']['beta_n'],
+            lamda = config.model_config['GS-solver-params-control']['lamda'],
+            beta = config.model_config['GS-solver-params-control']['beta'],
+            nx = config.model_config['GS-solver-params-control']['nx'],
+            ny= config.model_config['GS-solver-params-control']['ny']
+        )
+        
+        shape_predictor.eval()
+        shape_predictor.to(device)
+        shape_predictor.load_state_dict(torch.load(args['PINN_weight']))
+        
+        contour_regressor = ContourRegressor(65, 65, config.model_config['GS-solver-params-control']['params_dim'], config.model_config['GS-solver-params-control']['n_PFCs'])
+        contour_regressor.eval()
+        contour_regressor.to(device)
+        contour_regressor.load_state_dict(torch.load(args['contour_regressor_weight']))
+        
     # environment
     if args['stochastic']:
         tag = "{}_stochastic".format(tag)
@@ -338,7 +364,7 @@ if __name__ == "__main__":
         scaler_ctrl,
         tag,
         save_dir,
-        config.input_params['visualization']
+        config.input_params['visualization'][args['objective']]
     )
     
     # gif file generation
@@ -355,6 +381,6 @@ if __name__ == "__main__":
         12,
         env.seq_len, 
         True,
-        config.input_params['visualization']
+        config.input_params['visualization'][args['objective']]
     )
      

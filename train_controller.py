@@ -52,7 +52,7 @@ def parsing():
     parser.add_argument("--tau", type = float, default = 0.01)
     parser.add_argument("--verbose", type = int, default = 4)
     parser.add_argument("--use_CAPS", type = bool, default=False)
-    parser.add_argument("--lamda_temporal_smoothness", type = float, default = 1.0)
+    parser.add_argument("--lamda_temporal_smoothness", type = float, default = 4.0)
     parser.add_argument("--lamda_spatial_smoothness", type = float, default = 1.0)
     
     # environment setup
@@ -137,8 +137,7 @@ if __name__ == "__main__":
             input_ctrl_seq_len = seq_len + pred_len,
             output_0D_pred_len = pred_len,
             output_0D_dim = len(cols_0D),
-            feature_0D_dim = config.model_config[args['predictor_model']]['feature_0D_dim'],
-            feature_ctrl_dim = config.model_config[args['predictor_model']]['feature_ctrl_dim'],
+            feature_dim = config.model_config[args['predictor_model']]['feature_0D_dim'],
             noise_mean = config.model_config[args['predictor_model']]['noise_mean'],
             noise_std = config.model_config[args['predictor_model']]['noise_std'],
             kernel_size = config.model_config[args['predictor_model']]['kernel_size']

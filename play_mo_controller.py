@@ -128,8 +128,7 @@ if __name__ == "__main__":
             input_ctrl_seq_len = seq_len + pred_len,
             output_0D_pred_len = pred_len,
             output_0D_dim = len(cols_0D),
-            feature_0D_dim = config.model_config[args['predictor_model']]['feature_0D_dim'],
-            feature_ctrl_dim = config.model_config[args['predictor_model']]['feature_ctrl_dim'],
+            feature_dim = config.model_config[args['predictor_model']]['feature_0D_dim'],
             noise_mean = config.model_config[args['predictor_model']]['noise_mean'],
             noise_std = config.model_config[args['predictor_model']]['noise_std'],
             kernel_size = config.model_config[args['predictor_model']]['kernel_size']

@@ -385,6 +385,7 @@ def train_sac_linear_support(
     max_gpi_ls_iters : int = 32,
     num_objectives : int = 2,
     tag : str = "",
+    seed : int = 42,
     ):
     
     if not os.path.exists(save_dir):
@@ -396,13 +397,13 @@ def train_sac_linear_support(
     ccs = []
     queue = []
     
-    def _init_weights(dim: int, is_random : bool = True):
+    def _init_weights(dim: int, is_random : bool = True, seed : int = 42):
         if is_random:
-            return list(random_weights(dim, n = 4, seed = 42))
+            return list(random_weights(dim, n = 8, seed = seed))
         else:
             return list(torch.eye(dim, dtype=torch.float32))
     
-    for w in _init_weights(num_objectives):
+    for w in _init_weights(num_objectives, True, seed):
         queue.append((float("inf"), w))
     
     for gpi_ls_iter in tqdm(range(max_gpi_ls_iters)):

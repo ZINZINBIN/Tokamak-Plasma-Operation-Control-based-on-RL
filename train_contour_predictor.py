@@ -19,16 +19,15 @@ def parsing():
     # gpu allocation
     parser.add_argument("--gpu_num", type = int, default = 0)
     
+    # objective : params control vs shape control
+    parser.add_argument("--objective", type = str, default = "shape-control", choices = ['params-control', 'shape-control'])
+    
     # training setup
     parser.add_argument("--batch_size", type = int, default = 128)
     parser.add_argument("--num_epoch", type = int, default = 256)  
     parser.add_argument("--lr", type = float, default = 1e-3)
     parser.add_argument("--max_norm_grad", type = float, default = 1.0)
     parser.add_argument("--verbose", type = int, default = 4)
-    
-    # model setup
-    parser.add_argument("--params_dim", type = int, default = 4)
-    parser.add_argument("--n_PFCs", type = int, default = 11)
     
     # scheduler
     parser.add_argument("--step_size", type = int, default = 16)
@@ -64,8 +63,14 @@ if __name__ == "__main__":
     
     config = Config()
     
-    cols_0D = config.input_params['GS-solver']['state']
-    cols_PFC = config.input_params['GS-solver']['control']
+    if args['objective'] == 'params-control':
+        cols_0D = config.input_params['GS-solver-params-control']['state']
+        cols_PFC = config.input_params['GS-solver-params-control']['control']
+
+        args['tag'] = "{}_params-control".format(args['tag'])
+    else:
+        cols_0D = config.input_params['GS-solver']['state']
+        cols_PFC = config.input_params['GS-solver']['control']
     
     df = pd.read_csv("./dataset/KSTAR_rl_GS_solver.csv")
     df_train, df_valid = train_test_split(df, test_size = 0.4, random_state=40)
@@ -86,8 +91,8 @@ if __name__ == "__main__":
     valid_loader = DataLoader(valid_data, batch_size = batch_size, num_workers=4, pin_memory=True, drop_last=True, shuffle=True)
     test_loader = DataLoader(test_data, batch_size = batch_size, num_workers=4, pin_memory=True, drop_last=True, shuffle=True)
     
-    params_dim = args['params_dim']
-    n_PFCs = args['n_PFCs']
+    params_dim = len(cols_0D)
+    n_PFCs = len(cols_PFC)
     
     contour_regressor = ContourRegressor(args['nx'], args['ny'], params_dim, n_PFCs, 1.0, 2.5, -1.5, 1.5)
     contour_regressor.to(device)

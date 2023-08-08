@@ -25,6 +25,7 @@ def parsing():
     # tag and result directory
     parser.add_argument("--tag", type = str, default = "")
     parser.add_argument("--save_dir", type = str, default = "./result")
+    parser.add_argument("--seed", type = int, default = 42)
     
     # gpu allocation
     parser.add_argument("--gpu_num", type = int, default = 1)
@@ -139,8 +140,7 @@ if __name__ == "__main__":
             input_ctrl_seq_len = seq_len + pred_len,
             output_0D_pred_len = pred_len,
             output_0D_dim = len(cols_0D),
-            feature_0D_dim = config.model_config[args['predictor_model']]['feature_0D_dim'],
-            feature_ctrl_dim = config.model_config[args['predictor_model']]['feature_ctrl_dim'],
+            feature_dim = config.model_config[args['predictor_model']]['feature_0D_dim'],
             noise_mean = config.model_config[args['predictor_model']]['noise_mean'],
             noise_std = config.model_config[args['predictor_model']]['noise_std'],
             kernel_size = config.model_config[args['predictor_model']]['kernel_size']
@@ -190,6 +190,9 @@ if __name__ == "__main__":
     if args['use_DF']:
         model = DFwrapper(model, args['scale_DF'])
         tag = "{}_DF".format(tag)
+        
+    # seed
+    tag = "{}_seed_{}".format(tag, args['seed'])
 
     model.to(device)
     model.load_state_dict(torch.load(args['predictor_weight']))
@@ -298,6 +301,8 @@ if __name__ == "__main__":
     
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
+        
+    print("Process : {}".format(tag))
     
     weight_support, ccs, policy_set = train_sac_linear_support(
         env,
@@ -329,7 +334,8 @@ if __name__ == "__main__":
         lamda_spatial_smoothness,
         args['max_gpi_ls_iters'],
         num_objective,
-        tag
+        tag,
+        args['seed']
     )
     
     print("# of weights for Pareto-optimal : ", len(weight_support))
@@ -343,7 +349,7 @@ if __name__ == "__main__":
     result['weight-support'] = weight_support
     result['CCS'] = ccs
     result['policy'] = policy_set
-    result.to_csv("./result/MORL-GPI-LS.csv")
+    result.to_csv("./result/MORL-GPI-LS_{}.csv".format(tag))
     
     plot_pareto_front(
         init_generator,
@@ -354,7 +360,7 @@ if __name__ == "__main__":
         ['\\betan', '\\kappa'],
         list(config.control_config['target']["multi-objective"].keys()),
         device,
-        "./result/SAC_MORL_GPI_LS_Pareto_frontier.png",
+        "./result/MORL_GPI_LS_Pareto_frontier_{}.png".format(tag),
         "./weights/SAC_shape-control_Transformer_best.pt",
         8,
         32

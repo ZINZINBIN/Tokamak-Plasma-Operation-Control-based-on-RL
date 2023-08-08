@@ -5,7 +5,7 @@ import pandas as pd
 from src.config import Config
 from src.nn_env.utility import preparing_0D_dataset, get_range_of_output
 from src.nn_env.dataset import DatasetFor0D, DatasetForMultiStepPred
-from src.nn_env.transformer import Transformer, Transformer_
+from src.nn_env.transformer import Transformer
 from src.nn_env.NStransformer import NStransformer
 from src.nn_env.SCINet import SimpleSCINet
 from src.nn_env.train import train
@@ -145,31 +145,7 @@ if __name__ == "__main__":
     
     # transformer model argument
     if args['model'] == 'Transformer':
-        
-        '''
-        # version 1 : 2 independent head
         model = Transformer(
-            n_layers = config.model_config[args['model']]['n_layers'], 
-            n_heads = config.model_config[args['model']]['n_heads'], 
-            dim_feedforward = config.model_config[args['model']]['dim_feedforward'], 
-            dropout = config.model_config[args['model']]['dropout'],        
-            RIN = config.model_config[args['model']]['RIN'],
-            input_0D_dim = len(cols_0D),
-            input_0D_seq_len = seq_len,
-            input_ctrl_dim = len(cols_control),
-            input_ctrl_seq_len = seq_len + pred_len,
-            output_0D_pred_len = pred_len,
-            output_0D_dim = len(cols_0D),
-            feature_0D_dim = config.model_config[args['model']]['feature_0D_dim'],
-            feature_ctrl_dim = config.model_config[args['model']]['feature_ctrl_dim'],
-            range_info = range_info,
-            noise_mean = config.model_config[args['model']]['noise_mean'],
-            noise_std = config.model_config[args['model']]['noise_std'],
-            kernel_size = config.model_config[args['model']]['kernel_size']
-        )
-        '''
-        # version 2 : simplifed model
-        model = Transformer_(
             n_layers = config.model_config[args['model']]['n_layers'], 
             n_heads = config.model_config[args['model']]['n_heads'], 
             dim_feedforward = config.model_config[args['model']]['dim_feedforward'], 
@@ -267,7 +243,8 @@ if __name__ == "__main__":
     loss_fn = torch.nn.MSELoss(reduction = 'mean')
     
     if os.path.exists(save_last_dir):
-        model.load_state_dict(torch.load(save_last_dir))
+        pass
+        # model.load_state_dict(torch.load(save_last_dir))
     
     print("=============== Training process ===============")
     print("Process : {}".format(tag))
