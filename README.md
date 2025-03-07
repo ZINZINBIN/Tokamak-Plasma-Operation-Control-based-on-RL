@@ -143,14 +143,13 @@ Jinsu Kim (2023). **Tokamak-Plasma-Operation-Control-based-on-RL**. GitHub.
 
 #### 📚 BibTeX:
 ```bibtex
-@software{Kim_Bayesian_Deep_Learning_2024,
+@software{Kim_Data-driven_Tokamak_Plasma_2023,
 author = {Kim, Jinsu},
-doi = {https://doi.org/10.1088/1361-6587/ad48b7},
 license = {MIT},
-month = may,
-title = {{Bayesian Deep Learning based Disruption Prediction Model}},
-url = {https://github.com/ZINZINBIN/Bayesian-Disruption-Prediction},
+month = aug,
+title = {{Data-driven Tokamak Plasma Simulator and RL Controller Code}},
+url = {https://github.com/ZINZINBIN/Tokamak-Plasma-Operation-Control-based-on-RL},
 version = {1.0.0},
-year = {2024}
+year = {2023}
 }
 ```
