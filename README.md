@@ -1,4 +1,6 @@
 # Plasma Shape Control under the equilibrium of GS equation via Deep Reinforcement Learning
+<a href = "https://zinzinbin.github.io/files/Poster-Plasma-Control-RL.pdf" target = "_blank">[Poster: Tokamak Plasma Operation Control using Multi-Objective Reinforcement Learning in KSTAR]</a>
+
 ## Introduction
 <p>
 This is github repository for research on Tokamak plasma operation control based on deep reinforcement learning. We aim to control more than two targets with sustaining stable operation. In this research, we implement OpenAI gym based environment which contains neural networks that predict the state of the tokamak plasma, indicating that we can use GPU based computations for estimating the tokamak plasma profiles. 
