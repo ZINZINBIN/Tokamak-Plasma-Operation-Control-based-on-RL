@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite our article and repository."
+authors:
+  - family-names: "Kim"
+    given-names: "Jinsu"
+    orcid: "https://orcid.org/0009-0000-2610-4551"
+title: "Data-driven Tokamak Plasma Simulator and RL Controller Code"
+version: "1.0.0"
+doi: ""
+url: "https://github.com/ZINZINBIN/Tokamak-Plasma-Operation-Control-based-on-RL"
+date-released: "2023-08-23"
+license: "MIT"

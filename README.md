@@ -129,3 +129,28 @@ And we play SAC algorithm with initial condition for KSTAR shot # 21747. We can 
 - Feedforward beta control in the KSTAR tokamak by deep reinforcement learning, Jaemin Seo et al : https://iopscience.iop.org/article/10.1088/1741-4326/ac121b/meta
 - Magnetic control of tokamak plasmas through deep reinforcement learning, Jonas Degrave, Federico Felici et al : https://iopscience.iop.org/article/10.1088/1741-4326/ac121b/meta
 - Development of an operation trajectory design algorithm for control of multiple 0D parameters using deep reinforcement learning, Jaemin Seo et al : https://iopscience.iop.org/article/10.1088/1741-4326/ac79be/meta 
+
+## 📖 Citation
+If you use this repository in your research, please cite the following:
+
+### 📜 Research Article
+[Tokamak Plasma Operation Control using Multi-Objective Reinforcement Learning in KSTAR](https://zinzinbin.github.io/files/Poster-Plasma-Control-RL.pdf)  
+Jinsu Kim et al 2023 International Fusion Plasma Conference
+
+### 📌 Code Repository
+Jinsu Kim (2023). **Tokamak-Plasma-Operation-Control-based-on-RL**. GitHub.  
+[https://github.com/ZINZINBIN/Tokamak-Plasma-Operation-Control-based-on-RL](https://github.com/ZINZINBIN/Tokamak-Plasma-Operation-Control-based-on-RL)
+
+#### 📚 BibTeX:
+```bibtex
+@software{Kim_Bayesian_Deep_Learning_2024,
+author = {Kim, Jinsu},
+doi = {https://doi.org/10.1088/1361-6587/ad48b7},
+license = {MIT},
+month = may,
+title = {{Bayesian Deep Learning based Disruption Prediction Model}},
+url = {https://github.com/ZINZINBIN/Bayesian-Disruption-Prediction},
+version = {1.0.0},
+year = {2024}
+}
+```
